@@ -57,6 +57,10 @@ name = "test_bitarray_bitvec"
 path = "tests/rust/test_bitarray_bitvec.rs"
 
 [[test]]
+name = "test_block_integration"
+path = "tests/rust/test_block_integration.rs"
+
+[[test]]
 name = "test_utils"
 path = "tests/rust/test_utils.rs"
 
@@ -70,4 +74,8 @@ harness = false
 
 [[bench]]
 name = "utils_bench"
+harness = false
+
+[[bench]]
+name = "block_bench"
 harness = false

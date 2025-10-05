@@ -76,15 +76,15 @@
 //! - `num_set` (1024 bits): <60ns
 //! - Word-level copy (1024 bits): <60ns
 //!
-//! # Phase 1 Status
+//! # Conversion Status
 //!
-//! This is Phase 1 of the Rust conversion, implementing core utilities:
+//! Rust conversion progress:
 //!
-//! - ✅ BitArray with comprehensive operations
-//! - ✅ Utility functions (shuffle, random)
-//! - ✅ Error types and Result handling
-//! - ⏳ Block system (Phase 2)
-//! - ⏳ Learning blocks (Phase 3-5)
+//! - ✅ **Phase 1**: BitArray, utilities, error handling
+//! - ✅ **Phase 2**: Block infrastructure (Block trait, BlockInput, BlockOutput, BlockMemory)
+//! - ⏳ **Phase 3**: Transformer blocks (ScalarTransformer, DiscreteTransformer)
+//! - ⏳ **Phase 4**: Learning blocks (PatternPooler, PatternClassifier)
+//! - ⏳ **Phase 5**: Temporal blocks (ContextLearner, SequenceLearner)
 //!
 //! # Safety
 //!
@@ -100,16 +100,26 @@ pub mod bitarray_bitvec;
 pub mod error;
 pub mod utils;
 
+// Phase 2: Block Infrastructure
+pub mod block;
+pub mod block_base;
+pub mod block_input;
+pub mod block_output;
+pub mod block_memory;
+
 // Re-exports for convenient access
 pub use bitarray::{bitarray_copy_words, BitArray, Word, BITS_PER_WORD};
 pub use bitarray_bitvec::{bitarray_copy_words_bitvec, BitArrayBitvec};
 pub use error::{GnomicsError, Result};
 
-// Future modules (Phase 2+)
-// pub mod block;
-// pub mod block_input;
-// pub mod block_output;
-// pub mod block_memory;
+// Phase 2 re-exports
+pub use block::Block;
+pub use block_base::BlockBase;
+pub use block_input::BlockInput;
+pub use block_output::{BlockOutput, CURR, PREV};
+pub use block_memory::{BlockMemory, PERM_MAX, PERM_MIN};
+
+// Future modules (Phase 3+)
 // pub mod blocks;
 
 /// Version information
