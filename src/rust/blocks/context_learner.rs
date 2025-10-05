@@ -81,6 +81,8 @@ use crate::{Block, BlockBase, BlockInput, BlockMemory, BlockOutput, Result};
 use crate::bitarray::BitArray;
 use crate::utils;
 use std::path::Path;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 /// Learns contextual associations and detects anomalies.
 ///
@@ -105,8 +107,8 @@ pub struct ContextLearner {
     /// Block input for contextual pattern
     pub context: BlockInput,
 
-    /// Block output with history
-    pub output: BlockOutput,
+    /// Block output with history (wrapped for sharing)
+    pub output: Rc<RefCell<BlockOutput>>,
 
     /// Block memory with synaptic learning (one BlockMemory for all dendrites)
     pub memory: BlockMemory,
@@ -208,7 +210,7 @@ impl ContextLearner {
             base: BlockBase::new(seed),
             input: BlockInput::new(),
             context: BlockInput::new(),
-            output: BlockOutput::new(),
+            output: Rc::new(RefCell::new(BlockOutput::new())),
             memory: BlockMemory::new(num_d, num_rpd, perm_thr, perm_inc, perm_dec, pct_learn),
             num_c,
             num_spc,
@@ -309,7 +311,7 @@ impl ContextLearner {
                 if overlap >= self.d_thresh as usize {
                     let s = d / self.num_dps;
                     self.d_acts.push(d);
-                    self.output.state.set_bit(s);
+                    self.output.borrow_mut().state.set_bit(s);
                     self.surprise_flag = false;
                 }
             }
@@ -339,7 +341,7 @@ impl ContextLearner {
         };
 
         // Activate random statelet
-        self.output.state.set_bit(s_rand);
+        self.output.borrow_mut().state.set_bit(s_rand);
 
         // Assign next available dendrite to random statelet
         self.set_next_available_dendrite(s_rand);
@@ -347,7 +349,7 @@ impl ContextLearner {
         // Activate historical statelets (those with at least one dendrite)
         for s in s_beg..s_end {
             if s != s_rand && self.next_sd[s] > 0 {
-                self.output.state.set_bit(s);
+                self.output.borrow_mut().state.set_bit(s);
                 self.set_next_available_dendrite(s);
             }
         }
@@ -379,7 +381,7 @@ impl Block for ContextLearner {
         );
 
         // Initialize output
-        self.output.setup(self.num_t, self.num_s);
+        self.output.borrow_mut().setup(self.num_t, self.num_s);
 
         // Initialize memory (dendrites learn from context)
         let num_context_bits = self.context.num_bits();
@@ -402,7 +404,7 @@ impl Block for ContextLearner {
     fn clear(&mut self) {
         self.input.clear();
         self.context.clear();
-        self.output.clear();
+        self.output.borrow_mut().clear();
         self.memory.clear();
         self.anomaly_score = 0.0;
         self.input_acts.clear();
@@ -410,7 +412,7 @@ impl Block for ContextLearner {
     }
 
     fn step(&mut self) {
-        self.output.step();
+        self.output.borrow_mut().step();
     }
 
     fn pull(&mut self) {
@@ -432,7 +434,7 @@ impl Block for ContextLearner {
 
             // Clear state
             self.anomaly_score = 0.0;
-            self.output.state.clear_all();
+            self.output.borrow_mut().state.clear_all();
             self.d_acts.clear();
 
             // Process each active column
@@ -466,14 +468,14 @@ impl Block for ContextLearner {
     }
 
     fn store(&mut self) {
-        self.output.store();
+        self.output.borrow_mut().store();
     }
 
     fn memory_usage(&self) -> usize {
         let mut bytes = std::mem::size_of::<Self>();
         bytes += self.input.memory_usage();
         bytes += self.context.memory_usage();
-        bytes += self.output.memory_usage();
+        bytes += self.output.borrow().memory_usage();
         bytes += self.memory.memory_usage();
         bytes += self.next_sd.capacity() * std::mem::size_of::<usize>();
         bytes += self.d_used.memory_usage();

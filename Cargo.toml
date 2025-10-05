@@ -97,6 +97,10 @@ name = "test_context_learner"
 path = "tests/rust/test_context_learner.rs"
 
 [[test]]
+name = "test_context_learner_simple"
+path = "tests/rust/test_context_learner_simple.rs"
+
+[[test]]
 name = "test_sequence_learner"
 path = "tests/rust/test_sequence_learner.rs"
 

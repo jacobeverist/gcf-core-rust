@@ -316,7 +316,7 @@ let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
     learner.feedforward(true).unwrap();
 
     // Output should be sparse (some statelets active)
-    let num_active = learner.output.state.num_set();
+    let num_active = learner.output.borrow().state.num_set();
     let total_statelets = 10 * 4; // num_c * num_spc
     assert!(num_active > 0, "Output should have some active statelets");
     assert!(num_active < total_statelets, "Output should be sparse");

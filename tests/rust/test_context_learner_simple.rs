@@ -1,0 +1,107 @@
+//! Simple direct tests for ContextLearner (without transformer dependencies)
+
+use gnomics::blocks::ContextLearner;
+use gnomics::{Block, BlockOutput};
+use std::cell::RefCell;
+use std::rc::Rc;
+
+#[test]
+fn test_context_learner_direct_activation() {
+    let mut learner = ContextLearner::new(5, 2, 4, 16, 8, 20, 2, 1, 2, false, 42);
+
+    // Setup dummy inputs directly (MUST setup BEFORE add_child)
+    let input_out = Rc::new(RefCell::new(BlockOutput::new()));
+    let context_out = Rc::new(RefCell::new(BlockOutput::new()));
+
+    // Setup outputs BEFORE connecting them
+    input_out.borrow_mut().setup(2, 5);
+    context_out.borrow_mut().setup(2, 128);
+
+    // Now connect them
+    learner.input.add_child(input_out.clone(), 0);
+    learner.context.add_child(context_out.clone(), 0);
+
+    learner.init().unwrap();
+
+    // Directly set input states
+    input_out.borrow_mut().state.set_bit(0);  // Activate column 0
+    input_out.borrow_mut().state.set_bit(2);  // Activate column 2
+    input_out.borrow_mut().store();
+
+    context_out.borrow_mut().state.set_bit(10);
+    context_out.borrow_mut().state.set_bit(20);
+    context_out.borrow_mut().store();
+
+    // Run learner
+    learner.feedforward(true).unwrap();
+
+    // Should have high anomaly on first exposure
+    let anomaly = learner.get_anomaly_score();
+    assert!(anomaly > 0.9, "First exposure should have high anomaly, got {}", anomaly);
+
+    // Should have some output activity
+    let num_active = learner.output.borrow().state.num_set();
+    assert!(num_active > 0, "Should have output activity");
+}
+
+#[test]
+fn test_context_learner_learning_works() {
+    let mut learner = ContextLearner::new(3, 2, 8, 32, 20, 20, 2, 1, 2, false, 42);
+
+    // Setup outputs BEFORE connecting (critical for proper sizing)
+    let input_out = Rc::new(RefCell::new(BlockOutput::new()));
+    let context_out = Rc::new(RefCell::new(BlockOutput::new()));
+
+    input_out.borrow_mut().setup(2, 3);
+    context_out.borrow_mut().setup(2, 64);
+
+    // Connect after setup
+    learner.input.add_child(input_out.clone(), 0);
+    learner.context.add_child(context_out.clone(), 0);
+    learner.init().unwrap();
+
+    // Set pattern
+    input_out.borrow_mut().state.set_bit(0);
+    input_out.borrow_mut().state.set_bit(1);
+    context_out.borrow_mut().state.set_bit(5);
+    context_out.borrow_mut().state.set_bit(10);
+    input_out.borrow_mut().store();
+    context_out.borrow_mut().store();
+
+    // First exposure - high anomaly
+    learner.feedforward(true).unwrap();
+    let first_anomaly = learner.get_anomaly_score();
+    let first_count = learner.get_historical_count();
+
+    // Repeat same pattern multiple times
+    for _ in 0..10 {
+        learner.step();
+        learner.pull();
+        learner.encode();
+        learner.store();
+        learner.learn();
+    }
+
+    let last_anomaly = learner.get_anomaly_score();
+    let last_count = learner.get_historical_count();
+
+    // Anomaly should decrease (learning occurred)
+    assert!(last_anomaly < first_anomaly,
+        "Anomaly should decrease: first={:.3}, last={:.3}", first_anomaly, last_anomaly);
+
+    // Historical count should increase (dendrites assigned)
+    assert!(last_count > first_count,
+        "Historical count should grow: first={}, last={}", first_count, last_count);
+}
+
+#[test]
+fn test_context_learner_get_anomaly_score() {
+    let learner = ContextLearner::new(10, 2, 4, 16, 8, 20, 2, 1, 2, false, 0);
+    assert_eq!(learner.get_anomaly_score(), 0.0);
+}
+
+#[test]
+fn test_context_learner_get_historical_count() {
+    let learner = ContextLearner::new(10, 2, 4, 16, 8, 20, 2, 1, 2, false, 0);
+    assert_eq!(learner.get_historical_count(), 0);
+}
