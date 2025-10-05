@@ -64,6 +64,34 @@ path = "tests/rust/test_block_integration.rs"
 name = "test_utils"
 path = "tests/rust/test_utils.rs"
 
+[[test]]
+name = "test_scalar_transformer"
+path = "tests/rust/test_scalar_transformer.rs"
+
+[[test]]
+name = "test_discrete_transformer"
+path = "tests/rust/test_discrete_transformer.rs"
+
+[[test]]
+name = "test_persistence_transformer"
+path = "tests/rust/test_persistence_transformer.rs"
+
+[[test]]
+name = "test_transformer_integration"
+path = "tests/rust/test_transformer_integration.rs"
+
+[[test]]
+name = "test_pattern_pooler"
+path = "tests/rust/test_pattern_pooler.rs"
+
+[[test]]
+name = "test_pattern_classifier"
+path = "tests/rust/test_pattern_classifier.rs"
+
+[[test]]
+name = "test_learning_integration"
+path = "tests/rust/test_learning_integration.rs"
+
 [[bench]]
 name = "bitarray_bench"
 harness = false

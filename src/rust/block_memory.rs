@@ -273,11 +273,11 @@ impl BlockMemory {
         self.d_conns.clear();
         self.d_conns.resize(self.num_d, BitArray::new(num_i));
 
+        self.conns_flag = true;  // Set flag BEFORE calling update_conns
+
         for d in 0..self.num_d {
             self.update_conns(d);
         }
-
-        self.conns_flag = true;
     }
 
     /// Compute overlap between dendrite and input.

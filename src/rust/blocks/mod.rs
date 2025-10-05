@@ -12,6 +12,13 @@
 //! - `DiscreteTransformer` - Encodes categorical values with distinct patterns
 //! - `PersistenceTransformer` - Encodes temporal persistence of values
 //!
+//! # Learning Blocks
+//!
+//! Learning blocks learn representations and perform classification:
+//!
+//! - `PatternPooler` - Learns sparse representations via competitive learning
+//! - `PatternClassifier` - Supervised classification of binary patterns
+//!
 //! # Examples
 //!
 //! ```
@@ -29,7 +36,11 @@
 pub mod scalar_transformer;
 pub mod discrete_transformer;
 pub mod persistence_transformer;
+pub mod pattern_pooler;
+pub mod pattern_classifier;
 
 pub use scalar_transformer::ScalarTransformer;
 pub use discrete_transformer::DiscreteTransformer;
 pub use persistence_transformer::PersistenceTransformer;
+pub use pattern_pooler::PatternPooler;
+pub use pattern_classifier::PatternClassifier;

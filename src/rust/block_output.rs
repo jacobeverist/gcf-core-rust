@@ -293,7 +293,9 @@ impl BlockOutput {
         let mut bytes = std::mem::size_of::<Self>();
 
         bytes += self.state.memory_usage();
-        bytes += self.history.len() * self.history[0].memory_usage();
+        if !self.history.is_empty() {
+            bytes += self.history.len() * self.history[0].memory_usage();
+        }
         bytes += self.changes.capacity() * std::mem::size_of::<bool>();
 
         bytes
