@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(test:*)",
+      "Bash(cargo test:*)",
+      "Bash(cargo bench:*)",
+      "Bash(cargo run:*)",
+      "Bash(cat:*)",
+      "Bash(git restore:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nComplete Phase 1: Rust Foundation Implementation\n\nImplements Phase 1 of the Rust conversion plan (Weeks 1-2), establishing\nthe foundational utilities and infrastructure for the Gnomics framework.\n\nKey achievements:\n- BitArray: Custom 32-bit word-based implementation with zero-cost abstractions\n  * All bit operations (set/get/clear/toggle) with inline optimization\n  * Efficient bulk operations and vector operations (set_acts/get_acts)\n  * Word-level access methods for Phase 2 lazy copying support\n  * Fast PartialEq comparison for change tracking optimization\n  * Comprehensive logical operators via trait implementations\n- Utils: Random number generation and shuffle algorithms\n- Error handling: GnomicsError with thiserror integration\n- Testing: 110 tests passing (100% pass rate, 95%+ coverage)\n  * 50 BitArray integration tests with property-based testing\n  * 19 Utils integration tests\n  * 32 unit tests, 9 doc tests\n- Performance: All targets met or exceeded (many operations 5× faster)\n- Documentation: Comprehensive API docs with examples\n\nThis foundation enables Phase 2 implementation of Block infrastructure with\nsupport for lazy copying (Rc<RefCell<>> pattern) and dual-level skip\noptimization via change tracking.\n\nFiles: 12 new files (~5,500 lines), side-by-side with C++ in src/cpp/\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
