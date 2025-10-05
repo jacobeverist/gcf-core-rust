@@ -1,0 +1,62 @@
+[package]
+name = "gnomics"
+version = "1.0.0"
+edition = "2021"
+authors = ["Gnomics Contributors"]
+description = "High-performance computational neuroscience framework for machine learning"
+license = "MIT"
+repository = "https://github.com/yourusername/gnomics"
+readme = "README.md"
+keywords = ["machine-learning", "neuroscience", "htm", "sparse-distributed-representations"]
+categories = ["science", "algorithms"]
+
+[lib]
+name = "gnomics"
+path = "src/rust/lib.rs"
+
+[dependencies]
+# Random number generation
+rand = "0.8"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+bincode = "1.3"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+[dev-dependencies]
+# Benchmarking
+criterion = { version = "0.5", features = ["html_reports"] }
+
+# Property-based testing
+proptest = "1.0"
+
+# Floating point comparison
+approx = "0.5"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+debug = false
+
+[profile.bench]
+inherits = "release"
+
+[[test]]
+name = "test_bitarray"
+path = "tests/rust/test_bitarray.rs"
+
+[[test]]
+name = "test_utils"
+path = "tests/rust/test_utils.rs"
+
+[[bench]]
+name = "bitarray_bench"
+harness = false
+
+[[bench]]
+name = "utils_bench"
+harness = false
