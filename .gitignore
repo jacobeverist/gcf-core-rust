@@ -1,0 +1,22 @@
+# Excluded Items
+.idea
+.DS_Store
+*.png
+
+# Python
+*py[cod]
+*.egg-info/
+.pytest_cache/
+.pypirc
+
+# C/C++
+*.so
+*.a
+*.dll
+*.lib
+
+CMakeCache.txt
+CMakeFiles/
+cmake-build-debug/
+cmake-build-release/
+cmake-build-tests/
