@@ -151,6 +151,7 @@ impl BlockInput {
         );
 
         let word_size = child_ref.state.num_words();
+        let child_bits = child_ref.state.num_bits();
 
         // Calculate word offset for concatenation
         let word_offset = self
@@ -167,8 +168,8 @@ impl BlockInput {
         self.word_offsets.push(word_offset);
         self.word_sizes.push(word_size);
 
-        // Resize state to accommodate all children
-        let num_bits = (word_offset + word_size) * 32;
+        // Resize state to accommodate all children (use current size + child bits)
+        let num_bits = self.state.num_bits() + child_bits;
         self.state.resize(num_bits);
     }
 

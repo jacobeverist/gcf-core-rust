@@ -131,15 +131,8 @@ impl BlockOutput {
         assert!(num_t >= 2, "num_t must be >= 2");
         assert!(num_b > 0, "num_b must be > 0");
 
-        // Round up to word boundary for efficient copying
-        let num_bits = if num_b % 32 != 0 {
-            (num_b + 31) & !31 // Round up to nearest 32
-        } else {
-            num_b
-        };
-
-        // Initialize state
-        self.state.resize(num_bits);
+        // Initialize state (BitArray handles word rounding internally)
+        self.state.resize(num_b);
 
         // Initialize history
         self.history.clear();

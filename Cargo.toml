@@ -92,6 +92,18 @@ path = "tests/rust/test_pattern_classifier.rs"
 name = "test_learning_integration"
 path = "tests/rust/test_learning_integration.rs"
 
+[[test]]
+name = "test_context_learner"
+path = "tests/rust/test_context_learner.rs"
+
+[[test]]
+name = "test_sequence_learner"
+path = "tests/rust/test_sequence_learner.rs"
+
+[[test]]
+name = "test_temporal_integration"
+path = "tests/rust/test_temporal_integration.rs"
+
 [[bench]]
 name = "bitarray_bench"
 harness = false

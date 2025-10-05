@@ -84,7 +84,7 @@
 //! - ✅ **Phase 2**: Block infrastructure (Block trait, BlockInput, BlockOutput, BlockMemory)
 //! - ✅ **Phase 3**: Transformer blocks (ScalarTransformer, DiscreteTransformer, PersistenceTransformer)
 //! - ✅ **Phase 4**: Learning blocks (PatternPooler, PatternClassifier)
-//! - ⏳ **Phase 5**: Temporal blocks (ContextLearner, SequenceLearner)
+//! - ✅ **Phase 5**: Temporal blocks (ContextLearner, SequenceLearner)
 //!
 //! # Safety
 //!
@@ -122,10 +122,10 @@ pub use block_input::BlockInput;
 pub use block_output::{BlockOutput, CURR, PREV};
 pub use block_memory::{BlockMemory, PERM_MAX, PERM_MIN};
 
-// Phase 3+4 re-exports
+// Phase 3+4+5 re-exports
 pub use blocks::{
-    DiscreteTransformer, PatternClassifier, PatternPooler, PersistenceTransformer,
-    ScalarTransformer,
+    ContextLearner, DiscreteTransformer, PatternClassifier, PatternPooler,
+    PersistenceTransformer, ScalarTransformer, SequenceLearner,
 };
 
 /// Version information

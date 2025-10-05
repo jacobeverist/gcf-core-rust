@@ -19,6 +19,13 @@
 //! - `PatternPooler` - Learns sparse representations via competitive learning
 //! - `PatternClassifier` - Supervised classification of binary patterns
 //!
+//! # Temporal Blocks
+//!
+//! Temporal blocks learn sequences and contextual associations:
+//!
+//! - `ContextLearner` - Learns contextual associations and detects anomalies
+//! - `SequenceLearner` - Learns temporal sequences and predicts next patterns
+//!
 //! # Examples
 //!
 //! ```
@@ -38,9 +45,13 @@ pub mod discrete_transformer;
 pub mod persistence_transformer;
 pub mod pattern_pooler;
 pub mod pattern_classifier;
+pub mod context_learner;
+pub mod sequence_learner;
 
 pub use scalar_transformer::ScalarTransformer;
 pub use discrete_transformer::DiscreteTransformer;
 pub use persistence_transformer::PersistenceTransformer;
 pub use pattern_pooler::PatternPooler;
 pub use pattern_classifier::PatternClassifier;
+pub use context_learner::ContextLearner;
+pub use sequence_learner::SequenceLearner;
