@@ -82,7 +82,7 @@
 //!
 //! - ✅ **Phase 1**: BitArray, utilities, error handling
 //! - ✅ **Phase 2**: Block infrastructure (Block trait, BlockInput, BlockOutput, BlockMemory)
-//! - ⏳ **Phase 3**: Transformer blocks (ScalarTransformer, DiscreteTransformer)
+//! - ✅ **Phase 3**: Transformer blocks (ScalarTransformer, DiscreteTransformer, PersistenceTransformer)
 //! - ⏳ **Phase 4**: Learning blocks (PatternPooler, PatternClassifier)
 //! - ⏳ **Phase 5**: Temporal blocks (ContextLearner, SequenceLearner)
 //!
@@ -107,6 +107,9 @@ pub mod block_input;
 pub mod block_output;
 pub mod block_memory;
 
+// Phase 3: Transformer Blocks
+pub mod blocks;
+
 // Re-exports for convenient access
 pub use bitarray::{bitarray_copy_words, BitArray, Word, BITS_PER_WORD};
 pub use bitarray_bitvec::{bitarray_copy_words_bitvec, BitArrayBitvec};
@@ -119,8 +122,8 @@ pub use block_input::BlockInput;
 pub use block_output::{BlockOutput, CURR, PREV};
 pub use block_memory::{BlockMemory, PERM_MAX, PERM_MIN};
 
-// Future modules (Phase 3+)
-// pub mod blocks;
+// Phase 3 re-exports
+pub use blocks::{DiscreteTransformer, PersistenceTransformer, ScalarTransformer};
 
 /// Version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

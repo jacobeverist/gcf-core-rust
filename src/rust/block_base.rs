@@ -23,6 +23,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 /// base.set_initialized(true);
 /// assert!(base.is_initialized());
 /// ```
+#[derive(Clone)]
 pub struct BlockBase {
     /// Unique block ID (auto-incremented)
     id: u32,
