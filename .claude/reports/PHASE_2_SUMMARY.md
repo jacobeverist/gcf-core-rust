@@ -18,11 +18,11 @@ Phase 2 of the Rust conversion plan has been successfully completed. The block i
 
 | Module | File Path | Lines | Status |
 |--------|-----------|-------|--------|
-| **Block trait** | `src/rust/block.rs` | 286 | ✅ Complete |
-| **BlockBase** | `src/rust/block_base.rs` | 161 | ✅ Complete |
-| **BlockOutput** | `src/rust/block_output.rs` | 510 | ✅ Complete |
-| **BlockInput** | `src/rust/block_input.rs` | 642 | ✅ Complete |
-| **BlockMemory** | `src/rust/block_memory.rs` | 679 | ✅ Complete |
+| **Block trait** | `src/block.rs` | 286 | ✅ Complete |
+| **BlockBase** | `src/block_base.rs` | 161 | ✅ Complete |
+| **BlockOutput** | `src/block_output.rs` | 510 | ✅ Complete |
+| **BlockInput** | `src/block_input.rs` | 642 | ✅ Complete |
+| **BlockMemory** | `src/block_memory.rs` | 679 | ✅ Complete |
 
 **Total Phase 2 Code**: ~2,278 lines across 5 modules
 **Phase 1 + Phase 2**: ~4,200 lines total production Rust code
@@ -76,7 +76,7 @@ Phase 2 of the Rust conversion plan has been successfully completed. The block i
 
 ### ✅ 1. Lazy Copying with Rc<RefCell<>>
 
-**Location:** `src/rust/block_input.rs`
+**Location:** `src/block_input.rs`
 
 **Implementation:**
 
@@ -130,7 +130,7 @@ pub fn pull(&mut self) {
 
 ### ✅ 2. Change Tracking for Computational Efficiency
 
-**Location:** `src/rust/block_output.rs`
+**Location:** `src/block_output.rs`
 
 **Implementation:**
 
@@ -197,7 +197,7 @@ fn encode(&mut self) {
 
 ### ✅ 3. Word-Level Operations
 
-**Location:** `src/rust/block_input.rs`
+**Location:** `src/block_input.rs`
 
 **Implementation:**
 
@@ -273,7 +273,7 @@ cargo bench --bench block_bench
 
 ## Integration Test Results
 
-**File:** `tests/rust/test_block_integration.rs` (351 lines, 7 tests)
+**File:** `tests/test_block_integration.rs` (351 lines, 7 tests)
 
 | Test | Purpose | Status |
 |------|---------|--------|
@@ -301,7 +301,7 @@ cargo bench --bench block_bench
 
 ### Block Trait System
 
-**File:** `src/rust/block.rs` (286 lines)
+**File:** `src/block.rs` (286 lines)
 
 ```rust
 pub trait Block {
@@ -344,7 +344,7 @@ pub trait Block {
 
 ### BlockBase Helper
 
-**File:** `src/rust/block_base.rs` (161 lines)
+**File:** `src/block_base.rs` (161 lines)
 
 ```rust
 pub struct BlockBase {
@@ -362,7 +362,7 @@ pub struct BlockBase {
 
 ### BlockMemory Learning
 
-**File:** `src/rust/block_memory.rs` (679 lines)
+**File:** `src/block_memory.rs` (679 lines)
 
 **Structure:**
 - `num_d: usize` - Number of dendrites
@@ -565,17 +565,17 @@ Phase 2:
 
 **Week 5: Transformer Blocks**
 
-1. **ScalarTransformer** (`src/rust/blocks/scalar_transformer.rs`)
+1. **ScalarTransformer** (`src/blocks/scalar_transformer.rs`)
    - Encode continuous values to binary patterns
    - Uses Block trait, BlockBase, BlockOutput
    - Straightforward implementation
 
-2. **DiscreteTransformer** (`src/rust/blocks/discrete_transformer.rs`)
+2. **DiscreteTransformer** (`src/blocks/discrete_transformer.rs`)
    - Encode categorical values to binary patterns
    - Similar to ScalarTransformer
    - Distinct category representations
 
-3. **PersistenceTransformer** (`src/rust/blocks/persistence_transformer.rs`)
+3. **PersistenceTransformer** (`src/blocks/persistence_transformer.rs`)
    - Maintain pattern persistence over time
    - Uses BlockInput, BlockOutput
    - Temporal processing
@@ -617,14 +617,14 @@ Phase 2:
 ## References
 
 ### Implementation
-- `src/rust/block.rs` - Block trait (286 lines)
-- `src/rust/block_base.rs` - BlockBase helper (161 lines)
-- `src/rust/block_input.rs` - Lazy copying (642 lines)
-- `src/rust/block_output.rs` - Change tracking (510 lines)
-- `src/rust/block_memory.rs` - Learning (679 lines)
+- `src/block.rs` - Block trait (286 lines)
+- `src/block_base.rs` - BlockBase helper (161 lines)
+- `src/block_input.rs` - Lazy copying (642 lines)
+- `src/block_output.rs` - Change tracking (510 lines)
+- `src/block_memory.rs` - Learning (679 lines)
 
 ### Testing
-- `tests/rust/test_block_integration.rs` - Integration tests (351 lines, 7 tests)
+- `tests/test_block_integration.rs` - Integration tests (351 lines, 7 tests)
 - Unit tests inline in each module (39 tests total)
 
 ### Benchmarking

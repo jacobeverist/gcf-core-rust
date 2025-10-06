@@ -32,7 +32,7 @@
 //! let mut classifier = PatternClassifier::new(4, 1024, 8, 20, 2, 1, 0.8, 0.5, 0.3, 2, 0);
 //!
 //! // Connect and initialize
-//! classifier.input.add_child(Rc::new(RefCell::new(encoder.output)), 0);
+//! classifier.input.add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
 //! classifier.init().unwrap();
 //!
 //! // Train on label 0
@@ -127,8 +127,8 @@ impl PatternClassifier {
     /// // 4-class classifier: 1024 statelets, 8 active per class
     /// let classifier = PatternClassifier::new(4, 1024, 8, 20, 2, 1, 0.8, 0.5, 0.3, 2, 0);
     ///
-    /// // 10-class classifier for MNIST-like tasks
-    /// let mnist_classifier = PatternClassifier::new(10, 2048, 20, 20, 2, 1, 0.8, 0.5, 0.3, 2, 0);
+    /// // 10-class classifier for MNIST-like tasks (2000 = 200 statelets per class)
+    /// let mnist_classifier = PatternClassifier::new(10, 2000, 20, 20, 2, 1, 0.8, 0.5, 0.3, 2, 0);
     /// ```
     pub fn new(
         num_l: usize,
@@ -233,7 +233,7 @@ impl PatternClassifier {
     /// #
     /// # let mut encoder = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
     /// # let mut classifier = PatternClassifier::new(4, 1024, 8, 20, 2, 1, 0.8, 0.5, 0.3, 2, 0);
-    /// # classifier.input.add_child(Rc::new(RefCell::new(encoder.output)), 0);
+    /// # classifier.input.add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
     /// # classifier.init().unwrap();
     /// # encoder.set_value(0.5);
     /// # encoder.execute(false).unwrap();
@@ -443,4 +443,4 @@ impl Block for PatternClassifier {
     }
 }
 
-// Tests are in tests/rust/test_pattern_classifier.rs
+// Tests are in tests/test_pattern_classifier.rs

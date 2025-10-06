@@ -6,7 +6,7 @@ This document outlines a comprehensive plan to convert the Gnomic Computing fram
 
 **Estimated Timeline:** 8-12 weeks for full conversion with testing
 **Approach:** Bottom-up, component-by-component migration with continuous testing
-**Structure:** Side-by-side implementation (C++ in `src/cpp/`, Rust in `src/rust/`) for easy comparison and validation
+**Structure:** Side-by-side implementation (C++ in `src/cpp/`, Rust in `src/`) for easy comparison and validation
 
 ---
 
@@ -49,7 +49,7 @@ This document outlines a comprehensive plan to convert the Gnomic Computing fram
 
 ### Side-by-Side Structure Benefits
 
-By placing Rust code in `src/rust/` alongside the existing C++ code in `src/cpp/`, we gain:
+By placing Rust code in `src/` alongside the existing C++ code in `src/cpp/`, we gain:
 
 1. **Easy Comparison:** Directly compare implementations for correctness
 2. **Gradual Migration:** Keep both versions functional during transition
@@ -749,14 +749,14 @@ packed_simd = "0.3"         # Explicit SIMD operations
 5. Set up CI/CD with GitHub Actions
 
 **Deliverables:**
-- `src/rust/bitarray.rs` with complete implementation
-- `src/rust/utils.rs` with utility functions
-- Test suite in `tests/rust/` with 90%+ coverage
+- `src/bitarray.rs` with complete implementation
+- `src/utils.rs` with utility functions
+- Test suite in `tests/` with 90%+ coverage
 - Documentation with examples
 
 **Files to Convert:**
-- `src/cpp/bitarray.hpp/cpp` → `src/rust/bitarray.rs`
-- `src/cpp/utils.hpp` → `src/rust/utils.rs`
+- `src/cpp/bitarray.hpp/cpp` → `src/bitarray.rs`
+- `src/cpp/utils.hpp` → `src/utils.rs`
 
 ### Phase 2: Block Infrastructure (Weeks 3-4)
 
@@ -790,10 +790,10 @@ packed_simd = "0.3"         # Explicit SIMD operations
 - Unit tests for each component
 
 **Files to Convert:**
-- `src/cpp/block.hpp/cpp` → `src/rust/block.rs`
-- `src/cpp/block_input.hpp/cpp` → `src/rust/block_input.rs`
-- `src/cpp/block_output.hpp/cpp` → `src/rust/block_output.rs`
-- `src/cpp/block_memory.hpp/cpp` → `src/rust/block_memory.rs`
+- `src/cpp/block.hpp/cpp` → `src/block.rs`
+- `src/cpp/block_input.hpp/cpp` → `src/block_input.rs`
+- `src/cpp/block_output.hpp/cpp` → `src/block_output.rs`
+- `src/cpp/block_memory.hpp/cpp` → `src/block_memory.rs`
 
 ### Phase 3: Transformer Blocks (Week 5)
 
@@ -807,14 +807,14 @@ packed_simd = "0.3"         # Explicit SIMD operations
 5. Create integration tests
 
 **Deliverables:**
-- All transformer blocks in `src/rust/blocks/`
+- All transformer blocks in `src/blocks/`
 - Complete transformer implementations
-- Tests in `tests/rust/` matching C++ behavior
+- Tests in `tests/` matching C++ behavior
 
 **Files to Convert:**
-- `src/cpp/blocks/scalar_transformer.hpp/cpp` → `src/rust/blocks/scalar_transformer.rs`
-- `src/cpp/blocks/discrete_transformer.hpp/cpp` → `src/rust/blocks/discrete_transformer.rs`
-- `src/cpp/blocks/persistence_transformer.hpp/cpp` → `src/rust/blocks/persistence_transformer.rs`
+- `src/cpp/blocks/scalar_transformer.hpp/cpp` → `src/blocks/scalar_transformer.rs`
+- `src/cpp/blocks/discrete_transformer.hpp/cpp` → `src/blocks/discrete_transformer.rs`
+- `src/cpp/blocks/persistence_transformer.hpp/cpp` → `src/blocks/persistence_transformer.rs`
 
 ### Phase 4: Learning Blocks (Weeks 6-7)
 
@@ -833,9 +833,9 @@ packed_simd = "0.3"         # Explicit SIMD operations
 - Comprehensive tests
 
 **Files to Convert:**
-- `src/cpp/blocks/pattern_pooler.hpp/cpp` → `src/rust/blocks/pattern_pooler.rs`
-- `src/cpp/blocks/pattern_classifier.hpp/cpp` → `src/rust/blocks/pattern_classifier.rs`
-- `src/cpp/blocks/pattern_classifier_dynamic.hpp/cpp` → `src/rust/blocks/pattern_classifier_dynamic.rs`
+- `src/cpp/blocks/pattern_pooler.hpp/cpp` → `src/blocks/pattern_pooler.rs`
+- `src/cpp/blocks/pattern_classifier.hpp/cpp` → `src/blocks/pattern_classifier.rs`
+- `src/cpp/blocks/pattern_classifier_dynamic.hpp/cpp` → `src/blocks/pattern_classifier_dynamic.rs`
 
 ### Phase 5: Temporal Blocks (Week 8)
 
@@ -853,8 +853,8 @@ packed_simd = "0.3"         # Explicit SIMD operations
 - Example applications
 
 **Files to Convert:**
-- `src/cpp/blocks/context_learner.hpp/cpp` → `src/rust/blocks/context_learner.rs`
-- `src/cpp/blocks/sequence_learner.hpp/cpp` → `src/rust/blocks/sequence_learner.rs`
+- `src/cpp/blocks/context_learner.hpp/cpp` → `src/blocks/context_learner.rs`
+- `src/cpp/blocks/sequence_learner.hpp/cpp` → `src/blocks/sequence_learner.rs`
 
 ### Phase 6: Testing and Documentation (Weeks 9-10)
 
@@ -914,7 +914,7 @@ gnomics/
 │   │   ├── utils.hpp
 │   │   └── blocks/
 │   │       └── ...
-│   └── rust/                 # New Rust source (mirrors C++ structure)
+│   └──                  # New Rust source (mirrors C++ structure)
 │       ├── lib.rs
 │       ├── bitarray.rs
 │       ├── utils.rs
@@ -940,7 +940,7 @@ gnomics/
 │   │   ├── test_bitarray.cpp
 │   │   ├── test_pattern_classifier.cpp
 │   │   └── ...
-│   └── rust/                 # New Rust tests (mirrors C++ tests)
+│   └──                  # New Rust tests (mirrors C++ tests)
 │       ├── test_bitarray.rs
 │       ├── test_pattern_classifier.rs
 │       ├── test_pattern_pooler.rs
@@ -988,7 +988,7 @@ gnomics/
 ### Example: BitArray Implementation
 
 ```rust
-// src/rust/bitarray.rs
+// src/bitarray.rs
 
 use std::ops::{BitAnd, BitOr, BitXor, Not};
 
@@ -1170,7 +1170,7 @@ mod tests {
 ### Example: Block Trait
 
 ```rust
-// src/rust/block.rs
+// src/block.rs
 
 use crate::error::Result;
 use std::path::Path;
@@ -1301,7 +1301,7 @@ mod tests {
 Test block combinations:
 
 ```rust
-// tests/rust/test_classification.rs
+// tests/test_classification.rs
 
 use gnomics::blocks::*;
 
@@ -1621,11 +1621,11 @@ edition = "2021"
 
 [lib]
 name = "gnomics"
-path = "src/rust/lib.rs"
+path = "src/lib.rs"
 
 [[test]]
 name = "integration"
-path = "tests/rust/test_bitarray.rs"
+path = "tests/test_bitarray.rs"
 
 [dependencies]
 bitvec = "1.0"
@@ -1646,13 +1646,13 @@ codegen-units = 1
 EOF
 
 # Create src/rust directory structure
-mkdir -p src/rust/blocks
+mkdir -p src/blocks
 mkdir -p tests/rust
 mkdir -p benches
 mkdir -p examples
 
 # Create lib.rs
-touch src/rust/lib.rs
+touch src/lib.rs
 
 # Run tests
 cargo test
@@ -1732,7 +1732,7 @@ diff cpp_output.txt rust_output.txt
 ### Rust for C++ Programmers
 
 - [Rust for C++ Programmers](https://github.com/nrc/r4cppp)
-- [From C++ to Rust](https://locka99.gitbooks.io/a-guide-to-porting-c-to-rust/)
+- [From C++ to Rust](https://locka99.gitbooks.io/a-guide-to-porting-c-to-)
 
 ### Performance
 
@@ -1753,7 +1753,7 @@ This conversion plan provides a comprehensive roadmap for migrating Gnomic Compu
 **Next Steps:**
 1. Review and approve this plan
 2. Create `Cargo.toml` at project root
-3. Set up `src/rust/` directory structure
+3. Set up `src/` directory structure
 4. Set up Rust development environment and toolchain
 5. Begin Phase 1 implementation (BitArray + utils)
 6. Schedule weekly progress reviews
@@ -1765,7 +1765,7 @@ This conversion plan provides a comprehensive roadmap for migrating Gnomic Compu
 **Last Updated:** 2025-10-04
 **Status:** Ready for Review
 **Revisions:**
-- v1.1: Updated to use side-by-side structure (C++ in `src/cpp/`, Rust in `src/rust/`)
+- v1.1: Updated to use side-by-side structure (C++ in `src/cpp/`, Rust in `src/`)
 - v1.2: Expanded lazy copying design with Rc<RefCell<>> approach and performance analysis
 - v1.3: Added critical change tracking optimization (enables 10-100× speedup)
 

@@ -587,7 +587,7 @@ cargo bench --bench bitarray_bench
 ```
 gnomics/
 ├── src/
-│   ├── rust/                      # Rust implementation (primary)
+│   ├──                       # Rust implementation (primary)
 │   │   ├── lib.rs                 # Library entry point
 │   │   ├── bitarray.rs            # Bit manipulation
 │   │   ├── block.rs               # Block trait
@@ -610,7 +610,7 @@ gnomics/
 │       └── blocks/
 │
 ├── tests/
-│   └── rust/                      # Integration tests
+│   └──                       # Integration tests
 │       ├── test_bitarray.rs
 │       ├── test_block_integration.rs
 │       ├── test_scalar_transformer.rs
@@ -788,13 +788,13 @@ Detailed implementation documentation:
 
 To create a new block type:
 
-1. Create a new file in `src/rust/blocks/`
+1. Create a new file in `src/blocks/`
 2. Define your block struct
 3. Implement the `Block` trait
 4. Add `BlockInput`, `BlockOutput`, `BlockMemory` as needed
 5. Implement `init()`, `encode()`, `learn()` methods
-6. Add tests in `tests/rust/`
-7. Update `src/rust/blocks/mod.rs` with exports
+6. Add tests in `tests/`
+7. Update `src/blocks/mod.rs` with exports
 
 Example skeleton:
 
@@ -903,9 +903,9 @@ If you use Gnomics in your research, please cite:
 
 For questions, issues, or contributions:
 
-- **GitHub Issues**: https://github.com/jacobeverist/gcf-core-rust/issues
+- **GitHub Issues**: https://github.com/jacobeverist/gcf-core-issues
 - **Documentation**: Run `cargo doc --open`
-- **Examples**: See `tests/rust/` directory
+- **Examples**: See `tests/` directory
 
 ---
 

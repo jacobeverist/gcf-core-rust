@@ -190,14 +190,14 @@ Critical Phase 2 features enabled by Phase 1:
 ## File Structure
 
 ```
-src/rust/
+src/
 ├── lib.rs              # Library root, public API
 ├── bitarray.rs         # BitArray implementation
 ├── utils.rs            # Utility functions
 ├── error.rs            # Error types
 └── blocks/             # Future: Block implementations (Phase 3-5)
 
-tests/rust/
+tests/
 ├── test_bitarray.rs    # BitArray integration tests
 └── test_utils.rs       # Utils integration tests
 

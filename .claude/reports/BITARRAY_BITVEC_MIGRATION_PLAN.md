@@ -502,7 +502,7 @@ bv.set_acts(&[5, 10, 15]);
 6. Document API translation layer
 
 **Deliverables:**
-- Prototype `src/rust/bitarray_bitvec.rs`
+- Prototype `src/bitarray_bitvec.rs`
 - Performance benchmark comparison
 - API mapping document (this section)
 
@@ -519,7 +519,7 @@ bv.set_acts(&[5, 10, 15]);
 6. Update serialization support
 
 **Deliverables:**
-- Updated `src/rust/bitarray.rs` using bitvec
+- Updated `src/bitarray.rs` using bitvec
 - All methods implemented
 - Compilation successful
 
@@ -817,7 +817,7 @@ criterion_main!(benches);
 ## Implementation Checklist
 
 ### Prototype Phase
-- [ ] Create `src/rust/bitarray_bitvec_prototype.rs`
+- [ ] Create `src/bitarray_bitvec_prototype.rs`
 - [ ] Implement wrapper with 10-12 core methods
 - [ ] Validate word-level access works
 - [ ] Run micro-benchmarks for critical operations

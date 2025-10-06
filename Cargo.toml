@@ -12,7 +12,7 @@ categories = ["science", "algorithms"]
 
 [lib]
 name = "gnomics"
-path = "src/rust/lib.rs"
+path = "src/lib.rs"
 
 [dependencies]
 # Random number generation
@@ -50,63 +50,63 @@ inherits = "release"
 
 [[test]]
 name = "test_bitarray"
-path = "tests/rust/test_bitarray.rs"
+path = "tests/test_bitarray.rs"
 
 [[test]]
 name = "test_bitarray_bitvec"
-path = "tests/rust/test_bitarray_bitvec.rs"
+path = "tests/test_bitarray_bitvec.rs"
 
 [[test]]
 name = "test_block_integration"
-path = "tests/rust/test_block_integration.rs"
+path = "tests/test_block_integration.rs"
 
 [[test]]
 name = "test_utils"
-path = "tests/rust/test_utils.rs"
+path = "tests/test_utils.rs"
 
 [[test]]
 name = "test_scalar_transformer"
-path = "tests/rust/test_scalar_transformer.rs"
+path = "tests/test_scalar_transformer.rs"
 
 [[test]]
 name = "test_discrete_transformer"
-path = "tests/rust/test_discrete_transformer.rs"
+path = "tests/test_discrete_transformer.rs"
 
 [[test]]
 name = "test_persistence_transformer"
-path = "tests/rust/test_persistence_transformer.rs"
+path = "tests/test_persistence_transformer.rs"
 
 [[test]]
 name = "test_transformer_integration"
-path = "tests/rust/test_transformer_integration.rs"
+path = "tests/test_transformer_integration.rs"
 
 [[test]]
 name = "test_pattern_pooler"
-path = "tests/rust/test_pattern_pooler.rs"
+path = "tests/test_pattern_pooler.rs"
 
 [[test]]
 name = "test_pattern_classifier"
-path = "tests/rust/test_pattern_classifier.rs"
+path = "tests/test_pattern_classifier.rs"
 
 [[test]]
 name = "test_learning_integration"
-path = "tests/rust/test_learning_integration.rs"
+path = "tests/test_learning_integration.rs"
 
 [[test]]
 name = "test_context_learner"
-path = "tests/rust/test_context_learner.rs"
+path = "tests/test_context_learner.rs"
 
 [[test]]
 name = "test_context_learner_simple"
-path = "tests/rust/test_context_learner_simple.rs"
+path = "tests/test_context_learner_simple.rs"
 
 [[test]]
 name = "test_sequence_learner"
-path = "tests/rust/test_sequence_learner.rs"
+path = "tests/test_sequence_learner.rs"
 
 [[test]]
 name = "test_temporal_integration"
-path = "tests/rust/test_temporal_integration.rs"
+path = "tests/test_temporal_integration.rs"
 
 [[bench]]
 name = "bitarray_bench"

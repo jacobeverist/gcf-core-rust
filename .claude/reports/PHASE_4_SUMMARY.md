@@ -18,7 +18,7 @@ These blocks use BlockMemory (dendrites + receptors + permanences) to learn stab
 
 ## Implementation Details
 
-### 1. PatternPooler (`src/rust/blocks/pattern_pooler.rs`) - 285 lines
+### 1. PatternPooler (`src/blocks/pattern_pooler.rs`) - 285 lines
 
 **Architecture**:
 - `num_s` dendrites compete to represent input patterns
@@ -68,7 +68,7 @@ pub fn learn(&mut self) {
 - Creating stable sparse codes
 - Unsupervised representation learning
 
-### 2. PatternClassifier (`src/rust/blocks/pattern_classifier.rs`) - 451 lines
+### 2. PatternClassifier (`src/blocks/pattern_classifier.rs`) - 451 lines
 
 **Architecture**:
 - Divides `num_s` statelets into `num_l` label groups (num_spl = num_s / num_l)
@@ -153,7 +153,7 @@ pub fn get_probabilities(&self) -> Vec<f64> {
 ### BlockMemory::init_pooled_conn() - Ordering Issue
 
 **Problem**: `update_conns()` called before `conns_flag` set to true
-**Location**: `src/rust/block_memory.rs:276`
+**Location**: `src/block_memory.rs:276`
 
 **Fix**:
 ```rust
@@ -177,7 +177,7 @@ for d in 0..self.num_d {
 ### BlockOutput::memory_usage() - Bounds Check
 
 **Problem**: Index out of bounds when history is empty
-**Location**: `src/rust/block_output.rs:296`
+**Location**: `src/block_output.rs:296`
 
 **Fix**:
 ```rust
@@ -339,21 +339,21 @@ Both blocks leverage Phase 2 optimizations:
 ## Files Modified
 
 ### New Implementation Files
-- `src/rust/blocks/pattern_pooler.rs` (285 lines)
-- `src/rust/blocks/pattern_classifier.rs` (451 lines)
+- `src/blocks/pattern_pooler.rs` (285 lines)
+- `src/blocks/pattern_classifier.rs` (451 lines)
 
 ### New Test Files
-- `tests/rust/test_pattern_pooler.rs` (244 lines, 11 tests)
-- `tests/rust/test_pattern_classifier.rs` (329 lines, 16 tests)
-- `tests/rust/test_learning_integration.rs` (367 lines, 8 tests)
+- `tests/test_pattern_pooler.rs` (244 lines, 11 tests)
+- `tests/test_pattern_classifier.rs` (329 lines, 16 tests)
+- `tests/test_learning_integration.rs` (367 lines, 8 tests)
 
 ### Bug Fixes
-- `src/rust/block_memory.rs` (conns_flag ordering)
-- `src/rust/block_output.rs` (memory_usage bounds check)
+- `src/block_memory.rs` (conns_flag ordering)
+- `src/block_output.rs` (memory_usage bounds check)
 
 ### Module Updates
-- `src/rust/blocks/mod.rs` (added learning block exports)
-- `src/rust/lib.rs` (marked Phase 4 complete, added re-exports)
+- `src/blocks/mod.rs` (added learning block exports)
+- `src/lib.rs` (marked Phase 4 complete, added re-exports)
 - `Cargo.toml` (added test entries)
 
 **Total New Code**: ~1,676 lines (736 production, 940 tests)
@@ -525,7 +525,7 @@ classifier.init(); // Second (needs pooler.output already setup)
 
 Files created:
 - `PHASE_4_SUMMARY.md` (this document)
-- Updated `src/rust/lib.rs` with Phase 4 status
+- Updated `src/lib.rs` with Phase 4 status
 
 ---
 

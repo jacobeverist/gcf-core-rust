@@ -33,14 +33,14 @@ This report presents the results of a comprehensive validation comparing Gnomics
 
 ### ✅ Completed Components
 
-1. **Prototype Implementation** (`src/rust/bitarray_bitvec.rs`)
+1. **Prototype Implementation** (`src/bitarray_bitvec.rs`)
    - Full API compatibility with custom BitArray
    - 27 public methods implemented
    - 5 operator traits (BitAnd, BitOr, BitXor, Not, PartialEq)
    - Word-level access via bitvec's `as_raw_slice()` / `as_raw_mut_slice()`
    - Serde serialization support
 
-2. **Validation Tests** (`tests/rust/test_bitarray_bitvec.rs`)
+2. **Validation Tests** (`tests/test_bitarray_bitvec.rs`)
    - 41 tests covering all critical operations
    - Word-level copying tests
    - Operator tests
@@ -406,7 +406,7 @@ pub fn get_acts(&self) -> Vec<usize> {
 
 1. ✅ Mark validation complete
 2. ✅ Document findings in this report
-3. ✅ Keep bitvec prototype as reference (`src/rust/bitarray_bitvec.rs`)
+3. ✅ Keep bitvec prototype as reference (`src/bitarray_bitvec.rs`)
 4. ✅ Proceed with Phase 2 using custom BitArray
 5. 🔄 Revisit bitvec migration in Phase 3+ if maintenance burden grows
 
@@ -490,8 +490,8 @@ bitvec = { version = "1.0", features = ["serde"] }
 
 ### E. Files Created
 
-1. `src/rust/bitarray_bitvec.rs` (612 lines)
-2. `tests/rust/test_bitarray_bitvec.rs` (377 lines)
+1. `src/bitarray_bitvec.rs` (612 lines)
+2. `tests/test_bitarray_bitvec.rs` (377 lines)
 3. `benches/bitarray_comparison.rs` (685 lines)
 4. `BITARRAY_BITVEC_VALIDATION_REPORT.md` (this file)
 

@@ -31,7 +31,7 @@
 //! let mut pooler = PatternPooler::new(1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0);
 //!
 //! // Connect encoder to pooler
-//! pooler.input.add_child(Rc::new(RefCell::new(encoder.output)), 0);
+//! pooler.input.add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
 //! pooler.init().unwrap();
 //!
 //! // Encode and learn sparse representation
@@ -277,4 +277,4 @@ impl Block for PatternPooler {
     }
 }
 
-// Tests are in tests/rust/test_pattern_pooler.rs
+// Tests are in tests/test_pattern_pooler.rs

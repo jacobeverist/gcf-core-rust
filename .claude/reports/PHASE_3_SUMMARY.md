@@ -18,10 +18,10 @@ Phase 3 of the Rust conversion plan has been successfully completed. The transfo
 
 | Module | File Path | Lines | Status |
 |--------|-----------|-------|--------|
-| **Module organization** | `src/rust/blocks/mod.rs` | 35 | ✅ Complete |
-| **ScalarTransformer** | `src/rust/blocks/scalar_transformer.rs` | 390 | ✅ Complete |
-| **DiscreteTransformer** | `src/rust/blocks/discrete_transformer.rs` | 429 | ✅ Complete |
-| **PersistenceTransformer** | `src/rust/blocks/persistence_transformer.rs` | 487 | ✅ Complete |
+| **Module organization** | `src/blocks/mod.rs` | 35 | ✅ Complete |
+| **ScalarTransformer** | `src/blocks/scalar_transformer.rs` | 390 | ✅ Complete |
+| **DiscreteTransformer** | `src/blocks/discrete_transformer.rs` | 429 | ✅ Complete |
+| **PersistenceTransformer** | `src/blocks/persistence_transformer.rs` | 487 | ✅ Complete |
 
 **Total Phase 3 Code**: 1,341 lines across 4 files
 **Total Project Code**: ~5,600 lines (Phases 1+2+3)
@@ -51,10 +51,10 @@ Phase 3 of the Rust conversion plan has been successfully completed. The transfo
 ### Integration Test Files Created ✅
 
 **Files:**
-- `tests/rust/test_scalar_transformer.rs` - Placeholder for additional tests
-- `tests/rust/test_discrete_transformer.rs` - Placeholder for additional tests
-- `tests/rust/test_persistence_transformer.rs` - Placeholder for additional tests
-- `tests/rust/test_transformer_integration.rs` - Pipeline integration tests
+- `tests/test_scalar_transformer.rs` - Placeholder for additional tests
+- `tests/test_discrete_transformer.rs` - Placeholder for additional tests
+- `tests/test_persistence_transformer.rs` - Placeholder for additional tests
+- `tests/test_transformer_integration.rs` - Pipeline integration tests
 
 ---
 
@@ -62,7 +62,7 @@ Phase 3 of the Rust conversion plan has been successfully completed. The transfo
 
 ### ScalarTransformer ✅
 
-**File:** `src/rust/blocks/scalar_transformer.rs` (390 lines)
+**File:** `src/blocks/scalar_transformer.rs` (390 lines)
 
 **Purpose:** Encodes continuous scalar values into overlapping binary patterns where similar values have similar representations.
 
@@ -109,7 +109,7 @@ for i in 0..num_as {
 
 ### DiscreteTransformer ✅
 
-**File:** `src/rust/blocks/discrete_transformer.rs` (429 lines)
+**File:** `src/blocks/discrete_transformer.rs` (429 lines)
 
 **Purpose:** Encodes categorical values into distinct binary patterns with ZERO overlap between categories.
 
@@ -152,7 +152,7 @@ for i in 0..num_as {
 
 ### PersistenceTransformer ✅
 
-**File:** `src/rust/blocks/persistence_transformer.rs` (487 lines)
+**File:** `src/blocks/persistence_transformer.rs` (487 lines)
 
 **Purpose:** Encodes temporal persistence - how long a value has remained stable.
 
@@ -495,13 +495,13 @@ assert_eq!(encoder.output.state.num_set(), 128);
 
 **Weeks 6-7: Learning Blocks**
 
-1. **PatternPooler** (`src/rust/blocks/pattern_pooler.rs`)
+1. **PatternPooler** (`src/blocks/pattern_pooler.rs`)
    - Learns sparse distributed representations
    - Uses BlockMemory with dendrites
    - Accepts transformer outputs as input
    - Competitive learning (winner-take-all)
 
-2. **PatternClassifier** (`src/rust/blocks/pattern_classifier.rs`)
+2. **PatternClassifier** (`src/blocks/pattern_classifier.rs`)
    - Supervised learning classifier
    - Uses BlockMemory with label groups
    - Accepts transformer outputs as input
@@ -642,14 +642,14 @@ Code Coverage: 95%+ across all modules
 ## References
 
 ### Implementation
-- `src/rust/blocks/scalar_transformer.rs` - Continuous encoding (390 lines)
-- `src/rust/blocks/discrete_transformer.rs` - Categorical encoding (429 lines)
-- `src/rust/blocks/persistence_transformer.rs` - Temporal encoding (487 lines)
-- `src/rust/blocks/mod.rs` - Module organization (35 lines)
+- `src/blocks/scalar_transformer.rs` - Continuous encoding (390 lines)
+- `src/blocks/discrete_transformer.rs` - Categorical encoding (429 lines)
+- `src/blocks/persistence_transformer.rs` - Temporal encoding (487 lines)
+- `src/blocks/mod.rs` - Module organization (35 lines)
 
 ### Testing
 - Embedded unit tests in each transformer module (38 tests)
-- `tests/rust/test_transformer_integration.rs` - Integration tests
+- `tests/test_transformer_integration.rs` - Integration tests
 - Doc tests in module documentation (examples)
 
 ### Documentation

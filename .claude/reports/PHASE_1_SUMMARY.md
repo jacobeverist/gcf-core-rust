@@ -16,7 +16,7 @@ Phase 1 of the Rust conversion plan has been successfully completed. The foundat
 
 ### Core Implementation ✅
 
-1. **BitArray** (`src/rust/bitarray.rs`)
+1. **BitArray** (`src/bitarray.rs`)
    - 923 lines, 33 public methods
    - Custom Vec<u32> word-based implementation
    - All bit operations with inline optimization
@@ -25,17 +25,17 @@ Phase 1 of the Rust conversion plan has been successfully completed. The foundat
    - Comprehensive operator traits
    - Serialization support
 
-2. **Utils** (`src/rust/utils.rs`)
+2. **Utils** (`src/utils.rs`)
    - Random number generation
    - Shuffle algorithms
    - Helper functions
 
-3. **Error Handling** (`src/rust/error.rs`)
+3. **Error Handling** (`src/error.rs`)
    - GnomicsError enum with thiserror
    - Comprehensive error variants
    - Result<T> type alias
 
-4. **Library Structure** (`src/rust/lib.rs`)
+4. **Library Structure** (`src/lib.rs`)
    - Module organization
    - Public API exports
    - Documentation
@@ -82,8 +82,8 @@ To make an informed architectural decision, we conducted a thorough investigatio
 ### Prototype Created
 
 **Files:**
-- `src/rust/bitarray_bitvec.rs` (612 lines)
-- `tests/rust/test_bitarray_bitvec.rs` (41 tests, 100% pass)
+- `src/bitarray_bitvec.rs` (612 lines)
+- `tests/test_bitarray_bitvec.rs` (41 tests, 100% pass)
 - `benches/bitarray_comparison.rs` (20 benchmarks)
 
 **Documentation:**
@@ -300,18 +300,18 @@ Commit 2: 78af6e7 - Add bitvec prototype for performance validation
 - `BITARRAY_BITVEC_MIGRATION_PLAN.md` - Migration analysis (6,200 lines)
 - `BITARRAY_BITVEC_VALIDATION_REPORT.md` - Prototype results
 - `CLAUDE.md` - C++ framework documentation
-- `src/rust/README.md` - Rust implementation guide
+- `src/README.md` - Rust implementation guide
 
 ### Implementation
-- `src/rust/bitarray.rs` - Custom BitArray (923 lines)
-- `src/rust/bitarray_bitvec.rs` - bitvec prototype (reference)
-- `src/rust/utils.rs` - Utility functions
-- `src/rust/error.rs` - Error types
+- `src/bitarray.rs` - Custom BitArray (923 lines)
+- `src/bitarray_bitvec.rs` - bitvec prototype (reference)
+- `src/utils.rs` - Utility functions
+- `src/error.rs` - Error types
 
 ### Testing
-- `tests/rust/test_bitarray.rs` - BitArray tests (50 tests)
-- `tests/rust/test_utils.rs` - Utils tests (19 tests)
-- `tests/rust/test_bitarray_bitvec.rs` - Prototype tests (41 tests)
+- `tests/test_bitarray.rs` - BitArray tests (50 tests)
+- `tests/test_utils.rs` - Utils tests (19 tests)
+- `tests/test_bitarray_bitvec.rs` - Prototype tests (41 tests)
 
 ### Benchmarking
 - `benches/bitarray_bench.rs` - BitArray benchmarks

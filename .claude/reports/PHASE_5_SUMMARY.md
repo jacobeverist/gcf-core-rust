@@ -18,7 +18,7 @@ These blocks use dendrite-based recognition to detect expected patterns and trig
 
 ## Implementation Details
 
-### 1. ContextLearner (`src/rust/blocks/context_learner.rs`) - 580 lines
+### 1. ContextLearner (`src/blocks/context_learner.rs`) - 580 lines
 
 **Architecture**:
 - Two inputs: `input` (column activations) + `context` (contextual pattern)
@@ -90,7 +90,7 @@ pub fn get_anomaly_score(&self) -> f64 {
 - Anomaly detection (unexpected patterns in wrong context)
 - Multi-modal association learning
 
-### 2. SequenceLearner (`src/rust/blocks/sequence_learner.rs`) - 570 lines
+### 2. SequenceLearner (`src/blocks/sequence_learner.rs`) - 570 lines
 
 **Architecture**:
 - Nearly identical to ContextLearner
@@ -132,7 +132,7 @@ pub fn new(...) -> Self {
 ### 1. BlockOutput::setup() - Word Rounding Issue
 
 **Problem**: State incorrectly rounded to word boundary
-**Location**: `src/rust/block_output.rs:130-139`
+**Location**: `src/block_output.rs:130-139`
 
 **Before**:
 ```rust
@@ -156,7 +156,7 @@ self.history.resize(num_t, BitArray::new(num_b));
 ### 2. BlockInput::add_child() - Bit Accumulation
 
 **Problem**: Used word-based calculation instead of actual bit count
-**Location**: `src/rust/block_input.rs:171-172`
+**Location**: `src/block_input.rs:171-172`
 
 **Before**:
 ```rust
@@ -330,22 +330,22 @@ Based on C++ baseline and Rust optimizations:
 ## Files Modified/Created
 
 ### New Implementation Files
-- `src/rust/blocks/context_learner.rs` (580 lines)
-- `src/rust/blocks/sequence_learner.rs` (570 lines)
+- `src/blocks/context_learner.rs` (580 lines)
+- `src/blocks/sequence_learner.rs` (570 lines)
 
 ### Modified Infrastructure Files
-- `src/rust/block_input.rs` (bit accumulation fix)
-- `src/rust/block_output.rs` (word rounding fix)
+- `src/block_input.rs` (bit accumulation fix)
+- `src/block_output.rs` (word rounding fix)
 
 ### New Test Files
-- `tests/rust/test_context_learner.rs` (333 lines, 16 tests)
-- `tests/rust/test_sequence_learner.rs` (330 lines, 18 tests)
-- `tests/rust/test_temporal_integration.rs` (280 lines, 7 tests)
-- `tests/rust/test_context_learner_simple.rs` (105 lines, 4 tests)
+- `tests/test_context_learner.rs` (333 lines, 16 tests)
+- `tests/test_sequence_learner.rs` (330 lines, 18 tests)
+- `tests/test_temporal_integration.rs` (280 lines, 7 tests)
+- `tests/test_context_learner_simple.rs` (105 lines, 4 tests)
 
 ### Module Updates
-- `src/rust/blocks/mod.rs` (added temporal exports)
-- `src/rust/lib.rs` (marked Phase 5 complete)
+- `src/blocks/mod.rs` (added temporal exports)
+- `src/lib.rs` (marked Phase 5 complete)
 - `Cargo.toml` (added test entries)
 
 **Total**: ~2,800 lines (1,150 production, 1,048 tests, ~100 config/docs)

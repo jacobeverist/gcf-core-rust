@@ -1,62 +1,52 @@
-//! SequenceLearner - Learns temporal sequences and predicts next patterns.
+//! ContextLearner - Learns contextual associations and detects anomalies.
 //!
-//! This module provides the `SequenceLearner` block that learns to predict the next
-//! pattern in a sequence. It is nearly identical to ContextLearner but uses its own
-//! previous output as context, enabling it to learn temporal transitions.
+//! This module provides the `ContextLearner` block that learns to predict patterns
+//! based on contextual information. It implements surprise detection where novel
+//! patterns in unexpected contexts trigger anomaly signals.
 //!
 //! # Algorithm
 //!
-//! Same as ContextLearner, but:
-//! - Context = output[PREV] (previous time step)
-//! - Self-feedback loop for temporal learning
-//!
 //! For each active column:
-//! 1. **Recognition**: Check if any dendrite predicts based on previous output
-//! 2. **Surprise**: If unpredicted, activate statelets and learn
-//! 3. **Learning**: Dendrites learn the transition from previous → current
+//! 1. **Recognition**: Check all dendrites on the column against context
+//!    - If ANY dendrite exceeds threshold → predictive (activate predicted statelet)
+//!    - Mark column as predicted
+//! 2. **Surprise**: If NO predictive dendrite found
+//!    - Activate a random statelet in column (or historical statelets)
+//!    - Assign next available dendrite to learn
+//!    - Increment anomaly score
+//! 3. **Learning**: Active dendrites learn the context pattern
 //!
 //! # Architecture
 //!
-//! ```text
-//! output           memory (showing statelet 15 dendrites)
-//! -----------      +----------------------------+
-//! 0 0 0 0 0[0] --> | addr[0]: {00 00 00 00 ...} |
-//! 0 0 0 0 0 0      | perm[0]: {00 00 00 00 ...} |
-//! 0 0 0 0 0 0      | addr[1]: {00 00 00 00 ...} |
-//!                  | perm[1]: {00 00 00 00 ...} |
-//! context          | addr[2]: {00 00 00 00 ...} |
-//! (prev output)    | perm[2]: {00 00 00 00 ...} |
-//! -----------      |  ...                       |
-//! 0 0 0 0 0 0      +----------------------------+
-//! 0 0 0 0 0 0          ^
-//! 0 0 0 0 0 0          | (self-feedback loop)
-//!      ----------------+
-//! input
-//! (column activations)
-//! -----------
-//! 0 0 0 0 0 0
-//! ```
+//! - **Columns** (`num_c`): Organize statelets into competitive groups
+//! - **Statelets per column** (`num_spc`): Alternative representations per column
+//! - **Dendrites per statelet** (`num_dps`): Multiple pattern detectors
+//! - **Receptors per dendrite** (`num_rpd`): Connections to context bits
+//!
+//! Total statelets = `num_c` × `num_spc`
+//! Total dendrites = `num_s` × `num_dps`
 //!
 //! # Use Cases
 //!
-//! - Time series prediction
-//! - Sequence learning (motor patterns, language)
-//! - Anomaly detection in temporal data
-//! - Learning "what follows what" in sequences
+//! - Context-dependent pattern recognition
+//! - Anomaly detection (pattern appears in wrong context)
+//! - Learning "what follows what" associations
+//! - Predictive coding with error signaling
 //!
 //! # Examples
 //!
 //! ```
-//! use gnomics::blocks::{DiscreteTransformer, SequenceLearner};
+//! use gnomics::blocks::{DiscreteTransformer, ContextLearner};
 //! use gnomics::Block;
 //! use std::rc::Rc;
 //! use std::cell::RefCell;
 //!
-//! // Create input encoder
-//! let mut encoder = DiscreteTransformer::new(10, 1024, 2, 0);
+//! // Create transformers for input and context
+//! let mut input_encoder = DiscreteTransformer::new(10, 512, 2, 0);
+//! let mut context_encoder = DiscreteTransformer::new(5, 512, 2, 0);
 //!
-//! // Create sequence learner (context is auto-connected to output[PREV])
-//! let mut learner = SequenceLearner::new(
+//! // Create context learner
+//! let mut learner = ContextLearner::new(
 //!     512,   // num_c: 512 columns
 //!     4,     // num_spc: 4 statelets per column
 //!     8,     // num_dps: 8 dendrites per statelet
@@ -70,19 +60,21 @@
 //!     0,     // seed
 //! );
 //!
-//! // Connect input
-//! learner.input.add_child(Rc::new(RefCell::new(encoder.output)), 0);
+//! // Connect input and context
+//! learner.input.add_child(Rc::new(RefCell::new(input_encoder.output.clone())), 0);
+//! learner.context.add_child(Rc::new(RefCell::new(context_encoder.output.clone())), 0);
 //! learner.init().unwrap();
 //!
-//! // Learn sequence: 0 → 1 → 2 → 0 → 1 → 2 ...
-//! for &value in &[0, 1, 2, 0, 1, 2] {
-//!     encoder.set_value(value);
-//!     encoder.execute(false).unwrap();
-//!     learner.execute(true).unwrap();  // Learn transitions
+//! // Process patterns
+//! input_encoder.set_value(3);
+//! context_encoder.set_value(1);
+//! input_encoder.execute(false).unwrap();
+//! context_encoder.execute(false).unwrap();
+//! learner.execute(true).unwrap();  // Learn association
 //!
-//!     let anomaly = learner.get_anomaly_score();
-//!     println!("Value: {}, Anomaly: {:.2}%", value, anomaly * 100.0);
-//! }
+//! // Check anomaly score (should be high on first exposure)
+//! let anomaly = learner.get_anomaly_score();
+//! println!("Anomaly: {:.2}%", anomaly * 100.0);
 //! ```
 
 use crate::{Block, BlockBase, BlockInput, BlockMemory, BlockOutput, Result};
@@ -92,30 +84,33 @@ use std::path::Path;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-/// Learns temporal sequences and predicts next patterns.
+/// Learns contextual associations and detects anomalies.
 ///
-/// SequenceLearner is nearly identical to ContextLearner, but uses its own
-/// previous output as context. This creates a self-feedback loop enabling
-/// temporal sequence learning.
+/// ContextLearner has two inputs:
+/// - `input`: Column activations (which column is active)
+/// - `context`: Contextual pattern (what context is it in)
+///
+/// Dendrites learn to predict which statelets should activate given the context.
+/// Novel patterns (no matching dendrite) trigger surprise and learning.
 ///
 /// # Performance
 ///
 /// - Encoding time: ~50-100µs for 512 columns × 4 statelets (dendrite overlap checks)
 /// - Learning time: ~20-50µs per active statelet (dendrite assignment + learning)
 /// - Memory: ~500KB for 2048 statelets × 8 dendrites × 32 receptors
-pub struct SequenceLearner {
+pub struct ContextLearner {
     base: BlockBase,
 
     /// Block input for column activations
     pub input: BlockInput,
 
-    /// Block input for contextual pattern (connected to output[PREV])
+    /// Block input for contextual pattern
     pub context: BlockInput,
 
-    /// Block output with history (also feeds back to context)
+    /// Block output with history (wrapped for sharing)
     pub output: Rc<RefCell<BlockOutput>>,
 
-    /// Block memory with synaptic learning
+    /// Block memory with synaptic learning (one BlockMemory for all dendrites)
     pub memory: BlockMemory,
 
     // Architecture parameters
@@ -146,8 +141,8 @@ pub struct SequenceLearner {
     surprise_flag: bool,     // Surprise detected for current column
 }
 
-impl SequenceLearner {
-    /// Create a new SequenceLearner with self-feedback loop.
+impl ContextLearner {
+    /// Create a new ContextLearner.
     ///
     /// # Arguments
     ///
@@ -159,7 +154,7 @@ impl SequenceLearner {
     /// * `perm_thr` - Permanence threshold (0-99, typically 20)
     /// * `perm_inc` - Permanence increment (0-99, typically 2)
     /// * `perm_dec` - Permanence decrement (0-99, typically 1)
-    /// * `num_t` - History depth (must be >= 2 for self-feedback)
+    /// * `num_t` - History depth (must be >= 2)
     /// * `always_update` - Update even when inputs unchanged
     /// * `seed` - RNG seed for reproducibility
     ///
@@ -176,13 +171,13 @@ impl SequenceLearner {
     /// # Examples
     ///
     /// ```
-    /// use gnomics::blocks::SequenceLearner;
+    /// use gnomics::blocks::ContextLearner;
     ///
     /// // Standard configuration
-    /// let learner = SequenceLearner::new(512, 4, 8, 32, 20, 20, 2, 1, 2, false, 0);
+    /// let learner = ContextLearner::new(512, 4, 8, 32, 20, 20, 2, 1, 2, false, 0);
     ///
     /// // High capacity configuration
-    /// let big_learner = SequenceLearner::new(1024, 8, 16, 64, 40, 20, 2, 1, 2, false, 0);
+    /// let big_learner = ContextLearner::new(1024, 8, 16, 64, 40, 20, 2, 1, 2, false, 0);
     /// ```
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -211,22 +206,11 @@ impl SequenceLearner {
 
         let pct_learn = 1.0; // Learn on all receptors
 
-        // Create output and self-feedback loop
-        let output_rc = Rc::new(RefCell::new(BlockOutput::new()));
-
-        // Setup output BEFORE adding as child (needed for time offset validation)
-        output_rc.borrow_mut().setup(num_t, num_s);
-
-        let mut context = BlockInput::new();
-
-        // Self-feedback: context pulls from output[PREV] (time=1)
-        context.add_child(Rc::clone(&output_rc), 1);
-
         Self {
             base: BlockBase::new(seed),
             input: BlockInput::new(),
-            context,
-            output: output_rc,
+            context: BlockInput::new(),
+            output: Rc::new(RefCell::new(BlockOutput::new())),
             memory: BlockMemory::new(num_d, num_rpd, perm_thr, perm_inc, perm_dec, pct_learn),
             num_c,
             num_spc,
@@ -253,19 +237,19 @@ impl SequenceLearner {
     /// Get current anomaly score.
     ///
     /// Returns percentage of input columns that were unexpected (0.0-1.0).
-    /// - 0.0 = All columns were predicted by previous pattern
-    /// - 1.0 = All columns were unexpected (sequence broken)
+    /// - 0.0 = All columns were predicted (no surprise)
+    /// - 1.0 = All columns were unexpected (full surprise)
     ///
     /// # Examples
     ///
     /// ```
-    /// use gnomics::blocks::SequenceLearner;
+    /// use gnomics::blocks::ContextLearner;
     /// use gnomics::Block;
     ///
-    /// let mut learner = SequenceLearner::new(512, 4, 8, 32, 20, 20, 2, 1, 2, false, 0);
-    /// // ... initialize and process sequence ...
+    /// let mut learner = ContextLearner::new(512, 4, 8, 32, 20, 20, 2, 1, 2, false, 0);
+    /// // ... initialize and process ...
     /// let anomaly = learner.get_anomaly_score();
-    /// println!("Sequence anomaly: {:.2}%", anomaly * 100.0);
+    /// println!("Anomaly: {:.2}%", anomaly * 100.0);
     /// ```
     pub fn get_anomaly_score(&self) -> f64 {
         self.anomaly_score
@@ -273,16 +257,16 @@ impl SequenceLearner {
 
     /// Get count of statelets that have at least one dendrite.
     ///
-    /// This indicates how many different temporal transitions have been learned.
+    /// This indicates how many different patterns the learner has encountered.
     ///
     /// # Examples
     ///
     /// ```
-    /// use gnomics::blocks::SequenceLearner;
+    /// use gnomics::blocks::ContextLearner;
     ///
-    /// let learner = SequenceLearner::new(512, 4, 8, 32, 20, 20, 2, 1, 2, false, 0);
+    /// let learner = ContextLearner::new(512, 4, 8, 32, 20, 20, 2, 1, 2, false, 0);
     /// let count = learner.get_historical_count();
-    /// println!("Learned {} unique transitions", count);
+    /// println!("Learned {} unique patterns", count);
     /// ```
     pub fn get_historical_count(&self) -> usize {
         self.next_sd.iter().filter(|&&n| n > 0).count()
@@ -310,7 +294,7 @@ impl SequenceLearner {
 
     /// Recognition phase: check if any dendrite predicts the column.
     ///
-    /// For the given column, checks all its dendrites against the previous output.
+    /// For the given column, checks all its dendrites against the context.
     /// If any dendrite overlap exceeds threshold, activates the statelet and
     /// clears the surprise flag.
     fn recognition(&mut self, c: usize) {
@@ -336,8 +320,8 @@ impl SequenceLearner {
 
     /// Surprise phase: handle unexpected column activation.
     ///
-    /// When no dendrite predicted the column based on previous output,
-    /// activate statelets and assign dendrites to learn this new transition.
+    /// When no dendrite predicted the column, activate statelets and assign
+    /// dendrites to learn this new pattern.
     fn surprise(&mut self, c: usize) {
         // Update anomaly score
         let num_input_acts = self.input_acts.len();
@@ -387,7 +371,7 @@ impl SequenceLearner {
     }
 }
 
-impl Block for SequenceLearner {
+impl Block for ContextLearner {
     fn init(&mut self) -> Result<()> {
         // Verify input size matches num_c
         assert_eq!(
@@ -396,9 +380,10 @@ impl Block for SequenceLearner {
             "input size must equal num_c"
         );
 
-        // Note: Output setup now happens in new() before self-feedback connection
+        // Initialize output
+        self.output.borrow_mut().setup(self.num_t, self.num_s);
 
-        // Initialize memory (dendrites learn from previous output)
+        // Initialize memory (dendrites learn from context)
         let num_context_bits = self.context.num_bits();
         self.memory.init(num_context_bits, self.base.rng());
 
@@ -502,7 +487,7 @@ mod tests {
 
     #[test]
     fn test_new() {
-        let learner = SequenceLearner::new(512, 4, 8, 32, 20, 20, 2, 1, 2, false, 0);
+        let learner = ContextLearner::new(512, 4, 8, 32, 20, 20, 2, 1, 2, false, 0);
         assert_eq!(learner.num_c(), 512);
         assert_eq!(learner.num_spc(), 4);
         assert_eq!(learner.num_dps(), 8);
@@ -511,27 +496,20 @@ mod tests {
     }
 
     #[test]
-    fn test_self_feedback_connection() {
-        let learner = SequenceLearner::new(10, 2, 4, 16, 8, 20, 2, 1, 2, false, 0);
-        // Context should have one child (output)
-        assert_eq!(learner.context.num_children(), 1);
-    }
-
-    #[test]
     fn test_get_anomaly_score() {
-        let learner = SequenceLearner::new(10, 2, 4, 16, 8, 20, 2, 1, 2, false, 0);
+        let learner = ContextLearner::new(10, 2, 4, 16, 8, 20, 2, 1, 2, false, 0);
         assert_eq!(learner.get_anomaly_score(), 0.0);
     }
 
     #[test]
     fn test_get_historical_count_empty() {
-        let learner = SequenceLearner::new(10, 2, 4, 16, 8, 20, 2, 1, 2, false, 0);
+        let learner = ContextLearner::new(10, 2, 4, 16, 8, 20, 2, 1, 2, false, 0);
         assert_eq!(learner.get_historical_count(), 0);
     }
 
     #[test]
     fn test_memory_usage() {
-        let learner = SequenceLearner::new(512, 4, 8, 32, 20, 20, 2, 1, 2, false, 0);
+        let learner = ContextLearner::new(512, 4, 8, 32, 20, 20, 2, 1, 2, false, 0);
         let usage = learner.memory_usage();
         assert!(usage > 0);
     }
@@ -539,12 +517,12 @@ mod tests {
     #[test]
     #[should_panic(expected = "num_c must be > 0")]
     fn test_new_zero_columns() {
-        SequenceLearner::new(0, 4, 8, 32, 20, 20, 2, 1, 2, false, 0);
+        ContextLearner::new(0, 4, 8, 32, 20, 20, 2, 1, 2, false, 0);
     }
 
     #[test]
     #[should_panic(expected = "d_thresh must be < num_rpd")]
     fn test_new_thresh_too_high() {
-        SequenceLearner::new(10, 4, 8, 32, 32, 20, 2, 1, 2, false, 0);
+        ContextLearner::new(10, 4, 8, 32, 32, 20, 2, 1, 2, false, 0);
     }
 }
