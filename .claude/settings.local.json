@@ -1,9 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(RUST_BACKTRACE=1 cargo test --test test_pattern_pooler test_pooler_memory_usage)",
-      "Bash(cargo clean:*)",
-      "Bash(RUST_BACKTRACE=1 cargo test --test test_context_learner test_context_learner_first_exposure_high_anomaly -- --nocapture)"
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,4 +1,4 @@
-# Gnomics
+# Gnomic Computing Framework
 
 **High-Performance Computational Neuroscience Framework in Rust**
 
@@ -866,10 +866,10 @@ If you use Gnomics in your research, please cite:
 
 ```bibtex
 @software{gnomics2024,
-  title = {Gnomics: High-Performance Computational Neuroscience Framework},
-  author = {The Aerospace Corporation},
-  year = {2024},
-  url = {https://github.com/the-aerospace-corporation/gnomics}
+  title = {Gnomics Computing Framework},
+  author = {Jacob Everist},
+  year = {2025},
+  url = {https://github.com/jacobeverist/gcf-core-rust}
 }
 ```
 
@@ -877,7 +877,8 @@ If you use Gnomics in your research, please cite:
 
 ## Acknowledgments
 
-- Original C++ implementation by The Aerospace Corporation
+- Original C++ implementation by The Aeropace Corporation (Jacob Everist, David di Giorgio)
+  - https://github.com/the-aerospace-corporation/brainblocks
 - Rust conversion completed in 2025
 - Inspired by Numenta's Hierarchical Temporal Memory research
 - Built with the amazing Rust ecosystem
@@ -902,7 +903,7 @@ If you use Gnomics in your research, please cite:
 
 For questions, issues, or contributions:
 
-- **GitHub Issues**: https://github.com/the-aerospace-corporation/gnomics/issues
+- **GitHub Issues**: https://github.com/jacobeverist/gcf-core-rust/issues
 - **Documentation**: Run `cargo doc --open`
 - **Examples**: See `tests/rust/` directory
 
