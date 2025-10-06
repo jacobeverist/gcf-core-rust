@@ -356,8 +356,11 @@ mod tests {
         let mut output = BlockOutput::new();
         output.setup(2, 100); // Not divisible by 32
 
-        // Should round up to 128 (4 words)
-        assert_eq!(output.state.num_bits(), 128);
+        // num_bits() should return exact requested size
+        assert_eq!(output.state.num_bits(), 100);
+
+        // But internally, storage should be rounded up to 4 words (128 bits capacity)
+        assert_eq!(output.state.num_words(), 4);
     }
 
     #[test]

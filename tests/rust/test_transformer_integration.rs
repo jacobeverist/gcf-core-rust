@@ -12,10 +12,10 @@ fn test_scalar_vs_discrete_comparison() {
 
     // Encode similar concepts
     scalar.set_value(5.0);
-    scalar.feedforward(false).unwrap();
+    scalar.execute(false).unwrap();
 
     discrete.set_value(5);
-    discrete.feedforward(false).unwrap();
+    discrete.execute(false).unwrap();
 
     // Both should have output
     assert!(scalar.output.state.num_set() > 0);
@@ -38,9 +38,9 @@ fn test_multiple_transformers_pipeline() {
     stability.set_value(22.5);
 
     // Process all
-    temp.feedforward(false).unwrap();
-    mode.feedforward(false).unwrap();
-    stability.feedforward(false).unwrap();
+    temp.execute(false).unwrap();
+    mode.execute(false).unwrap();
+    stability.execute(false).unwrap();
 
     // All should produce output
     assert_eq!(temp.output.state.num_set(), 128);
@@ -60,7 +60,7 @@ fn test_scalar_semantic_properties() {
     // Encode all values
     for (i, t) in transformers.iter_mut().enumerate() {
         t.set_value(values[i]);
-        t.feedforward(false).unwrap();
+        t.execute(false).unwrap();
     }
 
     // Adjacent values should have high overlap
@@ -105,7 +105,7 @@ fn test_discrete_categorical_independence() {
     // Encode all categories
     for (i, t) in transformers.iter_mut().enumerate() {
         t.set_value(i);
-        t.feedforward(false).unwrap();
+        t.execute(false).unwrap();
     }
 
     // All pairs should have zero overlap
@@ -135,7 +135,7 @@ fn test_persistence_temporal_tracking() {
     let mut patterns = Vec::new();
 
     for i in 0..10 {
-        pt.feedforward(false).unwrap();
+        pt.execute(false).unwrap();
         if i % 3 == 0 {
             patterns.push(pt.output.state.clone());
         }
@@ -164,9 +164,9 @@ fn test_mixed_transformer_types() {
 
     // Build stability
     for _ in 0..20 {
-        temperature.feedforward(false).unwrap();
-        weather_type.feedforward(false).unwrap();
-        temp_stability.feedforward(false).unwrap();
+        temperature.execute(false).unwrap();
+        weather_type.execute(false).unwrap();
+        temp_stability.execute(false).unwrap();
     }
 
     assert_eq!(temperature.output.state.num_set(), 128);
@@ -176,11 +176,11 @@ fn test_mixed_transformer_types() {
 
     // Weather changes to rainy
     weather_type.set_value(2); // rainy
-    weather_type.feedforward(false).unwrap();
+    weather_type.execute(false).unwrap();
 
     // Temperature and stability continue
-    temperature.feedforward(false).unwrap();
-    temp_stability.feedforward(false).unwrap();
+    temperature.execute(false).unwrap();
+    temp_stability.execute(false).unwrap();
 
     // Weather should have different pattern now
     assert_eq!(weather_type.output.state.num_set(), 204);
@@ -197,18 +197,18 @@ fn test_transformer_state_independence() {
     t1.set_value(0.3);
     t2.set_value(0.7);
 
-    t1.feedforward(false).unwrap();
-    t2.feedforward(false).unwrap();
+    t1.execute(false).unwrap();
+    t2.execute(false).unwrap();
 
     // Should be independent
     assert_ne!(t1.output.state, t2.output.state);
 
     // Change t1 shouldn't affect t2
     t1.set_value(0.8);
-    t1.feedforward(false).unwrap();
+    t1.execute(false).unwrap();
 
     let t2_before = t2.output.state.clone();
-    t2.feedforward(false).unwrap();
+    t2.execute(false).unwrap();
     let t2_after = t2.output.state.clone();
 
     // t2 should be unchanged (same value)
@@ -227,9 +227,9 @@ fn test_clear_all_transformers() {
     persistence.set_value(0.5);
 
     for _ in 0..5 {
-        scalar.feedforward(false).unwrap();
-        discrete.feedforward(false).unwrap();
-        persistence.feedforward(false).unwrap();
+        scalar.execute(false).unwrap();
+        discrete.execute(false).unwrap();
+        persistence.execute(false).unwrap();
     }
 
     // Clear all
@@ -253,7 +253,7 @@ fn test_time_series_encoding() {
 
     for &value in time_series.iter() {
         scalar.set_value(value);
-        scalar.feedforward(false).unwrap();
+        scalar.execute(false).unwrap();
 
         // Each encoding should have correct active count
         assert_eq!(scalar.output.state.num_set(), 128);
@@ -276,7 +276,7 @@ fn test_categorical_time_series() {
 
     for &action in actions.iter() {
         discrete.set_value(action);
-        discrete.feedforward(false).unwrap();
+        discrete.execute(false).unwrap();
 
         assert_eq!(discrete.output.state.num_set(), 204); // 1024/5
     }
@@ -291,14 +291,14 @@ fn test_stability_detection() {
     // Stable signal
     for _ in 0..20 {
         stable_sensor.set_value(50.0);
-        stable_sensor.feedforward(false).unwrap();
+        stable_sensor.execute(false).unwrap();
     }
 
     // Noisy signal (oscillates)
     for i in 0..20 {
         let value = if i % 2 == 0 { 30.0 } else { 70.0 };
         noisy_sensor.set_value(value);
-        noisy_sensor.feedforward(false).unwrap();
+        noisy_sensor.execute(false).unwrap();
     }
 
     // Stable should have high counter
@@ -355,12 +355,12 @@ fn test_deterministic_encoding() {
 
     // Process
     for _ in 0..5 {
-        s1.feedforward(false).unwrap();
-        s2.feedforward(false).unwrap();
-        d1.feedforward(false).unwrap();
-        d2.feedforward(false).unwrap();
-        p1.feedforward(false).unwrap();
-        p2.feedforward(false).unwrap();
+        s1.execute(false).unwrap();
+        s2.execute(false).unwrap();
+        d1.execute(false).unwrap();
+        d2.execute(false).unwrap();
+        p1.execute(false).unwrap();
+        p2.execute(false).unwrap();
     }
 
     // Should be identical
@@ -377,17 +377,17 @@ fn test_boundary_value_analysis() {
     // Test boundaries
     for &val in [0.0, 0.001, 0.999, 1.0].iter() {
         scalar.set_value(val);
-        scalar.feedforward(false).unwrap();
+        scalar.execute(false).unwrap();
         assert_eq!(scalar.output.state.num_set(), 128);
     }
 
     let mut discrete = DiscreteTransformer::new(10, 1024, 2, 0);
     discrete.set_value(0);
-    discrete.feedforward(false).unwrap();
+    discrete.execute(false).unwrap();
     assert_eq!(discrete.output.state.num_set(), 102);
 
     discrete.set_value(9);
-    discrete.feedforward(false).unwrap();
+    discrete.execute(false).unwrap();
     assert_eq!(discrete.output.state.num_set(), 102);
 }
 
@@ -399,7 +399,7 @@ fn test_rapid_value_changes() {
     for i in 0..100 {
         let val = (i as f64) / 100.0;
         scalar.set_value(val);
-        scalar.feedforward(false).unwrap();
+        scalar.execute(false).unwrap();
         assert_eq!(scalar.output.state.num_set(), 128);
     }
 }
@@ -430,9 +430,9 @@ fn test_complete_workflow() {
         location.set_value(*room);
         stability.set_value(*temp);
 
-        temp_sensor.feedforward(false).unwrap();
-        location.feedforward(false).unwrap();
-        stability.feedforward(false).unwrap();
+        temp_sensor.execute(false).unwrap();
+        location.execute(false).unwrap();
+        stability.execute(false).unwrap();
     }
 
     // All should have valid output

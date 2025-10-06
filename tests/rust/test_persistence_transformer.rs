@@ -49,17 +49,17 @@ fn test_persistence_counter_increments_stable() {
     assert_eq!(pt.get_counter(), 0);
 
     // First encode resets due to initial change from 0.0 to 0.5
-    pt.feedforward(false).unwrap();
+    pt.execute(false).unwrap();
     assert_eq!(pt.get_counter(), 0);
 
     // Now counter should increment each encode when value is stable
-    pt.feedforward(false).unwrap();
+    pt.execute(false).unwrap();
     assert_eq!(pt.get_counter(), 1);
 
-    pt.feedforward(false).unwrap();
+    pt.execute(false).unwrap();
     assert_eq!(pt.get_counter(), 2);
 
-    pt.feedforward(false).unwrap();
+    pt.execute(false).unwrap();
     assert_eq!(pt.get_counter(), 3);
 }
 
@@ -70,13 +70,13 @@ fn test_persistence_counter_resets_on_large_change() {
     // Build up persistence (first encode is reset, next 5 increment)
     pt.set_value(0.5);
     for _ in 0..6 {
-        pt.feedforward(false).unwrap();
+        pt.execute(false).unwrap();
     }
     assert_eq!(pt.get_counter(), 5);
 
     // Large change (>10% of range) should reset counter
     pt.set_value(0.8); // 30% change
-    pt.feedforward(false).unwrap();
+    pt.execute(false).unwrap();
     assert_eq!(pt.get_counter(), 0, "Counter should reset on large change");
 }
 
@@ -87,13 +87,13 @@ fn test_persistence_counter_no_reset_small_change() {
     // Build up persistence (first encode is reset, next 3 increment)
     pt.set_value(0.5);
     for _ in 0..4 {
-        pt.feedforward(false).unwrap();
+        pt.execute(false).unwrap();
     }
     assert_eq!(pt.get_counter(), 3);
 
     // Small change (<10% of range) should not reset
     pt.set_value(0.55); // 5% change
-    pt.feedforward(false).unwrap();
+    pt.execute(false).unwrap();
     assert_eq!(
         pt.get_counter(),
         4,
@@ -108,12 +108,12 @@ fn test_persistence_counter_exactly_10_percent_boundary() {
     // Build up persistence
     pt.set_value(0.5);
     for _ in 0..3 {
-        pt.feedforward(false).unwrap();
+        pt.execute(false).unwrap();
     }
 
     // Exactly 10% change (boundary case)
     pt.set_value(0.6); // Exactly 10%
-    pt.feedforward(false).unwrap();
+    pt.execute(false).unwrap();
     assert_eq!(
         pt.get_counter(),
         4,
@@ -122,7 +122,7 @@ fn test_persistence_counter_exactly_10_percent_boundary() {
 
     // Just over 10% should reset
     pt.set_value(0.71); // 11% change from 0.6
-    pt.feedforward(false).unwrap();
+    pt.execute(false).unwrap();
     assert_eq!(
         pt.get_counter(),
         0,
@@ -139,7 +139,7 @@ fn test_persistence_counter_caps_at_max() {
 
     // Encode more than max_step times
     for i in 0..20 {
-        pt.feedforward(false).unwrap();
+        pt.execute(false).unwrap();
 
         if i < max_step {
             assert_eq!(pt.get_counter(), i + 1);
@@ -161,7 +161,7 @@ fn test_persistence_encoding_num_active() {
 
     // Should always have num_as active bits regardless of counter
     for _ in 0..10 {
-        pt.feedforward(false).unwrap();
+        pt.execute(false).unwrap();
         assert_eq!(
             pt.output.state.num_set(),
             128,
@@ -179,7 +179,7 @@ fn test_persistence_encoding_changes_with_counter() {
     // Get patterns at different persistence levels
     let mut patterns = Vec::new();
     for i in 0..=10 {
-        pt.feedforward(false).unwrap();
+        pt.execute(false).unwrap();
         if i % 2 == 0 {
             patterns.push(pt.output.state.clone());
         }
@@ -202,12 +202,12 @@ fn test_persistence_low_vs_high() {
 
     // Low persistence (1 step)
     pt_low.set_value(0.5);
-    pt_low.feedforward(false).unwrap();
+    pt_low.execute(false).unwrap();
 
     // High persistence (50 steps)
     pt_high.set_value(0.5);
     for _ in 0..50 {
-        pt_high.feedforward(false).unwrap();
+        pt_high.execute(false).unwrap();
     }
 
     // Different persistence levels should have different patterns
@@ -229,7 +229,7 @@ fn test_persistence_progression() {
 
     // As persistence increases, encoded pattern should shift
     for i in 0..=50 {
-        pt.feedforward(false).unwrap();
+        pt.execute(false).unwrap();
 
         if i % 10 == 0 {
             let acts = pt.output.state.get_acts();
@@ -252,7 +252,7 @@ fn test_persistence_clear() {
 
     pt.set_value(0.5);
     for _ in 0..10 {
-        pt.feedforward(false).unwrap();
+        pt.execute(false).unwrap();
     }
     assert!(pt.get_counter() > 0);
 
@@ -269,18 +269,18 @@ fn test_persistence_multiple_stable_periods() {
     // First stable period
     pt.set_value(0.3);
     for _ in 0..5 {
-        pt.feedforward(false).unwrap();
+        pt.execute(false).unwrap();
     }
     assert_eq!(pt.get_counter(), 5);
 
     // Change value significantly
     pt.set_value(0.8);
-    pt.feedforward(false).unwrap();
+    pt.execute(false).unwrap();
     assert_eq!(pt.get_counter(), 0, "Counter should reset");
 
     // Second stable period
     for _ in 0..7 {
-        pt.feedforward(false).unwrap();
+        pt.execute(false).unwrap();
     }
     assert_eq!(pt.get_counter(), 7);
 }
@@ -291,13 +291,13 @@ fn test_persistence_gradual_drift() {
 
     // Start at 0.5
     pt.set_value(0.5);
-    pt.feedforward(false).unwrap();
+    pt.execute(false).unwrap();
 
     // Gradually drift upward by small increments (<10% each)
     for i in 1..10 {
         let new_val = 0.5 + (i as f64 * 0.02); // 2% increments
         pt.set_value(new_val);
-        pt.feedforward(false).unwrap();
+        pt.execute(false).unwrap();
 
         // Counter should keep incrementing
         assert_eq!(pt.get_counter(), i + 1);
@@ -312,7 +312,7 @@ fn test_persistence_oscillation() {
     for i in 0..10 {
         let val = if i % 2 == 0 { 0.3 } else { 0.8 };
         pt.set_value(val);
-        pt.feedforward(false).unwrap();
+        pt.execute(false).unwrap();
 
         // Counter should reset each time (can't build persistence)
         assert_eq!(
@@ -338,7 +338,7 @@ fn test_persistence_different_ranges() {
     let mut temp = PersistenceTransformer::new(0.0, 100.0, 1024, 128, 100, 2, 0);
     temp.set_value(50.0);
     for _ in 0..5 {
-        temp.feedforward(false).unwrap();
+        temp.execute(false).unwrap();
     }
     assert_eq!(temp.get_counter(), 5);
 
@@ -346,7 +346,7 @@ fn test_persistence_different_ranges() {
     let mut neg = PersistenceTransformer::new(-10.0, 10.0, 1024, 128, 100, 2, 0);
     neg.set_value(0.0);
     for _ in 0..5 {
-        neg.feedforward(false).unwrap();
+        neg.execute(false).unwrap();
     }
     assert_eq!(neg.get_counter(), 5);
 }
@@ -356,7 +356,7 @@ fn test_persistence_zero_counter_encoding() {
     let mut pt = PersistenceTransformer::new(0.0, 1.0, 1024, 128, 100, 2, 0);
 
     pt.set_value(0.5);
-    pt.feedforward(false).unwrap();
+    pt.execute(false).unwrap();
 
     // Counter is 1, but percentage is 1/100 = 0.01
     // Should activate bits near the start
@@ -375,7 +375,7 @@ fn test_persistence_max_counter_encoding() {
 
     pt.set_value(0.5);
     for _ in 0..20 {
-        pt.feedforward(false).unwrap();
+        pt.execute(false).unwrap();
     }
 
     // Counter should be at max
@@ -396,12 +396,12 @@ fn test_persistence_history_tracking() {
 
     // Low persistence
     pt.set_value(0.5);
-    pt.feedforward(false).unwrap();
+    pt.execute(false).unwrap();
     let acts1 = pt.output.get_bitarray(0).get_acts();
 
     // Build more persistence
     for _ in 0..10 {
-        pt.feedforward(false).unwrap();
+        pt.execute(false).unwrap();
     }
     let acts2 = pt.output.get_bitarray(0).get_acts();
 
@@ -417,10 +417,10 @@ fn test_persistence_deterministic() {
     // Same sequence
     for _ in 0..5 {
         pt1.set_value(0.5);
-        pt1.feedforward(false).unwrap();
+        pt1.execute(false).unwrap();
 
         pt2.set_value(0.5);
-        pt2.feedforward(false).unwrap();
+        pt2.execute(false).unwrap();
     }
 
     // Should produce identical results
@@ -436,7 +436,7 @@ fn test_persistence_practical_temperature_example() {
     // Room temperature stable at 22°C
     temp.set_value(22.0);
     for _ in 0..50 {
-        temp.feedforward(false).unwrap();
+        temp.execute(false).unwrap();
     }
 
     let stable_pattern = temp.output.state.clone();
@@ -446,7 +446,7 @@ fn test_persistence_practical_temperature_example() {
 
     // Small fluctuation (within 10% = 10°C)
     temp.set_value(25.0); // 3°C change
-    temp.feedforward(false).unwrap();
+    temp.execute(false).unwrap();
 
     assert!(
         temp.get_counter() > 0,
@@ -455,13 +455,13 @@ fn test_persistence_practical_temperature_example() {
 
     // Large change (heater turns on)
     temp.set_value(60.0); // 35°C change
-    temp.feedforward(false).unwrap();
+    temp.execute(false).unwrap();
 
     assert_eq!(temp.get_counter(), 0, "Large change should reset");
 
     // New stable period at 60°C
     for _ in 0..30 {
-        temp.feedforward(false).unwrap();
+        temp.execute(false).unwrap();
     }
 
     assert_eq!(temp.get_counter(), 30);

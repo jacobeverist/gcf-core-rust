@@ -28,8 +28,8 @@ fn test_encoder_to_pooler_pipeline() {
 
     for &val in &test_values {
         encoder.set_value(val);
-        encoder.feedforward(false).unwrap();
-        pooler.feedforward(false).unwrap();
+        encoder.execute(false).unwrap();
+        pooler.execute(false).unwrap();
 
         assert_eq!(pooler.output.state.num_set(), 50, "Failed at value {}", val);
     }
@@ -61,20 +61,20 @@ fn test_encoder_to_classifier_pipeline() {
         for &(value, label) in &training_data {
             encoder.set_value(value);
             classifier.set_label(label);
-            encoder.feedforward(false).unwrap();
-            classifier.feedforward(true).unwrap();
+            encoder.execute(false).unwrap();
+            classifier.execute(true).unwrap();
         }
     }
 
     // Validate learning occurred
     encoder.set_value(0.15);
-    encoder.feedforward(false).unwrap();
-    classifier.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    classifier.execute(false).unwrap();
     assert_eq!(classifier.get_predicted_label(), 0);
 
     encoder.set_value(0.65);
-    encoder.feedforward(false).unwrap();
-    classifier.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    classifier.execute(false).unwrap();
     assert_eq!(classifier.get_predicted_label(), 2);
 }
 
@@ -114,9 +114,9 @@ fn test_three_stage_pipeline() {
             encoder.set_value(value);
             classifier.set_label(label);
 
-            encoder.feedforward(false).unwrap();
-            pooler.feedforward(true).unwrap(); // Learn pooled representation
-            classifier.feedforward(true).unwrap(); // Learn classification
+            encoder.execute(false).unwrap();
+            pooler.execute(true).unwrap(); // Learn pooled representation
+            classifier.execute(true).unwrap(); // Learn classification
         }
     }
 
@@ -124,9 +124,9 @@ fn test_three_stage_pipeline() {
     let mut correct = 0;
     for &(value, expected) in &training_data {
         encoder.set_value(value);
-        encoder.feedforward(false).unwrap();
-        pooler.feedforward(false).unwrap();
-        classifier.feedforward(false).unwrap();
+        encoder.execute(false).unwrap();
+        pooler.execute(false).unwrap();
+        classifier.execute(false).unwrap();
 
         if classifier.get_predicted_label() == expected {
             correct += 1;
@@ -157,19 +157,19 @@ fn test_pooler_representation_stability() {
     encoder.set_value(0.5);
 
     // Get representation before learning
-    encoder.feedforward(false).unwrap();
-    pooler.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    pooler.execute(false).unwrap();
     let repr_before = pooler.output.state.get_acts();
 
     // Learn on same pattern many times
     for _ in 0..100 {
-        encoder.feedforward(false).unwrap();
-        pooler.feedforward(true).unwrap();
+        encoder.execute(false).unwrap();
+        pooler.execute(true).unwrap();
     }
 
     // Get representation after learning
-    encoder.feedforward(false).unwrap();
-    pooler.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    pooler.execute(false).unwrap();
     let repr_after = pooler.output.state.get_acts();
 
     // Compute stability (overlap)
@@ -213,16 +213,16 @@ fn test_classifier_learning_convergence() {
         for &(value, label) in &training_data {
             encoder.set_value(value);
             classifier.set_label(label);
-            encoder.feedforward(false).unwrap();
-            classifier.feedforward(true).unwrap();
+            encoder.execute(false).unwrap();
+            classifier.execute(true).unwrap();
         }
 
         // Test
         let mut correct = 0;
         for &(value, expected) in &training_data {
             encoder.set_value(value);
-            encoder.feedforward(false).unwrap();
-            classifier.feedforward(false).unwrap();
+            encoder.execute(false).unwrap();
+            classifier.execute(false).unwrap();
 
             if classifier.get_predicted_label() == expected {
                 correct += 1;
@@ -271,11 +271,11 @@ fn test_multiple_classifiers_same_encoder() {
 
     // Run encoder once
     encoder.set_value(0.5);
-    encoder.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
 
     // Both classifiers process the same input
-    classifier1.feedforward(false).unwrap();
-    classifier2.feedforward(false).unwrap();
+    classifier1.execute(false).unwrap();
+    classifier2.execute(false).unwrap();
 
     // Both should produce outputs
     assert!(classifier1.output.state.num_set() > 0);
@@ -297,8 +297,8 @@ fn test_pooler_dimensionality_reduction() {
     pooler.init().unwrap();
 
     encoder.set_value(0.5);
-    encoder.feedforward(false).unwrap();
-    pooler.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    pooler.execute(false).unwrap();
 
     // Input: 512 active out of 4096
     // Output: 50 active out of 4096
@@ -330,27 +330,27 @@ fn test_sequential_training_batches() {
     for val in [0.1, 0.15, 0.2].iter() {
         encoder.set_value(*val);
         classifier.set_label(0);
-        encoder.feedforward(false).unwrap();
-        classifier.feedforward(true).unwrap();
+        encoder.execute(false).unwrap();
+        classifier.execute(true).unwrap();
     }
 
     // Batch 2: Train on label 1
     for val in [0.8, 0.85, 0.9].iter() {
         encoder.set_value(*val);
         classifier.set_label(1);
-        encoder.feedforward(false).unwrap();
-        classifier.feedforward(true).unwrap();
+        encoder.execute(false).unwrap();
+        classifier.execute(true).unwrap();
     }
 
     // Test both labels
     encoder.set_value(0.15);
-    encoder.feedforward(false).unwrap();
-    classifier.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    classifier.execute(false).unwrap();
     let pred1 = classifier.get_predicted_label();
 
     encoder.set_value(0.85);
-    encoder.feedforward(false).unwrap();
-    classifier.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    classifier.execute(false).unwrap();
     let pred2 = classifier.get_predicted_label();
 
     // Should learn both labels

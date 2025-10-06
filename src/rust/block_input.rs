@@ -228,22 +228,6 @@ impl BlockInput {
         }
     }
 
-    /// Push data back to child outputs.
-    ///
-    /// Distributes concatenated state back to children. Used during feedback.
-    pub fn push(&mut self) {
-        for i in 0..self.children.len() {
-            let mut child = self.children[i].borrow_mut();
-
-            bitarray_copy_words(
-                &mut child.state,
-                &self.state,
-                0,
-                self.word_offsets[i],
-                self.word_sizes[i],
-            );
-        }
-    }
 
     /// Check if any child has changed.
     ///
@@ -548,27 +532,6 @@ mod tests {
         assert!(input.children_changed());
     }
 
-    #[test]
-    fn test_push() {
-        let mut input = BlockInput::new();
-
-        let mut output = BlockOutput::new();
-        output.setup(2, 32);
-        let output = Rc::new(RefCell::new(output));
-
-        input.add_child(Rc::clone(&output), 0);
-
-        // Set bits in input
-        input.state.set_bit(5);
-        input.state.set_bit(10);
-
-        // Push to child
-        input.push();
-
-        // Child should have bits
-        assert_eq!(output.borrow().state.get_bit(5), 1);
-        assert_eq!(output.borrow().state.get_bit(10), 1);
-    }
 
     #[test]
     fn test_clear() {

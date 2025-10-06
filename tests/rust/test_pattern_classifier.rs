@@ -68,8 +68,8 @@ fn test_classifier_activation_per_group() {
     classifier.init().unwrap();
 
     encoder.set_value(0.5);
-    encoder.feedforward(false).unwrap();
-    classifier.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    classifier.execute(false).unwrap();
 
     // Should have 8 active per group × 4 groups = 32 total
     assert_eq!(classifier.output.state.num_set(), 32);
@@ -89,8 +89,8 @@ fn test_classifier_probabilities_sum() {
     classifier.init().unwrap();
 
     encoder.set_value(0.5);
-    encoder.feedforward(false).unwrap();
-    classifier.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    classifier.execute(false).unwrap();
 
     let probs = classifier.get_probabilities();
     assert_eq!(probs.len(), 4);
@@ -146,14 +146,14 @@ fn test_classifier_learning_single_label() {
 
     // Train multiple times
     for _ in 0..20 {
-        encoder.feedforward(false).unwrap();
-        classifier.feedforward(true).unwrap();
+        encoder.execute(false).unwrap();
+        classifier.execute(true).unwrap();
     }
 
     // After training, label 0 should have higher probability for this value
     encoder.set_value(0.25);
-    encoder.feedforward(false).unwrap();
-    classifier.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    classifier.execute(false).unwrap();
 
     let probs = classifier.get_probabilities();
     let predicted = classifier.get_predicted_label();
@@ -199,8 +199,8 @@ fn test_classifier_multiple_labels() {
         for &(value, label) in &training_data {
             encoder.set_value(value);
             classifier.set_label(label);
-            encoder.feedforward(false).unwrap();
-            classifier.feedforward(true).unwrap();
+            encoder.execute(false).unwrap();
+            classifier.execute(true).unwrap();
         }
     }
 
@@ -208,8 +208,8 @@ fn test_classifier_multiple_labels() {
     let mut correct = 0;
     for &(value, expected_label) in &training_data {
         encoder.set_value(value);
-        encoder.feedforward(false).unwrap();
-        classifier.feedforward(false).unwrap();
+        encoder.execute(false).unwrap();
+        classifier.execute(false).unwrap();
 
         let predicted = classifier.get_predicted_label();
         if predicted == expected_label {
@@ -254,20 +254,20 @@ fn test_classifier_generalization() {
         for &(value, label) in &training_data {
             encoder.set_value(value);
             classifier.set_label(label);
-            encoder.feedforward(false).unwrap();
-            classifier.feedforward(true).unwrap();
+            encoder.execute(false).unwrap();
+            classifier.execute(true).unwrap();
         }
     }
 
     // Test on unseen values (generalization)
     encoder.set_value(0.15); // Between 0.1 and 0.2, should be label 0
-    encoder.feedforward(false).unwrap();
-    classifier.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    classifier.execute(false).unwrap();
     let pred1 = classifier.get_predicted_label();
 
     encoder.set_value(0.85); // Between 0.8 and 0.9, should be label 1
-    encoder.feedforward(false).unwrap();
-    classifier.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    classifier.execute(false).unwrap();
     let pred2 = classifier.get_predicted_label();
 
     // Should generalize correctly (due to overlapping SDR representations)
@@ -291,8 +291,8 @@ fn test_classifier_clear() {
     classifier.init().unwrap();
 
     encoder.set_value(0.5);
-    encoder.feedforward(false).unwrap();
-    classifier.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    classifier.execute(false).unwrap();
 
     assert_eq!(classifier.output.state.num_set(), 32);
 
@@ -321,8 +321,8 @@ fn test_classifier_probability_distribution() {
     classifier.init().unwrap();
 
     encoder.set_value(0.5);
-    encoder.feedforward(false).unwrap();
-    classifier.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    classifier.execute(false).unwrap();
 
     let probs = classifier.get_probabilities();
 

@@ -15,7 +15,7 @@
 //!
 //! ```ignore
 //! classifier.set_label(label);     // Set ground truth
-//! classifier.feedforward(true);    // Encode and learn
+//! classifier.execute(true);    // Encode and learn
 //! let probs = classifier.get_probabilities();  // Get predictions
 //! ```
 //!
@@ -37,14 +37,14 @@
 //!
 //! // Train on label 0
 //! encoder.set_value(0.25);
-//! encoder.feedforward(false).unwrap();
+//! encoder.execute(false).unwrap();
 //! classifier.set_label(0);
-//! classifier.feedforward(true).unwrap();
+//! classifier.execute(true).unwrap();
 //!
 //! // Infer (without learning)
 //! encoder.set_value(0.26);
-//! encoder.feedforward(false).unwrap();
-//! classifier.feedforward(false).unwrap();
+//! encoder.execute(false).unwrap();
+//! classifier.execute(false).unwrap();
 //! let probs = classifier.get_probabilities();
 //! assert_eq!(probs.len(), 4);
 //! ```
@@ -236,8 +236,8 @@ impl PatternClassifier {
     /// # classifier.input.add_child(Rc::new(RefCell::new(encoder.output)), 0);
     /// # classifier.init().unwrap();
     /// # encoder.set_value(0.5);
-    /// # encoder.feedforward(false).unwrap();
-    /// # classifier.feedforward(false).unwrap();
+    /// # encoder.execute(false).unwrap();
+    /// # classifier.execute(false).unwrap();
     /// #
     /// let probs = classifier.get_probabilities();
     /// assert_eq!(probs.len(), 4);
@@ -359,11 +359,7 @@ impl Block for PatternClassifier {
         self.input.pull();
     }
 
-    fn push(&mut self) {
-        // TODO: Implement push
-    }
-
-    fn encode(&mut self) {
+    fn compute(&mut self) {
         assert!(
             self.base.is_initialized(),
             "PatternClassifier must be initialized before encoding"

@@ -62,7 +62,7 @@ fn test_discrete_encoding_num_active() {
     // Each category should have exactly num_s / num_v active bits
     for cat in 0..4 {
         dt.set_value(cat);
-        dt.feedforward(false).unwrap();
+        dt.execute(false).unwrap();
         assert_eq!(
             dt.output.state.num_set(),
             256,
@@ -80,7 +80,7 @@ fn test_discrete_categories_no_overlap() {
     // Test all pairs of different categories
     for cat1 in 0..4 {
         dt1.set_value(cat1);
-        dt1.feedforward(false).unwrap();
+        dt1.execute(false).unwrap();
 
         for cat2 in 0..4 {
             if cat1 == cat2 {
@@ -88,7 +88,7 @@ fn test_discrete_categories_no_overlap() {
             }
 
             dt2.set_value(cat2);
-            dt2.feedforward(false).unwrap();
+            dt2.execute(false).unwrap();
 
             let overlap = dt1.output.state.num_similar(&dt2.output.state);
             assert_eq!(
@@ -107,10 +107,10 @@ fn test_discrete_same_category_identical() {
 
     for cat in 0..8 {
         dt1.set_value(cat);
-        dt1.feedforward(false).unwrap();
+        dt1.execute(false).unwrap();
 
         dt2.set_value(cat);
-        dt2.feedforward(false).unwrap();
+        dt2.execute(false).unwrap();
 
         assert_eq!(
             dt1.output.state, dt2.output.state,
@@ -130,7 +130,7 @@ fn test_discrete_all_categories_distinct() {
     // Encode each category
     for (i, dt) in transformers.iter_mut().enumerate() {
         dt.set_value(i);
-        dt.feedforward(false).unwrap();
+        dt.execute(false).unwrap();
     }
 
     // Verify all pairs are distinct (no overlap)
@@ -154,7 +154,7 @@ fn test_discrete_category_zero() {
     let mut dt = DiscreteTransformer::new(10, 1024, 2, 0);
 
     dt.set_value(0);
-    dt.feedforward(false).unwrap();
+    dt.execute(false).unwrap();
 
     assert_eq!(dt.output.state.num_set(), 102);
 
@@ -173,7 +173,7 @@ fn test_discrete_last_category() {
     let mut dt = DiscreteTransformer::new(num_v, 1024, 2, 0);
 
     dt.set_value(num_v - 1);
-    dt.feedforward(false).unwrap();
+    dt.execute(false).unwrap();
 
     assert_eq!(dt.output.state.num_set(), 102);
 
@@ -191,11 +191,11 @@ fn test_discrete_encoding_change_detection() {
     let mut dt = DiscreteTransformer::new(10, 1024, 2, 0);
 
     dt.set_value(5);
-    dt.feedforward(false).unwrap();
+    dt.execute(false).unwrap();
     let acts1 = dt.output.state.get_acts();
 
     // Feedforward again without changing value
-    dt.feedforward(false).unwrap();
+    dt.execute(false).unwrap();
     let acts2 = dt.output.state.get_acts();
 
     // Should be identical (optimization check)
@@ -208,13 +208,13 @@ fn test_discrete_binary_choice() {
 
     // Category 0
     dt.set_value(0);
-    dt.feedforward(false).unwrap();
+    dt.execute(false).unwrap();
     let acts0 = dt.output.state.get_acts();
     assert_eq!(dt.output.state.num_set(), 512);
 
     // Category 1
     dt.set_value(1);
-    dt.feedforward(false).unwrap();
+    dt.execute(false).unwrap();
     let acts1 = dt.output.state.get_acts();
     assert_eq!(dt.output.state.num_set(), 512);
 
@@ -231,7 +231,7 @@ fn test_discrete_many_categories() {
     // Test a few categories
     for cat in [0, 25, 50, 75, 99].iter() {
         dt.set_value(*cat);
-        dt.feedforward(false).unwrap();
+        dt.execute(false).unwrap();
         assert_eq!(
             dt.output.state.num_set(),
             100,
@@ -247,15 +247,15 @@ fn test_discrete_few_categories() {
 
     // 3 categories: each gets 341 bits (1024 / 3)
     dt.set_value(0);
-    dt.feedforward(false).unwrap();
+    dt.execute(false).unwrap();
     assert_eq!(dt.output.state.num_set(), 341);
 
     dt.set_value(1);
-    dt.feedforward(false).unwrap();
+    dt.execute(false).unwrap();
     assert_eq!(dt.output.state.num_set(), 341);
 
     dt.set_value(2);
-    dt.feedforward(false).unwrap();
+    dt.execute(false).unwrap();
     assert_eq!(dt.output.state.num_set(), 341);
 }
 
@@ -264,7 +264,7 @@ fn test_discrete_clear() {
     let mut dt = DiscreteTransformer::new(10, 1024, 2, 0);
 
     dt.set_value(7);
-    dt.feedforward(false).unwrap();
+    dt.execute(false).unwrap();
     assert_eq!(dt.output.state.num_set(), 102);
 
     dt.clear();
@@ -279,12 +279,12 @@ fn test_discrete_history_tracking() {
 
     // Encode first category
     dt.set_value(3);
-    dt.feedforward(false).unwrap();
+    dt.execute(false).unwrap();
     let acts1 = dt.output.get_bitarray(0).get_acts();
 
     // Encode second category
     dt.set_value(7);
-    dt.feedforward(false).unwrap();
+    dt.execute(false).unwrap();
     let acts2_curr = dt.output.get_bitarray(0).get_acts();
     let acts2_prev = dt.output.get_bitarray(1).get_acts();
 
@@ -313,7 +313,7 @@ fn test_discrete_sequential_encodings() {
 
     for &cat in sequence.iter() {
         dt.set_value(cat);
-        dt.feedforward(false).unwrap();
+        dt.execute(false).unwrap();
         assert_eq!(
             dt.output.state.num_set(),
             204, // 1024 / 5
@@ -334,7 +334,7 @@ fn test_discrete_coverage_complete() {
     // Mark all bits used by each category
     for cat in 0..num_v {
         dt.set_value(cat);
-        dt.feedforward(false).unwrap();
+        dt.execute(false).unwrap();
 
         let acts = dt.output.state.get_acts();
         for &bit in acts.iter() {
@@ -360,7 +360,7 @@ fn test_discrete_single_category() {
     let mut dt = DiscreteTransformer::new(1, 1024, 2, 0);
 
     dt.set_value(0);
-    dt.feedforward(false).unwrap();
+    dt.execute(false).unwrap();
 
     // All bits should be active
     assert_eq!(dt.output.state.num_set(), 1024);
@@ -378,7 +378,7 @@ fn test_discrete_category_spacing() {
 
     for (i, dt) in transformers.iter_mut().enumerate() {
         dt.set_value(i);
-        dt.feedforward(false).unwrap();
+        dt.execute(false).unwrap();
 
         let acts = dt.output.state.get_acts();
         starts.push(acts[0]);
@@ -405,7 +405,7 @@ fn test_discrete_deterministic() {
 
     for _ in 0..5 {
         dt.set_value(5);
-        dt.feedforward(false).unwrap();
+        dt.execute(false).unwrap();
         encodings.push(dt.output.state.get_acts());
     }
 
@@ -427,7 +427,7 @@ fn test_discrete_day_of_week_example() {
 
     for (i, &day) in days.iter().enumerate() {
         dow.set_value(i);
-        dow.feedforward(false).unwrap();
+        dow.execute(false).unwrap();
 
         assert_eq!(
             dow.output.state.num_set(),
@@ -439,11 +439,11 @@ fn test_discrete_day_of_week_example() {
 
     // Verify Mon and Sun have no overlap
     dow.set_value(0);
-    dow.feedforward(false).unwrap();
+    dow.execute(false).unwrap();
     let mon = dow.output.state.clone();
 
     dow.set_value(6);
-    dow.feedforward(false).unwrap();
+    dow.execute(false).unwrap();
     let sun = dow.output.state.clone();
 
     assert_eq!(

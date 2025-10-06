@@ -21,7 +21,7 @@
 //!
 //! // Encode category 2
 //! dt.set_value(2);
-//! dt.feedforward(false).unwrap();
+//! dt.execute(false).unwrap();
 //!
 //! // Each category gets 256 bits (1024 / 4)
 //! assert_eq!(dt.output.state.num_set(), 256);
@@ -29,7 +29,7 @@
 //! // Different categories have zero overlap
 //! let mut dt2 = DiscreteTransformer::new(4, 1024, 2, 0);
 //! dt2.set_value(1);
-//! dt2.feedforward(false).unwrap();
+//! dt2.execute(false).unwrap();
 //!
 //! let overlap = dt.output.state.num_similar(&dt2.output.state);
 //! assert_eq!(overlap, 0);  // No overlap
@@ -203,11 +203,7 @@ impl Block for DiscreteTransformer {
         // No inputs - transformer is a source block
     }
 
-    fn push(&mut self) {
-        // No children to push to
-    }
-
-    fn encode(&mut self) {
+    fn compute(&mut self) {
         // Validation (matches C++ assert in encode)
         assert!(self.value < self.num_v, "value must be < num_v");
 
@@ -229,11 +225,6 @@ impl Block for DiscreteTransformer {
 
             self.value_prev = self.value;
         }
-    }
-
-    fn decode(&mut self) {
-        // TODO: Implement reverse mapping from bits to category
-        // Would find center of mass of active bits and map to nearest category
     }
 
     fn learn(&mut self) {
@@ -293,7 +284,7 @@ mod tests {
         let mut dt = DiscreteTransformer::new(4, 1024, 2, 0);
 
         dt.set_value(2);
-        dt.encode();
+        dt.compute();
 
         // Should have num_as active bits (1024 / 4 = 256)
         assert_eq!(dt.output.state.num_set(), 256);
@@ -305,10 +296,10 @@ mod tests {
         let mut dt2 = DiscreteTransformer::new(4, 1024, 2, 0);
 
         dt1.set_value(0);
-        dt1.encode();
+        dt1.compute();
 
         dt2.set_value(1);
-        dt2.encode();
+        dt2.compute();
 
         // Different categories should have zero overlap
         let overlap = dt1.output.state.num_similar(&dt2.output.state);
@@ -321,10 +312,10 @@ mod tests {
         let mut dt2 = DiscreteTransformer::new(4, 1024, 2, 0);
 
         dt1.set_value(2);
-        dt1.encode();
+        dt1.compute();
 
         dt2.set_value(2);
-        dt2.encode();
+        dt2.compute();
 
         // Same category should be identical
         assert_eq!(dt1.output.state, dt2.output.state);
@@ -340,7 +331,7 @@ mod tests {
         // Encode each category
         for (i, dt) in transformers.iter_mut().enumerate() {
             dt.set_value(i);
-            dt.encode();
+            dt.compute();
         }
 
         // Verify all pairs are distinct
@@ -364,11 +355,11 @@ mod tests {
         let mut dt = DiscreteTransformer::new(10, 1024, 2, 0);
 
         dt.set_value(5);
-        dt.encode();
+        dt.compute();
         let acts1 = dt.output.state.get_acts();
 
         // Encode again without changing value
-        dt.encode();
+        dt.compute();
         let acts2 = dt.output.state.get_acts();
 
         // Should be identical (optimization check)
@@ -380,7 +371,7 @@ mod tests {
         let mut dt = DiscreteTransformer::new(10, 1024, 2, 0);
 
         dt.set_value(5);
-        dt.feedforward(false).unwrap();
+        dt.execute(false).unwrap();
 
         assert_eq!(dt.output.state.num_set(), 102); // 1024 / 10
     }
@@ -390,7 +381,7 @@ mod tests {
         let mut dt = DiscreteTransformer::new(10, 1024, 2, 0);
 
         dt.set_value(5);
-        dt.feedforward(false).unwrap();
+        dt.execute(false).unwrap();
 
         dt.clear();
 
@@ -410,12 +401,12 @@ mod tests {
         let mut dt = DiscreteTransformer::new(2, 1024, 2, 0);
 
         dt.set_value(0);
-        dt.encode();
+        dt.compute();
         let acts0 = dt.output.state.get_acts();
         assert_eq!(dt.output.state.num_set(), 512);
 
         dt.set_value(1);
-        dt.encode();
+        dt.compute();
         let acts1 = dt.output.state.get_acts();
         assert_eq!(dt.output.state.num_set(), 512);
 

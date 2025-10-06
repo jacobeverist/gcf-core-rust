@@ -22,8 +22,8 @@ fn test_sequence_learner_multistep_prediction() {
     for _ in 0..20 {
         for &value in &sequence {
             encoder.set_value(value);
-            encoder.feedforward(false).unwrap();
-            learner.feedforward(true).unwrap();
+            encoder.execute(false).unwrap();
+            learner.execute(true).unwrap();
         }
     }
 
@@ -31,8 +31,8 @@ fn test_sequence_learner_multistep_prediction() {
     let mut anomalies = Vec::new();
     for &value in &sequence {
         encoder.set_value(value);
-        encoder.feedforward(false).unwrap();
-        learner.feedforward(false).unwrap();
+        encoder.execute(false).unwrap();
+        learner.execute(false).unwrap();
         anomalies.push(learner.get_anomaly_score());
     }
 
@@ -49,8 +49,8 @@ fn test_sequence_learner_multistep_prediction() {
     let mut novel_anomalies = Vec::new();
     for &value in &novel_sequence {
         encoder.set_value(value);
-        encoder.feedforward(false).unwrap();
-        learner.feedforward(false).unwrap();
+        encoder.execute(false).unwrap();
+        learner.execute(false).unwrap();
         novel_anomalies.push(learner.get_anomaly_score());
     }
 
@@ -98,9 +98,9 @@ fn test_context_learner_with_multiple_contexts() {
         for &(input_val, context_val) in &associations {
             input_encoder.set_value(input_val);
             context_encoder.set_value(context_val);
-            input_encoder.feedforward(false).unwrap();
-            context_encoder.feedforward(false).unwrap();
-            learner.feedforward(true).unwrap();
+            input_encoder.execute(false).unwrap();
+            context_encoder.execute(false).unwrap();
+            learner.execute(true).unwrap();
         }
     }
 
@@ -108,9 +108,9 @@ fn test_context_learner_with_multiple_contexts() {
     for &(input_val, context_val) in &associations {
         input_encoder.set_value(input_val);
         context_encoder.set_value(context_val);
-        input_encoder.feedforward(false).unwrap();
-        context_encoder.feedforward(false).unwrap();
-        learner.feedforward(false).unwrap();
+        input_encoder.execute(false).unwrap();
+        context_encoder.execute(false).unwrap();
+        learner.execute(false).unwrap();
 
         let anomaly = learner.get_anomaly_score();
         assert!(
@@ -126,9 +126,9 @@ fn test_context_learner_with_multiple_contexts() {
     // Input 0 with context 1 (should be context 0)
     input_encoder.set_value(0);
     context_encoder.set_value(1);
-    input_encoder.feedforward(false).unwrap();
-    context_encoder.feedforward(false).unwrap();
-    learner.feedforward(false).unwrap();
+    input_encoder.execute(false).unwrap();
+    context_encoder.execute(false).unwrap();
+    learner.execute(false).unwrap();
     let wrong_anomaly = learner.get_anomaly_score();
 
     assert!(
@@ -155,8 +155,8 @@ fn test_sequence_learner_cyclic_pattern() {
     for _ in 0..20 {
         for &value in &cycle {
             encoder.set_value(value);
-            encoder.feedforward(false).unwrap();
-            learner.feedforward(true).unwrap();
+            encoder.execute(false).unwrap();
+            learner.execute(true).unwrap();
         }
     }
 
@@ -166,8 +166,8 @@ fn test_sequence_learner_cyclic_pattern() {
         // Test 2 full cycles
         for &value in &cycle {
             encoder.set_value(value);
-            encoder.feedforward(false).unwrap();
-            learner.feedforward(false).unwrap();
+            encoder.execute(false).unwrap();
+            learner.execute(false).unwrap();
             test_anomalies.push(learner.get_anomaly_score());
         }
     }
@@ -203,26 +203,26 @@ fn test_context_learner_disambiguation() {
         for &(input_val, context_val) in &associations {
             input_encoder.set_value(input_val);
             context_encoder.set_value(context_val);
-            input_encoder.feedforward(false).unwrap();
-            context_encoder.feedforward(false).unwrap();
-            learner.feedforward(true).unwrap();
+            input_encoder.execute(false).unwrap();
+            context_encoder.execute(false).unwrap();
+            learner.execute(true).unwrap();
         }
     }
 
     // Input 0 with context 0 should be learned
     input_encoder.set_value(0);
     context_encoder.set_value(0);
-    input_encoder.feedforward(false).unwrap();
-    context_encoder.feedforward(false).unwrap();
-    learner.feedforward(false).unwrap();
+    input_encoder.execute(false).unwrap();
+    context_encoder.execute(false).unwrap();
+    learner.execute(false).unwrap();
     let anomaly_c0 = learner.get_anomaly_score();
 
     // Input 0 with context 1 should also be learned
     input_encoder.set_value(0);
     context_encoder.set_value(1);
-    input_encoder.feedforward(false).unwrap();
-    context_encoder.feedforward(false).unwrap();
-    learner.feedforward(false).unwrap();
+    input_encoder.execute(false).unwrap();
+    context_encoder.execute(false).unwrap();
+    learner.execute(false).unwrap();
     let anomaly_c1 = learner.get_anomaly_score();
 
     // Both should have low anomaly
@@ -240,9 +240,9 @@ fn test_context_learner_disambiguation() {
     // Input 0 with wrong context (2) should have high anomaly
     input_encoder.set_value(0);
     context_encoder.set_value(2);
-    input_encoder.feedforward(false).unwrap();
-    context_encoder.feedforward(false).unwrap();
-    learner.feedforward(false).unwrap();
+    input_encoder.execute(false).unwrap();
+    context_encoder.execute(false).unwrap();
+    learner.execute(false).unwrap();
     let anomaly_wrong = learner.get_anomaly_score();
 
     assert!(
@@ -272,13 +272,13 @@ fn test_sequence_learner_branching_sequences() {
     for _ in 0..15 {
         for &value in &seq1 {
             encoder.set_value(value);
-            encoder.feedforward(false).unwrap();
-            learner.feedforward(true).unwrap();
+            encoder.execute(false).unwrap();
+            learner.execute(true).unwrap();
         }
         for &value in &seq2 {
             encoder.set_value(value);
-            encoder.feedforward(false).unwrap();
-            learner.feedforward(true).unwrap();
+            encoder.execute(false).unwrap();
+            learner.execute(true).unwrap();
         }
     }
 
@@ -286,16 +286,16 @@ fn test_sequence_learner_branching_sequences() {
     // Test sequence 1
     for &value in &seq1 {
         encoder.set_value(value);
-        encoder.feedforward(false).unwrap();
-        learner.feedforward(false).unwrap();
+        encoder.execute(false).unwrap();
+        learner.execute(false).unwrap();
     }
     // Don't check individual anomalies since branching creates ambiguity
 
     // Test sequence 2
     for &value in &seq2 {
         encoder.set_value(value);
-        encoder.feedforward(false).unwrap();
-        learner.feedforward(false).unwrap();
+        encoder.execute(false).unwrap();
+        learner.execute(false).unwrap();
     }
 
     // Novel sequence should have higher anomaly: 0 → 1 → 6 → 7
@@ -303,8 +303,8 @@ fn test_sequence_learner_branching_sequences() {
     let mut novel_anomalies = Vec::new();
     for &value in &novel_seq {
         encoder.set_value(value);
-        encoder.feedforward(false).unwrap();
-        learner.feedforward(false).unwrap();
+        encoder.execute(false).unwrap();
+        learner.execute(false).unwrap();
         novel_anomalies.push(learner.get_anomaly_score());
     }
 

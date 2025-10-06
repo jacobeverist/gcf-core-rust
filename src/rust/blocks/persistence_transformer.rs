@@ -21,7 +21,7 @@
 //!
 //! // Set stable value
 //! pt.set_value(0.5);
-//! pt.feedforward(false).unwrap();
+//! pt.execute(false).unwrap();
 //!
 //! // Output encodes persistence duration
 //! assert_eq!(pt.output.state.num_set(), 128);
@@ -231,11 +231,7 @@ impl Block for PersistenceTransformer {
         // No inputs - transformer is a source block
     }
 
-    fn push(&mut self) {
-        // No children to push to
-    }
-
-    fn encode(&mut self) {
+    fn compute(&mut self) {
         // Clamp value to valid range
         let clamped = self.value.clamp(self.min_val, self.max_val);
 
@@ -274,10 +270,6 @@ impl Block for PersistenceTransformer {
         // Clear output and activate contiguous window
         self.output.state.clear_all();
         self.output.state.set_range(beg, self.num_as);
-    }
-
-    fn decode(&mut self) {
-        // TODO: Implement reverse mapping from bits to persistence
     }
 
     fn learn(&mut self) {
@@ -335,17 +327,17 @@ mod tests {
         pt.set_value(0.5);
 
         // First encode resets due to initial change from 0.0 to 0.5
-        pt.encode();
+        pt.compute();
         assert_eq!(pt.get_counter(), 0);
 
         // Now counter should increment each encode when value is stable
-        pt.encode();
+        pt.compute();
         assert_eq!(pt.get_counter(), 1);
 
-        pt.encode();
+        pt.compute();
         assert_eq!(pt.get_counter(), 2);
 
-        pt.encode();
+        pt.compute();
         assert_eq!(pt.get_counter(), 3);
     }
 
@@ -355,15 +347,15 @@ mod tests {
 
         // Build up persistence (first encode is reset, next 3 increment)
         pt.set_value(0.5);
-        pt.encode();  // Reset to 0
-        pt.encode();  // 1
-        pt.encode();  // 2
-        pt.encode();  // 3
+        pt.compute();  // Reset to 0
+        pt.compute();  // 1
+        pt.compute();  // 2
+        pt.compute();  // 3
         assert_eq!(pt.get_counter(), 3);
 
         // Significant change (>10%) should reset
         pt.set_value(0.8);
-        pt.encode();
+        pt.compute();
         assert_eq!(pt.get_counter(), 0);
     }
 
@@ -373,14 +365,14 @@ mod tests {
 
         // Build up persistence (first encode is reset, next 2 increment)
         pt.set_value(0.5);
-        pt.encode();  // Reset to 0
-        pt.encode();  // 1
-        pt.encode();  // 2
+        pt.compute();  // Reset to 0
+        pt.compute();  // 1
+        pt.compute();  // 2
         assert_eq!(pt.get_counter(), 2);
 
         // Small change (<10%) should not reset
         pt.set_value(0.55);  // 5% change
-        pt.encode();
+        pt.compute();
         assert_eq!(pt.get_counter(), 3);  // Counter continues
     }
 
@@ -392,7 +384,7 @@ mod tests {
 
         // Encode more than max_step times
         for _ in 0..20 {
-            pt.encode();
+            pt.compute();
         }
 
         // Counter should be capped at max_step
@@ -404,7 +396,7 @@ mod tests {
         let mut pt = PersistenceTransformer::new(0.0, 1.0, 1024, 128, 100, 2, 0);
 
         pt.set_value(0.5);
-        pt.encode();
+        pt.compute();
 
         // Should have exactly num_as active bits
         assert_eq!(pt.output.state.num_set(), 128);
@@ -417,12 +409,12 @@ mod tests {
 
         // Low persistence
         pt1.set_value(0.5);
-        pt1.encode();
+        pt1.compute();
 
         // High persistence
         pt2.set_value(0.5);
         for _ in 0..50 {
-            pt2.encode();
+            pt2.compute();
         }
 
         // Different persistence levels should have different patterns
@@ -435,7 +427,7 @@ mod tests {
         let mut pt = PersistenceTransformer::new(0.0, 1.0, 1024, 128, 100, 2, 0);
 
         pt.set_value(0.5);
-        pt.feedforward(false).unwrap();
+        pt.execute(false).unwrap();
 
         assert_eq!(pt.output.state.num_set(), 128);
     }
@@ -446,7 +438,7 @@ mod tests {
 
         pt.set_value(0.5);
         for _ in 0..5 {
-            pt.feedforward(false).unwrap();
+            pt.execute(false).unwrap();
         }
         assert!(pt.get_counter() > 0);
 
@@ -472,7 +464,7 @@ mod tests {
         // Get patterns at different persistence levels
         let mut patterns = Vec::new();
         for i in 0..=100 {
-            pt.encode();
+            pt.compute();
             if i % 20 == 0 {
                 patterns.push(pt.output.state.clone());
             }

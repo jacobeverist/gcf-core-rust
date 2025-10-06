@@ -34,7 +34,7 @@
 //!
 //! let mut st = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
 //! st.set_value(0.5);
-//! st.feedforward(false).unwrap();
+//! st.execute(false).unwrap();
 //!
 //! // Output has 128 active bits representing 0.5
 //! assert_eq!(st.output.state.num_set(), 128);

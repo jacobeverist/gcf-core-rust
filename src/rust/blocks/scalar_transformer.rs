@@ -21,7 +21,7 @@
 //!
 //! // Encode value 0.5
 //! st.set_value(0.5);
-//! st.feedforward(false).unwrap();
+//! st.execute(false).unwrap();
 //!
 //! // Output has exactly 128 active bits
 //! assert_eq!(st.output.state.num_set(), 128);
@@ -29,7 +29,7 @@
 //! // Test semantic similarity
 //! let mut st2 = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
 //! st2.set_value(0.51);  // Similar value
-//! st2.feedforward(false).unwrap();
+//! st2.execute(false).unwrap();
 //!
 //! // Similar values have high overlap
 //! let overlap = st.output.state.num_similar(&st2.output.state);
@@ -221,11 +221,7 @@ impl Block for ScalarTransformer {
         // No inputs - transformer is a source block
     }
 
-    fn push(&mut self) {
-        // No children to push to
-    }
-
-    fn encode(&mut self) {
+    fn compute(&mut self) {
         // Optimization: Only encode if value changed (matches C++ implementation)
         if self.value != self.value_prev {
             // Clamp value to valid range
@@ -243,11 +239,6 @@ impl Block for ScalarTransformer {
 
             self.value_prev = self.value;
         }
-    }
-
-    fn decode(&mut self) {
-        // TODO: Implement reverse mapping from bits to value
-        // Would find center of mass of active bits and map back to value
     }
 
     fn learn(&mut self) {
@@ -317,7 +308,7 @@ mod tests {
         let mut st = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
 
         st.set_value(0.5);
-        st.encode();
+        st.compute();
 
         // Should have exactly num_as active bits
         assert_eq!(st.output.state.num_set(), 128);
@@ -329,14 +320,14 @@ mod tests {
 
         // Minimum value
         st.set_value(0.0);
-        st.encode();
+        st.compute();
         assert_eq!(st.output.state.num_set(), 128);
         let acts_min = st.output.state.get_acts();
         assert_eq!(acts_min[0], 0); // Should start at bit 0
 
         // Maximum value
         st.set_value(1.0);
-        st.encode();
+        st.compute();
         assert_eq!(st.output.state.num_set(), 128);
         let acts_max = st.output.state.get_acts();
         assert_eq!(acts_max[acts_max.len() - 1], 1023); // Should end at last bit
@@ -347,11 +338,11 @@ mod tests {
         let mut st = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
 
         st.set_value(0.5);
-        st.encode();
+        st.compute();
         let acts1 = st.output.state.get_acts();
 
         // Encode again without changing value
-        st.encode();
+        st.compute();
         let acts2 = st.output.state.get_acts();
 
         // Should be identical (optimization check)
@@ -363,7 +354,7 @@ mod tests {
         let mut st = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
 
         st.set_value(0.5);
-        st.feedforward(false).unwrap();
+        st.execute(false).unwrap();
 
         assert_eq!(st.output.state.num_set(), 128);
     }
@@ -373,7 +364,7 @@ mod tests {
         let mut st = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
 
         st.set_value(0.5);
-        st.feedforward(false).unwrap();
+        st.execute(false).unwrap();
 
         st.clear();
 

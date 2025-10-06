@@ -77,8 +77,8 @@
 //! // Learn sequence: 0 → 1 → 2 → 0 → 1 → 2 ...
 //! for &value in &[0, 1, 2, 0, 1, 2] {
 //!     encoder.set_value(value);
-//!     encoder.feedforward(false).unwrap();
-//!     learner.feedforward(true).unwrap();  // Learn transitions
+//!     encoder.execute(false).unwrap();
+//!     learner.execute(true).unwrap();  // Learn transitions
 //!
 //!     let anomaly = learner.get_anomaly_score();
 //!     println!("Value: {}, Anomaly: {:.2}%", value, anomaly * 100.0);
@@ -213,6 +213,10 @@ impl SequenceLearner {
 
         // Create output and self-feedback loop
         let output_rc = Rc::new(RefCell::new(BlockOutput::new()));
+
+        // Setup output BEFORE adding as child (needed for time offset validation)
+        output_rc.borrow_mut().setup(num_t, num_s);
+
         let mut context = BlockInput::new();
 
         // Self-feedback: context pulls from output[PREV] (time=1)
@@ -392,8 +396,7 @@ impl Block for SequenceLearner {
             "input size must equal num_c"
         );
 
-        // Initialize output
-        self.output.borrow_mut().setup(self.num_t, self.num_s);
+        // Note: Output setup now happens in new() before self-feedback connection
 
         // Initialize memory (dendrites learn from previous output)
         let num_context_bits = self.context.num_bits();
@@ -432,11 +435,7 @@ impl Block for SequenceLearner {
         self.context.pull();
     }
 
-    fn push(&mut self) {
-        // TODO: Implement push
-    }
-
-    fn encode(&mut self) {
+    fn compute(&mut self) {
         assert!(self.base.is_initialized(), "must call init() first");
 
         // Check if any input changed

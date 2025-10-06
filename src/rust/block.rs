@@ -9,18 +9,15 @@
 //! - `init()` - Initialize block based on input connections
 //! - `step()` - Advance time step (update history index)
 //! - `pull()` - Pull data from child block outputs
-//! - `encode()` - Convert inputs to outputs
+//! - `compute()` - Convert inputs to outputs
 //! - `store()` - Store current state to history
 //! - `learn()` - Update internal memories/weights
-//! - `push()` - Push data to child block outputs
-//! - `decode()` - Convert outputs to inputs (for feedback)
 //! - `clear()` - Reset all state
 //! - `save()`/`load()` - Persistence operations
 //!
 //! # High-Level Operations
 //!
-//! - `feedforward(learn_flag)` - Full forward pass: step → pull → encode → store → [learn]
-//! - `feedback()` - Full backward pass: decode → push
+//! - `execute(learn_flag)` - Full forward pass: step → pull → compute → store → [learn]
 //!
 //! # Examples
 //!
@@ -32,7 +29,7 @@
 //! }
 //!
 //! impl Block for MyBlock {
-//!     fn encode(&mut self) {
+//!     fn compute(&mut self) {
 //!         // Transform input to output
 //!     }
 //!
@@ -54,7 +51,7 @@ use std::path::Path;
 pub trait Block {
     /// Initialize the block based on input connections.
     ///
-    /// Called automatically during first `feedforward()` if not already initialized.
+    /// Called automatically during first `execute()` if not already initialized.
     /// Override to set up internal structures based on connected inputs.
     fn init(&mut self) -> Result<()> {
         Ok(())
@@ -87,23 +84,11 @@ pub trait Block {
     /// Uses lazy copying - only copies changed children.
     fn pull(&mut self);
 
-    /// Push data to child blocks.
-    ///
-    /// Distributes BlockInput state back to child BlockOutput states.
-    /// Used during feedback/reconstruction.
-    fn push(&mut self);
-
-    /// Encode input to output.
+    /// Compute output from input.
     ///
     /// Core computation: transforms BlockInput state(s) into BlockOutput state(s).
     /// Override to implement block-specific computation.
-    fn encode(&mut self);
-
-    /// Decode output to input.
-    ///
-    /// Inverse of encode: transforms BlockOutput state(s) into BlockInput state(s).
-    /// Used for feedback/reconstruction. Optional - default is no-op.
-    fn decode(&mut self) {}
+    fn compute(&mut self);
 
     /// Update internal memories/weights.
     ///
@@ -123,12 +108,12 @@ pub trait Block {
     /// all internal structures.
     fn memory_usage(&self) -> usize;
 
-    /// Process input to output (feedforward pass).
+    /// Execute the block's computation pipeline.
     ///
     /// Executes the full forward computation pipeline:
     /// 1. step() - Advance time
     /// 2. pull() - Get input from children
-    /// 3. encode() - Compute output
+    /// 3. compute() - Compute output
     /// 4. store() - Save to history
     /// 5. learn() - Update weights (if learn_flag is true)
     ///
@@ -140,32 +125,19 @@ pub trait Block {
     ///
     /// ```ignore
     /// // Training mode
-    /// block.feedforward(true)?;
+    /// block.execute(true)?;
     ///
     /// // Inference mode
-    /// block.feedforward(false)?;
+    /// block.execute(false)?;
     /// ```
-    fn feedforward(&mut self, learn_flag: bool) -> Result<()> {
+    fn execute(&mut self, learn_flag: bool) -> Result<()> {
         self.step();
         self.pull();
-        self.encode();
+        self.compute();
         self.store();
         if learn_flag {
             self.learn();
         }
-        Ok(())
-    }
-
-    /// Process output to input (feedback pass).
-    ///
-    /// Executes the backward computation pipeline:
-    /// 1. decode() - Reconstruct input from output
-    /// 2. push() - Send to children
-    ///
-    /// Used for generative models and error feedback.
-    fn feedback(&mut self) -> Result<()> {
-        self.decode();
-        self.push();
         Ok(())
     }
 }
@@ -178,7 +150,7 @@ mod tests {
     struct MockBlock {
         step_called: bool,
         pull_called: bool,
-        encode_called: bool,
+        compute_called: bool,
         store_called: bool,
         learn_called: bool,
     }
@@ -188,7 +160,7 @@ mod tests {
             Self {
                 step_called: false,
                 pull_called: false,
-                encode_called: false,
+                compute_called: false,
                 store_called: false,
                 learn_called: false,
             }
@@ -197,7 +169,7 @@ mod tests {
         fn reset(&mut self) {
             self.step_called = false;
             self.pull_called = false;
-            self.encode_called = false;
+            self.compute_called = false;
             self.store_called = false;
             self.learn_called = false;
         }
@@ -222,10 +194,8 @@ mod tests {
             self.pull_called = true;
         }
 
-        fn push(&mut self) {}
-
-        fn encode(&mut self) {
-            self.encode_called = true;
+        fn compute(&mut self) {
+            self.compute_called = true;
         }
 
         fn store(&mut self) {
@@ -242,31 +212,31 @@ mod tests {
     }
 
     #[test]
-    fn test_feedforward_without_learning() {
+    fn test_execute_without_learning() {
         let mut block = MockBlock::new();
-        block.feedforward(false).unwrap();
+        block.execute(false).unwrap();
 
         assert!(block.step_called);
         assert!(block.pull_called);
-        assert!(block.encode_called);
+        assert!(block.compute_called);
         assert!(block.store_called);
         assert!(!block.learn_called);
     }
 
     #[test]
-    fn test_feedforward_with_learning() {
+    fn test_execute_with_learning() {
         let mut block = MockBlock::new();
-        block.feedforward(true).unwrap();
+        block.execute(true).unwrap();
 
         assert!(block.step_called);
         assert!(block.pull_called);
-        assert!(block.encode_called);
+        assert!(block.compute_called);
         assert!(block.store_called);
         assert!(block.learn_called);
     }
 
     #[test]
-    fn test_feedforward_call_order() {
+    fn test_execute_call_order() {
         // The order matters for correctness
         let mut block = MockBlock::new();
 
@@ -275,10 +245,10 @@ mod tests {
         assert!(block.step_called && !block.pull_called);
 
         block.pull();
-        assert!(block.pull_called && !block.encode_called);
+        assert!(block.pull_called && !block.compute_called);
 
-        block.encode();
-        assert!(block.encode_called && !block.store_called);
+        block.compute();
+        assert!(block.compute_called && !block.store_called);
 
         block.store();
         assert!(block.store_called);

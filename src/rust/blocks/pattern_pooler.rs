@@ -36,8 +36,8 @@
 //!
 //! // Encode and learn sparse representation
 //! encoder.set_value(0.5);
-//! encoder.feedforward(false).unwrap();
-//! pooler.feedforward(true).unwrap();  // Learn=true
+//! encoder.execute(false).unwrap();
+//! pooler.execute(true).unwrap();  // Learn=true
 //!
 //! // Verify sparse output
 //! assert_eq!(pooler.output.state.num_set(), 40);
@@ -212,11 +212,7 @@ impl Block for PatternPooler {
         self.input.pull();
     }
 
-    fn push(&mut self) {
-        // TODO: Implement push
-    }
-
-    fn encode(&mut self) {
+    fn compute(&mut self) {
         assert!(
             self.base.is_initialized(),
             "PatternPooler must be initialized before encoding"

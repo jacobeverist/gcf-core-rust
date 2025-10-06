@@ -68,9 +68,9 @@
 //! // Process patterns
 //! input_encoder.set_value(3);
 //! context_encoder.set_value(1);
-//! input_encoder.feedforward(false).unwrap();
-//! context_encoder.feedforward(false).unwrap();
-//! learner.feedforward(true).unwrap();  // Learn association
+//! input_encoder.execute(false).unwrap();
+//! context_encoder.execute(false).unwrap();
+//! learner.execute(true).unwrap();  // Learn association
 //!
 //! // Check anomaly score (should be high on first exposure)
 //! let anomaly = learner.get_anomaly_score();
@@ -420,11 +420,7 @@ impl Block for ContextLearner {
         self.context.pull();
     }
 
-    fn push(&mut self) {
-        // TODO: Implement push
-    }
-
-    fn encode(&mut self) {
+    fn compute(&mut self) {
         assert!(self.base.is_initialized(), "must call init() first");
 
         // Check if any input changed

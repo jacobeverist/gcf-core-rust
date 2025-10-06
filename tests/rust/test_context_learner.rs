@@ -79,9 +79,9 @@ let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
     // First exposure should have high anomaly
     input_encoder.set_value(0);
     context_encoder.set_value(0);
-    input_encoder.feedforward(false).unwrap();
-    context_encoder.feedforward(false).unwrap();
-    learner.feedforward(true).unwrap();
+    input_encoder.execute(false).unwrap();
+    context_encoder.execute(false).unwrap();
+    learner.execute(true).unwrap();
 
     let anomaly = learner.get_anomaly_score();
     assert!(anomaly > 0.9, "First exposure should have high anomaly, got {}", anomaly);
@@ -111,9 +111,9 @@ let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
 
     let mut anomalies = Vec::new();
     for _ in 0..10 {
-        input_encoder.feedforward(false).unwrap();
-        context_encoder.feedforward(false).unwrap();
-        learner.feedforward(true).unwrap();
+        input_encoder.execute(false).unwrap();
+        context_encoder.execute(false).unwrap();
+        learner.execute(true).unwrap();
         anomalies.push(learner.get_anomaly_score());
     }
 
@@ -145,17 +145,17 @@ let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
     input_encoder.set_value(0);
     context_encoder.set_value(0);
     for _ in 0..10 {
-        input_encoder.feedforward(false).unwrap();
-        context_encoder.feedforward(false).unwrap();
-        learner.feedforward(true).unwrap();
+        input_encoder.execute(false).unwrap();
+        context_encoder.execute(false).unwrap();
+        learner.execute(true).unwrap();
     }
     let learned_anomaly = learner.get_anomaly_score();
 
     // Test with different context: input=0 with context=1
     context_encoder.set_value(1);
-    input_encoder.feedforward(false).unwrap();
-    context_encoder.feedforward(false).unwrap();
-    learner.feedforward(false).unwrap(); // No learning
+    input_encoder.execute(false).unwrap();
+    context_encoder.execute(false).unwrap();
+    learner.execute(false).unwrap(); // No learning
     let novel_context_anomaly = learner.get_anomaly_score();
 
     assert!(novel_context_anomaly > learned_anomaly,
@@ -186,9 +186,9 @@ let mut context_encoder = DiscreteTransformer::new(3, 64, 2, 0);
     // Learn a pattern
     input_encoder.set_value(0);
     context_encoder.set_value(0);
-    input_encoder.feedforward(false).unwrap();
-    context_encoder.feedforward(false).unwrap();
-    learner.feedforward(true).unwrap();
+    input_encoder.execute(false).unwrap();
+    context_encoder.execute(false).unwrap();
+    learner.execute(true).unwrap();
 
     let count1 = learner.get_historical_count();
     assert!(count1 > 0, "Historical count should grow after learning");
@@ -196,9 +196,9 @@ let mut context_encoder = DiscreteTransformer::new(3, 64, 2, 0);
     // Learn another pattern
     input_encoder.set_value(1);
     context_encoder.set_value(1);
-    input_encoder.feedforward(false).unwrap();
-    context_encoder.feedforward(false).unwrap();
-    learner.feedforward(true).unwrap();
+    input_encoder.execute(false).unwrap();
+    context_encoder.execute(false).unwrap();
+    learner.execute(true).unwrap();
 
     let count2 = learner.get_historical_count();
     assert!(count2 >= count1, "Historical count should not decrease");
@@ -229,9 +229,9 @@ let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
         for &(input_val, context_val) in &associations {
             input_encoder.set_value(input_val);
             context_encoder.set_value(context_val);
-            input_encoder.feedforward(false).unwrap();
-            context_encoder.feedforward(false).unwrap();
-            learner.feedforward(true).unwrap();
+            input_encoder.execute(false).unwrap();
+            context_encoder.execute(false).unwrap();
+            learner.execute(true).unwrap();
         }
     }
 
@@ -239,9 +239,9 @@ let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
     for &(input_val, context_val) in &associations {
         input_encoder.set_value(input_val);
         context_encoder.set_value(context_val);
-        input_encoder.feedforward(false).unwrap();
-        context_encoder.feedforward(false).unwrap();
-        learner.feedforward(false).unwrap();
+        input_encoder.execute(false).unwrap();
+        context_encoder.execute(false).unwrap();
+        learner.execute(false).unwrap();
 
         let anomaly = learner.get_anomaly_score();
         assert!(anomaly < 0.5,
@@ -271,9 +271,9 @@ let mut context_encoder = DiscreteTransformer::new(3, 64, 2, 0);
     // Process some data
     input_encoder.set_value(0);
     context_encoder.set_value(0);
-    input_encoder.feedforward(false).unwrap();
-    context_encoder.feedforward(false).unwrap();
-    learner.feedforward(true).unwrap();
+    input_encoder.execute(false).unwrap();
+    context_encoder.execute(false).unwrap();
+    learner.execute(true).unwrap();
 
     // Clear
     learner.clear();
@@ -311,9 +311,9 @@ let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
     // Process
     input_encoder.set_value(0);
     context_encoder.set_value(0);
-    input_encoder.feedforward(false).unwrap();
-    context_encoder.feedforward(false).unwrap();
-    learner.feedforward(true).unwrap();
+    input_encoder.execute(false).unwrap();
+    context_encoder.execute(false).unwrap();
+    learner.execute(true).unwrap();
 
     // Output should be sparse (some statelets active)
     let num_active = learner.output.borrow().state.num_set();

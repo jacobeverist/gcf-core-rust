@@ -76,7 +76,7 @@ fn test_scalar_encoding_num_active() {
     // Test at various values
     for val in [0.0, 0.25, 0.5, 0.75, 1.0].iter() {
         st.set_value(*val);
-        st.feedforward(false).unwrap();
+        st.execute(false).unwrap();
         assert_eq!(
             st.output.state.num_set(),
             128,
@@ -91,7 +91,7 @@ fn test_scalar_encoding_minimum_value() {
     let mut st = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
 
     st.set_value(0.0);
-    st.feedforward(false).unwrap();
+    st.execute(false).unwrap();
 
     assert_eq!(st.output.state.num_set(), 128);
 
@@ -106,7 +106,7 @@ fn test_scalar_encoding_maximum_value() {
     let mut st = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
 
     st.set_value(1.0);
-    st.feedforward(false).unwrap();
+    st.execute(false).unwrap();
 
     assert_eq!(st.output.state.num_set(), 128);
 
@@ -125,7 +125,7 @@ fn test_scalar_encoding_midpoint() {
     let mut st = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
 
     st.set_value(0.5);
-    st.feedforward(false).unwrap();
+    st.execute(false).unwrap();
 
     assert_eq!(st.output.state.num_set(), 128);
 
@@ -145,10 +145,10 @@ fn test_scalar_semantic_similarity_close_values() {
 
     // Very similar values (1% apart)
     st1.set_value(0.50);
-    st1.feedforward(false).unwrap();
+    st1.execute(false).unwrap();
 
     st2.set_value(0.51);
-    st2.feedforward(false).unwrap();
+    st2.execute(false).unwrap();
 
     // Should have high overlap
     let overlap = st1.output.state.num_similar(&st2.output.state);
@@ -174,10 +174,10 @@ fn test_scalar_semantic_similarity_distant_values() {
 
     // Very different values
     st1.set_value(0.0);
-    st1.feedforward(false).unwrap();
+    st1.execute(false).unwrap();
 
     st2.set_value(1.0);
-    st2.feedforward(false).unwrap();
+    st2.execute(false).unwrap();
 
     // Should have minimal overlap
     let overlap = st1.output.state.num_similar(&st2.output.state);
@@ -193,7 +193,7 @@ fn test_scalar_semantic_similarity_gradient() {
     // Test that overlap decreases as values become more distant
     let mut st_base = ScalarTransformer::new(0.0, 1.0, 2048, 256, 2, 0);
     st_base.set_value(0.5);
-    st_base.feedforward(false).unwrap();
+    st_base.execute(false).unwrap();
 
     let test_values = [0.5, 0.51, 0.55, 0.6, 0.7, 0.8, 1.0];
     let mut overlaps = Vec::new();
@@ -201,7 +201,7 @@ fn test_scalar_semantic_similarity_gradient() {
     for &val in test_values.iter() {
         let mut st = ScalarTransformer::new(0.0, 1.0, 2048, 256, 2, 0);
         st.set_value(val);
-        st.feedforward(false).unwrap();
+        st.execute(false).unwrap();
 
         let overlap = st_base.output.state.num_similar(&st.output.state);
         overlaps.push(overlap);
@@ -228,11 +228,11 @@ fn test_scalar_encoding_change_detection() {
     let mut st = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
 
     st.set_value(0.5);
-    st.feedforward(false).unwrap();
+    st.execute(false).unwrap();
     let acts1 = st.output.state.get_acts();
 
     // Feedforward again without changing value
-    st.feedforward(false).unwrap();
+    st.execute(false).unwrap();
     let acts2 = st.output.state.get_acts();
 
     // Should be identical (optimization check)
@@ -244,19 +244,19 @@ fn test_scalar_different_ranges() {
     // Test temperature range
     let mut temp = ScalarTransformer::new(0.0, 100.0, 1024, 128, 2, 0);
     temp.set_value(50.0);
-    temp.feedforward(false).unwrap();
+    temp.execute(false).unwrap();
     assert_eq!(temp.output.state.num_set(), 128);
 
     // Test negative range
     let mut neg = ScalarTransformer::new(-10.0, 10.0, 1024, 128, 2, 0);
     neg.set_value(0.0);
-    neg.feedforward(false).unwrap();
+    neg.execute(false).unwrap();
     assert_eq!(neg.output.state.num_set(), 128);
 
     // Test very small range
     let mut small = ScalarTransformer::new(0.0, 0.1, 1024, 128, 2, 0);
     small.set_value(0.05);
-    small.feedforward(false).unwrap();
+    small.execute(false).unwrap();
     assert_eq!(small.output.state.num_set(), 128);
 }
 
@@ -265,7 +265,7 @@ fn test_scalar_clear() {
     let mut st = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
 
     st.set_value(0.75);
-    st.feedforward(false).unwrap();
+    st.execute(false).unwrap();
     assert_eq!(st.output.state.num_set(), 128);
 
     st.clear();
@@ -280,12 +280,12 @@ fn test_scalar_history_tracking() {
 
     // Encode first value
     st.set_value(0.3);
-    st.feedforward(false).unwrap();
+    st.execute(false).unwrap();
     let acts1 = st.output.get_bitarray(0).get_acts();
 
     // Encode second value
     st.set_value(0.7);
-    st.feedforward(false).unwrap();
+    st.execute(false).unwrap();
     let acts2_curr = st.output.get_bitarray(0).get_acts();
     let acts2_prev = st.output.get_bitarray(1).get_acts();
 
@@ -313,7 +313,7 @@ fn test_scalar_multiple_encodings() {
 
     for &val in test_sequence.iter() {
         st.set_value(val);
-        st.feedforward(false).unwrap();
+        st.execute(false).unwrap();
         assert_eq!(
             st.output.state.num_set(),
             128,
@@ -328,10 +328,10 @@ fn test_scalar_same_value_identical_encoding() {
     let mut st2 = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
 
     st1.set_value(0.42);
-    st1.feedforward(false).unwrap();
+    st1.execute(false).unwrap();
 
     st2.set_value(0.42);
-    st2.feedforward(false).unwrap();
+    st2.execute(false).unwrap();
 
     // Identical values should produce identical encodings
     assert_eq!(
@@ -347,10 +347,10 @@ fn test_scalar_precision() {
 
     // Very close values (within floating point precision)
     st1.set_value(0.123456789);
-    st1.feedforward(false).unwrap();
+    st1.execute(false).unwrap();
 
     st2.set_value(0.123456788);
-    st2.feedforward(false).unwrap();
+    st2.execute(false).unwrap();
 
     // Should still have very high overlap
     let overlap = st1.output.state.num_similar(&st2.output.state);
@@ -365,7 +365,7 @@ fn test_scalar_large_statelet_count() {
     let mut st = ScalarTransformer::new(0.0, 1.0, 4096, 512, 2, 0);
 
     st.set_value(0.5);
-    st.feedforward(false).unwrap();
+    st.execute(false).unwrap();
 
     assert_eq!(st.output.state.num_set(), 512);
 }
@@ -376,7 +376,7 @@ fn test_scalar_small_active_percentage() {
     let mut st = ScalarTransformer::new(0.0, 1.0, 4096, 100, 2, 0);
 
     st.set_value(0.5);
-    st.feedforward(false).unwrap();
+    st.execute(false).unwrap();
 
     assert_eq!(st.output.state.num_set(), 100);
 }

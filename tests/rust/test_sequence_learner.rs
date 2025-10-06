@@ -76,8 +76,8 @@ fn test_sequence_learner_first_pattern_high_anomaly() {
 
     // First pattern should have high anomaly
     encoder.set_value(0);
-    encoder.feedforward(false).unwrap();
-    learner.feedforward(true).unwrap();
+    encoder.execute(false).unwrap();
+    learner.execute(true).unwrap();
 
     let anomaly = learner.get_anomaly_score();
     assert!(anomaly > 0.9, "First pattern should have high anomaly, got {}", anomaly);
@@ -103,8 +103,8 @@ fn test_sequence_learner_repeated_sequence_reduces_anomaly() {
     for _ in 0..10 {
         for &value in &sequence {
             encoder.set_value(value);
-            encoder.feedforward(false).unwrap();
-            learner.feedforward(true).unwrap();
+            encoder.execute(false).unwrap();
+            learner.execute(true).unwrap();
             anomalies.push(learner.get_anomaly_score());
         }
     }
@@ -135,29 +135,29 @@ fn test_sequence_learner_broken_sequence_high_anomaly() {
     for _ in 0..10 {
         for &value in &sequence {
             encoder.set_value(value);
-            encoder.feedforward(false).unwrap();
-            learner.feedforward(true).unwrap();
+            encoder.execute(false).unwrap();
+            learner.execute(true).unwrap();
         }
     }
 
     // Test learned sequence (should have low anomaly)
     encoder.set_value(0);
-    encoder.feedforward(false).unwrap();
-    learner.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    learner.execute(false).unwrap();
 
     encoder.set_value(1);
-    encoder.feedforward(false).unwrap();
-    learner.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    learner.execute(false).unwrap();
     let learned_anomaly = learner.get_anomaly_score();
 
     // Break sequence: after 0, expect 3 instead of 1
     encoder.set_value(0);
-    encoder.feedforward(false).unwrap();
-    learner.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    learner.execute(false).unwrap();
 
     encoder.set_value(3);
-    encoder.feedforward(false).unwrap();
-    learner.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    learner.execute(false).unwrap();
     let broken_anomaly = learner.get_anomaly_score();
 
     assert!(broken_anomaly > learned_anomaly,
@@ -182,8 +182,8 @@ fn test_sequence_learner_historical_count_grows() {
     // Process several patterns
     for value in 0..3 {
         encoder.set_value(value);
-        encoder.feedforward(false).unwrap();
-        learner.feedforward(true).unwrap();
+        encoder.execute(false).unwrap();
+        learner.execute(true).unwrap();
     }
 
     let count = learner.get_historical_count();
@@ -209,8 +209,8 @@ fn test_sequence_learner_complex_sequence() {
     for _ in 0..20 {
         for &value in &sequence {
             encoder.set_value(value);
-            encoder.feedforward(false).unwrap();
-            learner.feedforward(true).unwrap();
+            encoder.execute(false).unwrap();
+            learner.execute(true).unwrap();
         }
     }
 
@@ -218,8 +218,8 @@ fn test_sequence_learner_complex_sequence() {
     let mut test_anomalies = Vec::new();
     for &value in &sequence {
         encoder.set_value(value);
-        encoder.feedforward(false).unwrap();
-        learner.feedforward(false).unwrap();
+        encoder.execute(false).unwrap();
+        learner.execute(false).unwrap();
         test_anomalies.push(learner.get_anomaly_score());
     }
 
@@ -242,8 +242,8 @@ fn test_sequence_learner_clear() {
 
     // Process some data
     encoder.set_value(0);
-    encoder.feedforward(false).unwrap();
-    learner.feedforward(true).unwrap();
+    encoder.execute(false).unwrap();
+    learner.execute(true).unwrap();
 
     // Clear
     learner.clear();
@@ -274,8 +274,8 @@ fn test_sequence_learner_output_sparse() {
 
     // Process
     encoder.set_value(0);
-    encoder.feedforward(false).unwrap();
-    learner.feedforward(true).unwrap();
+    encoder.execute(false).unwrap();
+    learner.execute(true).unwrap();
 
     // Output should be sparse
     let num_active = learner.output.borrow().state.num_set();
@@ -299,32 +299,32 @@ fn test_sequence_learner_alternating_patterns() {
     // Learn alternating pattern: 0 → 1 → 0 → 1
     for _ in 0..15 {
         encoder.set_value(0);
-        encoder.feedforward(false).unwrap();
-        learner.feedforward(true).unwrap();
+        encoder.execute(false).unwrap();
+        learner.execute(true).unwrap();
 
         encoder.set_value(1);
-        encoder.feedforward(false).unwrap();
-        learner.feedforward(true).unwrap();
+        encoder.execute(false).unwrap();
+        learner.execute(true).unwrap();
     }
 
     // Test learned pattern
     encoder.set_value(0);
-    encoder.feedforward(false).unwrap();
-    learner.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    learner.execute(false).unwrap();
 
     encoder.set_value(1);
-    encoder.feedforward(false).unwrap();
-    learner.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    learner.execute(false).unwrap();
     let pattern_anomaly = learner.get_anomaly_score();
 
     // Test incorrect pattern: 0 → 0
     encoder.set_value(0);
-    encoder.feedforward(false).unwrap();
-    learner.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    learner.execute(false).unwrap();
 
     encoder.set_value(0);
-    encoder.feedforward(false).unwrap();
-    learner.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    learner.execute(false).unwrap();
     let wrong_anomaly = learner.get_anomaly_score();
 
     assert!(wrong_anomaly > pattern_anomaly,

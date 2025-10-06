@@ -57,11 +57,7 @@ impl Block for MockEncoder {
         // No children
     }
 
-    fn push(&mut self) {
-        // No children
-    }
-
-    fn encode(&mut self) {
+    fn compute(&mut self) {
         // Generate different pattern based on index
         self.output.state.clear_all();
 
@@ -127,11 +123,7 @@ impl Block for MockProcessor {
         self.input.pull();
     }
 
-    fn push(&mut self) {
-        self.input.push();
-    }
-
-    fn encode(&mut self) {
+    fn compute(&mut self) {
         // CRITICAL: Skip processing if inputs haven't changed
         if !self.input.children_changed() {
             return;
@@ -176,12 +168,12 @@ fn test_basic_connection() {
 
     // Set pattern and process
     encoder.set_pattern(0);
-    encoder.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
 
     // Update shared output
     *encoder_output.borrow_mut() = encoder.output.clone();
 
-    processor.feedforward(false).unwrap();
+    processor.execute(false).unwrap();
 
     // Verify data flowed
     assert_eq!(processor.output.state.num_set(), 10);
@@ -198,16 +190,16 @@ fn test_lazy_copying_skips_unchanged() {
 
     // First feedforward - encoder produces output
     encoder.set_pattern(0);
-    encoder.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
     *encoder_output.borrow_mut() = encoder.output.clone();
-    processor.feedforward(false).unwrap();
+    processor.execute(false).unwrap();
 
     assert_eq!(processor.get_process_count(), 1);
 
     // Second feedforward - encoder produces SAME output
-    encoder.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
     *encoder_output.borrow_mut() = encoder.output.clone();
-    processor.feedforward(false).unwrap();
+    processor.execute(false).unwrap();
 
     // Process count should NOT increase (change tracking worked!)
     assert_eq!(processor.get_process_count(), 1);
@@ -223,17 +215,17 @@ fn test_change_tracking_detects_changes() {
 
     // First pattern
     encoder.set_pattern(0);
-    encoder.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
     *encoder_output.borrow_mut() = encoder.output.clone();
-    processor.feedforward(false).unwrap();
+    processor.execute(false).unwrap();
 
     assert_eq!(processor.get_process_count(), 1);
 
     // Second pattern (different)
     encoder.set_pattern(1);
-    encoder.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
     *encoder_output.borrow_mut() = encoder.output.clone();
-    processor.feedforward(false).unwrap();
+    processor.execute(false).unwrap();
 
     // Process count SHOULD increase (change detected)
     assert_eq!(processor.get_process_count(), 2);
@@ -255,13 +247,13 @@ fn test_multiple_children_concatenation() {
     encoder1.set_pattern(0);  // Bits 0-9
     encoder2.set_pattern(1);  // Bits 100-109
 
-    encoder1.feedforward(false).unwrap();
-    encoder2.feedforward(false).unwrap();
+    encoder1.execute(false).unwrap();
+    encoder2.execute(false).unwrap();
 
     *encoder1_output.borrow_mut() = encoder1.output.clone();
     *encoder2_output.borrow_mut() = encoder2.output.clone();
 
-    processor.feedforward(false).unwrap();
+    processor.execute(false).unwrap();
 
     // Should have bits from both encoders (concatenated)
     assert_eq!(processor.output.state.num_set(), 20);
@@ -291,22 +283,22 @@ fn test_partial_change_optimization() {
     encoder1.set_pattern(0);
     encoder2.set_pattern(0);
 
-    encoder1.feedforward(false).unwrap();
-    encoder2.feedforward(false).unwrap();
+    encoder1.execute(false).unwrap();
+    encoder2.execute(false).unwrap();
     *encoder1_output.borrow_mut() = encoder1.output.clone();
     *encoder2_output.borrow_mut() = encoder2.output.clone();
-    processor.feedforward(false).unwrap();
+    processor.execute(false).unwrap();
 
     assert_eq!(processor.get_process_count(), 1);
 
     // Second round - only encoder2 changes
     encoder2.set_pattern(1);
 
-    encoder1.feedforward(false).unwrap();  // No change
-    encoder2.feedforward(false).unwrap();  // Changed
+    encoder1.execute(false).unwrap();  // No change
+    encoder2.execute(false).unwrap();  // Changed
     *encoder1_output.borrow_mut() = encoder1.output.clone();
     *encoder2_output.borrow_mut() = encoder2.output.clone();
-    processor.feedforward(false).unwrap();
+    processor.execute(false).unwrap();
 
     // Should still process (at least one child changed)
     assert_eq!(processor.get_process_count(), 2);
@@ -319,7 +311,7 @@ fn test_temporal_access() {
     // Generate sequence of patterns
     for i in 0..5 {
         encoder.set_pattern(i);
-        encoder.feedforward(false).unwrap();
+        encoder.execute(false).unwrap();
     }
 
     // Access current and previous

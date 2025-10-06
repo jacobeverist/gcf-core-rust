@@ -33,7 +33,7 @@ fn test_context_learner_direct_activation() {
     context_out.borrow_mut().store();
 
     // Run learner
-    learner.feedforward(true).unwrap();
+    learner.execute(true).unwrap();
 
     // Should have high anomaly on first exposure
     let anomaly = learner.get_anomaly_score();
@@ -69,7 +69,7 @@ fn test_context_learner_learning_works() {
     context_out.borrow_mut().store();
 
     // First exposure - high anomaly
-    learner.feedforward(true).unwrap();
+    learner.execute(true).unwrap();
     let first_anomaly = learner.get_anomaly_score();
     let first_count = learner.get_historical_count();
 
@@ -77,7 +77,7 @@ fn test_context_learner_learning_works() {
     for _ in 0..10 {
         learner.step();
         learner.pull();
-        learner.encode();
+        learner.compute();
         learner.store();
         learner.learn();
     }

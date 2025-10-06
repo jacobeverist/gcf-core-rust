@@ -47,8 +47,8 @@ fn test_pooler_activation_count() {
     // Test at various input values
     for val in [0.0, 0.25, 0.5, 0.75, 1.0].iter() {
         encoder.set_value(*val);
-        encoder.feedforward(false).unwrap();
-        pooler.feedforward(false).unwrap();
+        encoder.execute(false).unwrap();
+        pooler.execute(false).unwrap();
 
         assert_eq!(
             pooler.output.state.num_set(),
@@ -73,8 +73,8 @@ fn test_pooler_winner_take_all() {
     pooler.init().unwrap();
 
     encoder.set_value(0.5);
-    encoder.feedforward(false).unwrap();
-    pooler.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    pooler.execute(false).unwrap();
 
     // Exactly num_as should be active
     assert_eq!(pooler.output.state.num_set(), 20);
@@ -106,16 +106,16 @@ fn test_pooler_learning_stability() {
 
     // Present same value repeatedly
     encoder.set_value(0.5);
-    encoder.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
 
     // First activation
-    pooler.feedforward(true).unwrap();
+    pooler.execute(true).unwrap();
     let first_output = pooler.output.state.get_acts();
 
     // Learn on same pattern multiple times
     for _ in 0..50 {
-        encoder.feedforward(false).unwrap();
-        pooler.feedforward(true).unwrap();
+        encoder.execute(false).unwrap();
+        pooler.execute(true).unwrap();
     }
 
     let final_output = pooler.output.state.get_acts();
@@ -150,13 +150,13 @@ fn test_pooler_different_inputs() {
 
     // Encode two different values
     encoder.set_value(0.2);
-    encoder.feedforward(false).unwrap();
-    pooler.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    pooler.execute(false).unwrap();
     let output1 = pooler.output.state.get_acts();
 
     encoder.set_value(0.8);
-    encoder.feedforward(false).unwrap();
-    pooler.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    pooler.execute(false).unwrap();
     let output2 = pooler.output.state.get_acts();
 
     // Different inputs should produce different (but possibly overlapping) outputs
@@ -180,14 +180,14 @@ fn test_pooler_always_update() {
     pooler.init().unwrap();
 
     encoder.set_value(0.5);
-    encoder.feedforward(false).unwrap();
-    pooler.feedforward(true).unwrap();
+    encoder.execute(false).unwrap();
+    pooler.execute(true).unwrap();
 
     let output1_count = pooler.output.state.num_set();
 
     // Same input again (but always_update=true)
-    encoder.feedforward(false).unwrap();
-    pooler.feedforward(true).unwrap();
+    encoder.execute(false).unwrap();
+    pooler.execute(true).unwrap();
 
     let output2_count = pooler.output.state.num_set();
 
@@ -210,8 +210,8 @@ fn test_pooler_clear() {
     pooler.init().unwrap();
 
     encoder.set_value(0.5);
-    encoder.feedforward(false).unwrap();
-    pooler.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    pooler.execute(false).unwrap();
 
     assert_eq!(pooler.output.state.num_set(), 30);
 
@@ -242,8 +242,8 @@ fn test_pooler_sparse_representation() {
     pooler.init().unwrap();
 
     encoder.set_value(0.5);
-    encoder.feedforward(false).unwrap();
-    pooler.feedforward(false).unwrap();
+    encoder.execute(false).unwrap();
+    pooler.execute(false).unwrap();
 
     // Verify sparsity: 40/2048 = 1.95%
     let sparsity = pooler.output.state.num_set() as f64 / 2048.0;
