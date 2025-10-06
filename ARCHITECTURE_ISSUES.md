@@ -6,7 +6,7 @@ This document tracks known architectural issues that require significant refacto
 
 ### Status
 **Severity:** High
-**Affected Tests:** 5 ContextLearner integration tests
+**Affected Tests:** 21 integration tests across 6 test files
 **Workaround:** Tests marked as `#[ignore]` until architectural fix implemented
 
 ### Description
@@ -38,11 +38,38 @@ The cloned `BlockOutput` is **disconnected** from the encoder. When `encoder.exe
 
 All marked with `#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]`:
 
-1. `test_context_learner_first_exposure_high_anomaly` (test_context_learner.rs:63)
-2. `test_context_learner_learning_reduces_anomaly` (test_context_learner.rs:92)
-3. `test_context_learner_different_context_causes_anomaly` (test_context_learner.rs:129)
-4. `test_context_learner_historical_count_grows` (test_context_learner.rs:170)
-5. `test_context_learner_output_sparse` (test_context_learner.rs:298)
+**test_context_learner.rs (5 tests):**
+1. `test_context_learner_first_exposure_high_anomaly` (line 66)
+2. `test_context_learner_learning_reduces_anomaly` (line 92)
+3. `test_context_learner_different_context_causes_anomaly` (line 129)
+4. `test_context_learner_historical_count_grows` (line 172)
+5. `test_context_learner_output_sparse` (line 298)
+
+**test_context_learner_simple.rs (1 test):**
+6. `test_context_learner_learning_works` (line 48)
+
+**test_learning_integration.rs (4 tests):**
+7. `test_encoder_to_classifier_pipeline` (line 39)
+8. `test_three_stage_pipeline` (line 83)
+9. `test_classifier_learning_convergence` (line 192)
+10. `test_sequential_training_batches` (line 319)
+
+**test_sequence_learner.rs (6 tests):**
+11. `test_sequence_learner_first_pattern_high_anomaly` (line 66)
+12. `test_sequence_learner_repeated_sequence_reduces_anomaly` (line 88)
+13. `test_sequence_learner_broken_sequence_high_anomaly` (line 124)
+14. `test_sequence_learner_historical_count_grows` (line 172)
+15. `test_sequence_learner_output_sparse` (line 268)
+16. `test_sequence_learner_alternating_patterns` (line 293)
+
+**test_temporal_integration.rs (4 tests):**
+17. `test_sequence_learner_multistep_prediction` (line 9)
+18. `test_context_learner_with_multiple_contexts` (line 68)
+19. `test_context_learner_disambiguation` (line 186)
+20. `test_sequence_learner_branching_sequences` (line 259)
+
+**test_transformer_integration.rs (1 test):**
+21. `test_mixed_transformer_types` (line 155)
 
 ### Symptoms
 
@@ -149,7 +176,7 @@ Tests use `#[ignore]` attribute to skip execution. Once architectural fix is imp
 
 ### Status
 **Severity:** Low
-**Affected Tests:** 2 ScalarTransformer semantic similarity tests
+**Affected Tests:** 3 ScalarTransformer semantic similarity tests
 **Workaround:** Tests marked as `#[ignore]` until precision algorithm improved
 
 ### Description
@@ -158,10 +185,14 @@ Values differing by ~1e-9 (within floating-point precision limits) don't produce
 
 ### Affected Tests
 
-Both marked with `#[ignore = "TODO: Fix floating-point precision in semantic similarity - see ARCHITECTURE_ISSUES.md"]`:
+All marked with `#[ignore = "TODO: Fix floating-point precision in semantic similarity - see ARCHITECTURE_ISSUES.md"]`:
 
-1. `test_scalar_precision` (test_scalar_transformer.rs:344)
-2. `test_scalar_semantic_similarity_gradient` (test_scalar_transformer.rs:192)
+**test_scalar_transformer.rs (2 tests):**
+1. `test_scalar_precision` (line 345)
+2. `test_scalar_semantic_similarity_gradient` (line 192)
+
+**test_transformer_integration.rs (1 test):**
+3. `test_scalar_semantic_properties` (line 52)
 
 ### Root Cause
 
@@ -204,7 +235,7 @@ Tests use `#[ignore]` attribute. This is a **pre-existing algorithmic issue** no
 
 ### Status
 **Severity:** Medium
-**Affected Tests:** 6 PersistenceTransformer integration tests
+**Affected Tests:** 7 PersistenceTransformer integration tests
 **Workaround:** Tests marked as `#[ignore]` until initialization bug fixed
 
 ### Description
@@ -215,12 +246,16 @@ The `PersistenceTransformer` incorrectly initializes `pct_val_prev` to `0.0` ins
 
 All marked with `#[ignore = "TODO: Fix PersistenceTransformer initialization - see ARCHITECTURE_ISSUES.md"]`:
 
-1. `test_persistence_counter_caps_at_max` (test_persistence_transformer.rs:133)
-2. `test_persistence_counter_exactly_10_percent_boundary`
-3. `test_persistence_practical_temperature_example`
-4. `test_persistence_multiple_stable_periods`
-5. `test_persistence_gradual_drift`
-6. `test_persistence_different_ranges`
+**test_persistence_transformer.rs (6 tests):**
+1. `test_persistence_counter_exactly_10_percent_boundary` (line 105)
+2. `test_persistence_counter_caps_at_max` (line 135)
+3. `test_persistence_multiple_stable_periods` (line 268)
+4. `test_persistence_gradual_drift` (line 292)
+5. `test_persistence_different_ranges` (line 340)
+6. `test_persistence_practical_temperature_example` (line 437)
+
+**test_transformer_integration.rs (1 test):**
+7. `test_stability_detection` (line 288)
 
 ### Root Cause
 

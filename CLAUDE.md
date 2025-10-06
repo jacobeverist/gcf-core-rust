@@ -1,5 +1,12 @@
 # CLAUDE.md - Gnomic Computing Framework
 
+> **Note:** This document describes the **C++ API**. The Rust implementation uses different method names:
+> - C++: `feedforward()` / Rust: `execute()`
+> - C++: `encode()` / Rust: `compute()`
+> - C++: `feedback()`, `push()`, `decode()` / Rust: Not implemented (removed in refactoring)
+>
+> See README.md for Rust API documentation.
+
 ## Project Overview
 
 Gnomic Computing is a C++ framework for building scalable Machine Learning applications using computational neuroscience principles. The framework models neuron activations with **binary patterns** (vectors of 1s and 0s) that form a "cortical language" for computation.

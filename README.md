@@ -69,14 +69,14 @@ All blocks implement the `Block` trait with a standardized lifecycle:
 ```rust
 pub trait Block {
     fn init(&mut self) -> Result<()>;
-    fn encode(&mut self);
+    fn compute(&mut self);
     fn learn(&mut self);
-    fn feedforward(&mut self, learn: bool) -> Result<()>;
+    fn execute(&mut self, learn: bool) -> Result<()>;
     // ... more methods
 }
 ```
 
-**Lifecycle**: `step() → pull() → encode() → store() → learn()`
+**Lifecycle**: `step() → pull() → compute() → store() → learn()`
 
 #### 3. BlockInput/BlockOutput - Lazy Data Transfer
 
@@ -144,7 +144,7 @@ let mut encoder = ScalarTransformer::new(
 );
 
 encoder.set_value(42.5);
-encoder.feedforward(false)?;
+encoder.execute(false)?;
 
 // Similar values produce overlapping patterns
 assert_eq!(encoder.output.state.num_set(), 256);
@@ -165,7 +165,7 @@ let mut encoder = DiscreteTransformer::new(
 );
 
 encoder.set_value(3); // Wednesday
-encoder.feedforward(false)?;
+encoder.execute(false)?;
 
 // Different categories produce distinct patterns (no overlap)
 ```
@@ -188,7 +188,7 @@ let mut encoder = PersistenceTransformer::new(
 );
 
 encoder.set_value(50.0);
-encoder.feedforward(false)?;
+encoder.execute(false)?;
 
 // Encodes whether value changed significantly
 ```
@@ -231,8 +231,8 @@ pooler.init()?;
 // Training
 for value in training_data {
     encoder.set_value(value);
-    encoder.feedforward(false)?;
-    pooler.feedforward(true)?; // Learn
+    encoder.execute(false)?;
+    pooler.execute(true)?; // Learn
 }
 ```
 
@@ -276,14 +276,14 @@ for (value, label) in training_data {
     encoder.set_value(value);
     classifier.set_label(label);
 
-    encoder.feedforward(false)?;
-    classifier.feedforward(true)?; // Learn
+    encoder.execute(false)?;
+    classifier.execute(true)?; // Learn
 }
 
 // Inference
 encoder.set_value(test_value);
-encoder.feedforward(false)?;
-classifier.feedforward(false)?; // No learning
+encoder.execute(false)?;
+classifier.execute(false)?; // No learning
 
 let probs = classifier.get_probabilities();
 println!("Class probabilities: {:?}", probs);
@@ -335,9 +335,9 @@ for (input_val, context_val) in training_data {
     input_encoder.set_value(input_val);
     context_encoder.set_value(context_val);
 
-    input_encoder.feedforward(false)?;
-    context_encoder.feedforward(false)?;
-    learner.feedforward(true)?; // Learn
+    input_encoder.execute(false)?;
+    context_encoder.execute(false)?;
+    learner.execute(true)?; // Learn
 }
 
 // Anomaly detection
@@ -385,19 +385,19 @@ learner.init()?;
 for _ in 0..10 {  // Multiple epochs
     for value in &[0, 1, 2, 3] {
         encoder.set_value(*value);
-        encoder.feedforward(false)?;
-        learner.feedforward(true)?; // Learn transitions
+        encoder.execute(false)?;
+        learner.execute(true)?; // Learn transitions
     }
 }
 
 // Detect broken sequence
 encoder.set_value(0);
-encoder.feedforward(false)?;
-learner.feedforward(false)?; // Expected
+encoder.execute(false)?;
+learner.execute(false)?; // Expected
 
 encoder.set_value(7); // Out of sequence!
-encoder.feedforward(false)?;
-learner.feedforward(false)?;
+encoder.execute(false)?;
+learner.execute(false)?;
 
 let anomaly = learner.get_anomaly_score();
 println!("Sequence break anomaly: {:.2}%", anomaly * 100.0);
@@ -489,7 +489,7 @@ fn main() -> gnomics::Result<()> {
     // Encode values
     for value in [25.0, 50.0, 75.0] {
         encoder.set_value(value);
-        encoder.feedforward(false)?;
+        encoder.execute(false)?;
 
         println!("Value {}: {} active bits",
                  value,
@@ -665,9 +665,9 @@ pooler.input.add_child(Rc::new(RefCell::new(encoder2.output.clone())), 0);
 pooler.init()?;
 
 // Process data
-encoder1.feedforward(false)?;
-encoder2.feedforward(false)?;
-pooler.feedforward(true)?; // Pull data from children automatically
+encoder1.execute(false)?;
+encoder2.execute(false)?;
+pooler.execute(true)?; // Pull data from children automatically
 ```
 
 ### 2. Time History
