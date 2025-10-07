@@ -165,7 +165,7 @@ fn test_persistence_encoding_num_active() {
     for _ in 0..10 {
         pt.execute(false).unwrap();
         assert_eq!(
-            pt.output.state.num_set(),
+            pt.output.borrow().state.num_set(),
             128,
             "Should always have 128 active bits"
         );
@@ -183,7 +183,7 @@ fn test_persistence_encoding_changes_with_counter() {
     for i in 0..=10 {
         pt.execute(false).unwrap();
         if i % 2 == 0 {
-            patterns.push(pt.output.state.clone());
+            patterns.push(pt.output.borrow().state.clone());
         }
     }
 
@@ -213,7 +213,7 @@ fn test_persistence_low_vs_high() {
     }
 
     // Different persistence levels should have different patterns
-    let overlap = pt_low.output.state.num_similar(&pt_high.output.state);
+    let overlap = pt_low.output.borrow().state.num_similar(&pt_high.output.borrow().state);
     assert!(
         overlap < 100,
         "Different persistence levels should have different patterns, overlap={}",
@@ -234,7 +234,7 @@ fn test_persistence_progression() {
         pt.execute(false).unwrap();
 
         if i % 10 == 0 {
-            let acts = pt.output.state.get_acts();
+            let acts = pt.output.borrow().state.get_acts();
             let start = acts[0];
 
             if i > 0 {
@@ -260,7 +260,7 @@ fn test_persistence_clear() {
 
     pt.clear();
 
-    assert_eq!(pt.output.state.num_set(), 0, "Output should be cleared");
+    assert_eq!(pt.output.borrow().state.num_set(), 0, "Output should be cleared");
     assert_eq!(pt.get_counter(), 0, "Counter should be reset");
 }
 
@@ -365,7 +365,7 @@ fn test_persistence_zero_counter_encoding() {
 
     // Counter is 1, but percentage is 1/100 = 0.01
     // Should activate bits near the start
-    let acts = pt.output.state.get_acts();
+    let acts = pt.output.borrow().state.get_acts();
     assert!(
         acts[0] < 50,
         "Low persistence should encode near start, got {}",
@@ -387,7 +387,7 @@ fn test_persistence_max_counter_encoding() {
     assert_eq!(pt.get_counter(), max_step);
 
     // Should activate bits near the end
-    let acts = pt.output.state.get_acts();
+    let acts = pt.output.borrow().state.get_acts();
     assert!(
         acts[acts.len() - 1] > 900,
         "Max persistence should encode near end, got {}",
@@ -402,13 +402,13 @@ fn test_persistence_history_tracking() {
     // Low persistence
     pt.set_value(0.5);
     pt.execute(false).unwrap();
-    let acts1 = pt.output.get_bitarray(0).get_acts();
+    let acts1 = pt.output.borrow().get_bitarray(0).get_acts();
 
     // Build more persistence
     for _ in 0..10 {
         pt.execute(false).unwrap();
     }
-    let acts2 = pt.output.get_bitarray(0).get_acts();
+    let acts2 = pt.output.borrow().get_bitarray(0).get_acts();
 
     // Should be different
     assert_ne!(acts1, acts2, "Different persistence should encode differently");
@@ -430,7 +430,7 @@ fn test_persistence_deterministic() {
 
     // Should produce identical results
     assert_eq!(pt1.get_counter(), pt2.get_counter());
-    assert_eq!(pt1.output.state, pt2.output.state);
+    assert_eq!(pt1.output.borrow().state, pt2.output.borrow().state);
 }
 
 #[test]
@@ -445,7 +445,7 @@ fn test_persistence_practical_temperature_example() {
         temp.execute(false).unwrap();
     }
 
-    let stable_pattern = temp.output.state.clone();
+    let stable_pattern = temp.output.borrow().state.clone();
     let stable_counter = temp.get_counter();
 
     assert_eq!(stable_counter, 50, "Should build up persistence");
@@ -472,7 +472,7 @@ fn test_persistence_practical_temperature_example() {
 
     assert_eq!(temp.get_counter(), 30);
 
-    let hot_pattern = temp.output.state.clone();
+    let hot_pattern = temp.output.borrow().state.clone();
 
     // Stable patterns at different persistence should differ
     assert_ne!(stable_pattern, hot_pattern);

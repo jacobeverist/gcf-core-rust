@@ -61,8 +61,8 @@
 //! );
 //!
 //! // Connect input and context
-//! learner.input.add_child(Rc::new(RefCell::new(input_encoder.output.clone())), 0);
-//! learner.context.add_child(Rc::new(RefCell::new(context_encoder.output.clone())), 0);
+//! learner.input.add_child(input_encoder.output(), 0);
+//! learner.context.add_child(context_encoder.output(), 0);
 //! learner.init().unwrap();
 //!
 //! // Process patterns
@@ -478,6 +478,10 @@ impl Block for ContextLearner {
         bytes += self.input_acts.capacity() * std::mem::size_of::<usize>();
         bytes += self.d_acts.capacity() * std::mem::size_of::<usize>();
         bytes
+    }
+
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        Rc::clone(&self.output)
     }
 }
 

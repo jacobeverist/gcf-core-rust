@@ -24,19 +24,21 @@
 //! dt.execute(false).unwrap();
 //!
 //! // Each category gets 256 bits (1024 / 4)
-//! assert_eq!(dt.output.state.num_set(), 256);
+//! assert_eq!(dt.output.borrow().state.num_set(), 256);
 //!
 //! // Different categories have zero overlap
 //! let mut dt2 = DiscreteTransformer::new(4, 1024, 2, 0);
 //! dt2.set_value(1);
 //! dt2.execute(false).unwrap();
 //!
-//! let overlap = dt.output.state.num_similar(&dt2.output.state);
+//! let overlap = dt.output.borrow().state.num_similar(&dt2.output.borrow().state);
 //! assert_eq!(overlap, 0);  // No overlap
 //! ```
 
 use crate::{Block, BlockBase, BlockOutput, Result};
+use std::cell::RefCell;
 use std::path::Path;
+use std::rc::Rc;
 
 /// Encodes discrete categorical values into distinct binary patterns.
 ///
@@ -60,7 +62,7 @@ pub struct DiscreteTransformer {
     base: BlockBase,
 
     /// Block output with history
-    pub output: BlockOutput,
+    pub output: Rc<RefCell<BlockOutput>>,
 
     // Parameters
     num_v: usize,      // Number of discrete values
@@ -112,9 +114,13 @@ impl DiscreteTransformer {
         let num_as = num_s / num_v;
         let dif_s = num_s - num_as;
 
+        // Initialize output
+        let output = Rc::new(RefCell::new(BlockOutput::new()));
+        output.borrow_mut().setup(num_t, num_s);
+
         let mut dt = Self {
             base: BlockBase::new(seed),
-            output: BlockOutput::new(),
+            output,
             num_v,
             num_s,
             num_as,
@@ -123,8 +129,6 @@ impl DiscreteTransformer {
             value_prev: usize::MAX, // Sentinel value (matches C++ 0xFFFFFFFF)
         };
 
-        // Initialize output
-        dt.output.setup(num_t, num_s);
         dt.base.set_initialized(true);
 
         dt
@@ -190,13 +194,13 @@ impl Block for DiscreteTransformer {
     }
 
     fn clear(&mut self) {
-        self.output.clear();
+        self.output.borrow_mut().clear();
         self.value = 0;
         self.value_prev = usize::MAX;
     }
 
     fn step(&mut self) {
-        self.output.step();
+        self.output.borrow_mut().step();
     }
 
     fn pull(&mut self) {
@@ -220,8 +224,9 @@ impl Block for DiscreteTransformer {
             let beg = ((self.dif_s as f64) * percent) as usize;
 
             // Clear output and activate contiguous window
-            self.output.state.clear_all();
-            self.output.state.set_range(beg, self.num_as);
+            let mut output = self.output.borrow_mut();
+            output.state.clear_all();
+            output.state.set_range(beg, self.num_as);
 
             self.value_prev = self.value;
         }
@@ -232,11 +237,15 @@ impl Block for DiscreteTransformer {
     }
 
     fn store(&mut self) {
-        self.output.store();
+        self.output.borrow_mut().store();
+    }
+
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        Rc::clone(&self.output)
     }
 
     fn memory_usage(&self) -> usize {
-        std::mem::size_of::<Self>() + self.output.memory_usage()
+        std::mem::size_of::<Self>() + self.output.borrow().memory_usage()
     }
 }
 
@@ -287,7 +296,7 @@ mod tests {
         dt.compute();
 
         // Should have num_as active bits (1024 / 4 = 256)
-        assert_eq!(dt.output.state.num_set(), 256);
+        assert_eq!(dt.output.borrow().state.num_set(), 256);
     }
 
     #[test]
@@ -302,7 +311,7 @@ mod tests {
         dt2.compute();
 
         // Different categories should have zero overlap
-        let overlap = dt1.output.state.num_similar(&dt2.output.state);
+        let overlap = dt1.output.borrow().state.num_similar(&dt2.output.borrow().state);
         assert_eq!(overlap, 0);
     }
 
@@ -318,7 +327,7 @@ mod tests {
         dt2.compute();
 
         // Same category should be identical
-        assert_eq!(dt1.output.state, dt2.output.state);
+        assert_eq!(dt1.output.borrow().state, dt2.output.borrow().state);
     }
 
     #[test]
@@ -339,8 +348,9 @@ mod tests {
             for j in (i + 1)..num_v {
                 let overlap = transformers[i]
                     .output
+                    .borrow()
                     .state
-                    .num_similar(&transformers[j].output.state);
+                    .num_similar(&transformers[j].output.borrow().state);
                 assert_eq!(
                     overlap, 0,
                     "Categories {} and {} should have no overlap",
@@ -356,11 +366,11 @@ mod tests {
 
         dt.set_value(5);
         dt.compute();
-        let acts1 = dt.output.state.get_acts();
+        let acts1 = dt.output.borrow().state.get_acts();
 
         // Encode again without changing value
         dt.compute();
-        let acts2 = dt.output.state.get_acts();
+        let acts2 = dt.output.borrow().state.get_acts();
 
         // Should be identical (optimization check)
         assert_eq!(acts1, acts2);
@@ -373,7 +383,7 @@ mod tests {
         dt.set_value(5);
         dt.execute(false).unwrap();
 
-        assert_eq!(dt.output.state.num_set(), 102); // 1024 / 10
+        assert_eq!(dt.output.borrow().state.num_set(), 102); // 1024 / 10
     }
 
     #[test]
@@ -385,7 +395,7 @@ mod tests {
 
         dt.clear();
 
-        assert_eq!(dt.output.state.num_set(), 0);
+        assert_eq!(dt.output.borrow().state.num_set(), 0);
         assert_eq!(dt.get_value(), 0);
     }
 
@@ -402,13 +412,13 @@ mod tests {
 
         dt.set_value(0);
         dt.compute();
-        let acts0 = dt.output.state.get_acts();
-        assert_eq!(dt.output.state.num_set(), 512);
+        let acts0 = dt.output.borrow().state.get_acts();
+        assert_eq!(dt.output.borrow().state.num_set(), 512);
 
         dt.set_value(1);
         dt.compute();
-        let acts1 = dt.output.state.get_acts();
-        assert_eq!(dt.output.state.num_set(), 512);
+        let acts1 = dt.output.borrow().state.get_acts();
+        assert_eq!(dt.output.borrow().state.num_set(), 512);
 
         // Verify no overlap
         let overlap = acts0

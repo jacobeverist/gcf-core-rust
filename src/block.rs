@@ -42,7 +42,10 @@
 //! ```
 
 use crate::error::Result;
+use crate::BlockOutput;
+use std::cell::RefCell;
 use std::path::Path;
+use std::rc::Rc;
 
 /// Core trait for all Gnomics computational blocks.
 ///
@@ -108,6 +111,20 @@ pub trait Block {
     /// all internal structures.
     fn memory_usage(&self) -> usize;
 
+    /// Get a reference to the block's output.
+    ///
+    /// Returns a shared reference to the BlockOutput wrapped in Rc<RefCell<>>.
+    /// This allows multiple blocks to share the same output without cloning.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// // Connect blocks
+    /// let encoder_out = encoder.output();
+    /// learner.input.add_child(encoder_out, 0);
+    /// ```
+    fn output(&self) -> Rc<RefCell<BlockOutput>>;
+
     /// Execute the block's computation pipeline.
     ///
     /// Executes the full forward computation pipeline:
@@ -146,6 +163,8 @@ pub trait Block {
 mod tests {
     use super::*;
 
+    use crate::BlockOutput;
+
     // Mock block for testing
     struct MockBlock {
         step_called: bool,
@@ -153,6 +172,7 @@ mod tests {
         compute_called: bool,
         store_called: bool,
         learn_called: bool,
+        output: Rc<RefCell<BlockOutput>>,
     }
 
     impl MockBlock {
@@ -163,6 +183,7 @@ mod tests {
                 compute_called: false,
                 store_called: false,
                 learn_called: false,
+                output: Rc::new(RefCell::new(BlockOutput::new())),
             }
         }
 
@@ -208,6 +229,10 @@ mod tests {
 
         fn memory_usage(&self) -> usize {
             0
+        }
+
+        fn output(&self) -> Rc<RefCell<BlockOutput>> {
+            Rc::clone(&self.output)
         }
     }
 

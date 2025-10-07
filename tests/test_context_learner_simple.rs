@@ -45,7 +45,6 @@ fn test_context_learner_direct_activation() {
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_context_learner_learning_works() {
     let mut learner = ContextLearner::new(3, 2, 8, 32, 20, 20, 2, 1, 2, false, 42);
 

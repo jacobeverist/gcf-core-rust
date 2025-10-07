@@ -7,20 +7,15 @@
 //! - Multi-stage learning convergence
 
 use gnomics::{Block, PatternClassifier, PatternPooler, ScalarTransformer};
-use std::cell::RefCell;
-use std::rc::Rc;
 
 #[test]
 fn test_encoder_to_pooler_pipeline() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 2048, 256, 2, 42);
     let mut pooler = PatternPooler::new(2048, 50, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 42);
 
-    let encoder_output = Rc::new(RefCell::new(encoder.output.clone()));
-
-
     pooler
         .input
-        .add_child(encoder_output.clone(), 0);
+        .add_child(encoder.output(), 0);
     pooler.init().unwrap();
 
     // Process several values
@@ -31,22 +26,18 @@ fn test_encoder_to_pooler_pipeline() {
         encoder.execute(false).unwrap();
         pooler.execute(false).unwrap();
 
-        assert_eq!(pooler.output.state.num_set(), 50, "Failed at value {}", val);
+        assert_eq!(pooler.output().borrow().state.num_set(), 50, "Failed at value {}", val);
     }
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_encoder_to_classifier_pipeline() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 2048, 256, 2, 42);
     let mut classifier = PatternClassifier::new(4, 2048, 16, 20, 2, 1, 0.8, 0.5, 0.3, 2, 42);
 
-    let encoder_output = Rc::new(RefCell::new(encoder.output.clone()));
-
-
     classifier
         .input
-        .add_child(encoder_output.clone(), 0);
+        .add_child(encoder.output(), 0);
     classifier.init().unwrap();
 
     // Train on simple pattern
@@ -80,7 +71,6 @@ fn test_encoder_to_classifier_pipeline() {
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_three_stage_pipeline() {
     // ScalarTransformer → PatternPooler → PatternClassifier
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 2048, 256, 2, 42);
@@ -88,16 +78,12 @@ fn test_three_stage_pipeline() {
     let mut classifier = PatternClassifier::new(4, 1024, 10, 20, 2, 1, 0.8, 0.5, 0.3, 2, 42);
 
     // Connect pipeline
-    let encoder_output = Rc::new(RefCell::new(encoder.output.clone()));
-
     pooler
         .input
-        .add_child(encoder_output.clone(), 0);
-    let pooler_output = Rc::new(RefCell::new(pooler.output.clone()));
-
+        .add_child(encoder.output(), 0);
     classifier
         .input
-        .add_child(pooler_output.clone(), 0);
+        .add_child(pooler.output(), 0);
 
     pooler.init().unwrap();
     classifier.init().unwrap();
@@ -148,12 +134,9 @@ fn test_pooler_representation_stability() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 2048, 256, 2, 42);
     let mut pooler = PatternPooler::new(1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 42);
 
-    let encoder_output = Rc::new(RefCell::new(encoder.output.clone()));
-
-
     pooler
         .input
-        .add_child(encoder_output.clone(), 0);
+        .add_child(encoder.output(), 0);
     pooler.init().unwrap();
 
     encoder.set_value(0.5);
@@ -161,7 +144,7 @@ fn test_pooler_representation_stability() {
     // Get representation before learning
     encoder.execute(false).unwrap();
     pooler.execute(false).unwrap();
-    let repr_before = pooler.output.state.get_acts();
+    let repr_before = pooler.output().borrow().state.get_acts();
 
     // Learn on same pattern many times
     for _ in 0..100 {
@@ -172,7 +155,7 @@ fn test_pooler_representation_stability() {
     // Get representation after learning
     encoder.execute(false).unwrap();
     pooler.execute(false).unwrap();
-    let repr_after = pooler.output.state.get_acts();
+    let repr_after = pooler.output().borrow().state.get_acts();
 
     // Compute stability (overlap)
     let before_set: std::collections::HashSet<_> = repr_before.iter().collect();
@@ -189,17 +172,13 @@ fn test_pooler_representation_stability() {
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_classifier_learning_convergence() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 2048, 256, 2, 42);
     let mut classifier = PatternClassifier::new(2, 2048, 20, 20, 2, 1, 0.8, 0.5, 0.3, 2, 42);
 
-    let encoder_output = Rc::new(RefCell::new(encoder.output.clone()));
-
-
     classifier
         .input
-        .add_child(encoder_output.clone(), 0);
+        .add_child(encoder.output(), 0);
     classifier.init().unwrap();
 
     // Binary classification: low vs high
@@ -257,17 +236,12 @@ fn test_multiple_classifiers_same_encoder() {
     let mut classifier1 = PatternClassifier::new(2, 2048, 20, 20, 2, 1, 0.8, 0.5, 0.3, 2, 42);
     let mut classifier2 = PatternClassifier::new(3, 2046, 15, 20, 2, 1, 0.8, 0.5, 0.3, 2, 43);
 
-    let encoder_output = Rc::new(RefCell::new(encoder.output.clone()));
-
-
     classifier1
         .input
-        .add_child(encoder_output.clone(), 0);
-    let encoder_output = Rc::new(RefCell::new(encoder.output.clone()));
-
+        .add_child(encoder.output(), 0);
     classifier2
         .input
-        .add_child(encoder_output.clone(), 0);
+        .add_child(encoder.output(), 0);
 
     classifier1.init().unwrap();
     classifier2.init().unwrap();
@@ -281,8 +255,8 @@ fn test_multiple_classifiers_same_encoder() {
     classifier2.execute(false).unwrap();
 
     // Both should produce outputs
-    assert!(classifier1.output.state.num_set() > 0);
-    assert!(classifier2.output.state.num_set() > 0);
+    assert!(classifier1.output().borrow().state.num_set() > 0);
+    assert!(classifier2.output().borrow().state.num_set() > 0);
 }
 
 #[test]
@@ -291,12 +265,9 @@ fn test_pooler_dimensionality_reduction() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 4096, 512, 2, 42);
     let mut pooler = PatternPooler::new(4096, 50, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 42);
 
-    let encoder_output = Rc::new(RefCell::new(encoder.output.clone()));
-
-
     pooler
         .input
-        .add_child(encoder_output.clone(), 0);
+        .add_child(encoder.output(), 0);
     pooler.init().unwrap();
 
     encoder.set_value(0.5);
@@ -316,18 +287,14 @@ fn test_pooler_dimensionality_reduction() {
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_sequential_training_batches() {
     // Test that classifier handles sequential training batches
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 2048, 256, 2, 42);
     let mut classifier = PatternClassifier::new(2, 2048, 20, 20, 2, 1, 0.8, 0.5, 0.3, 2, 42);
 
-    let encoder_output = Rc::new(RefCell::new(encoder.output.clone()));
-
-
     classifier
         .input
-        .add_child(encoder_output.clone(), 0);
+        .add_child(encoder.output(), 0);
     classifier.init().unwrap();
 
     // Batch 1: Train on label 0

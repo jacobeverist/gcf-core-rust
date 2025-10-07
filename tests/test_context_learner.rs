@@ -37,10 +37,10 @@ fn test_context_learner_init() {
     // Connect inputs
     learner
         .input
-        .add_child(Rc::new(RefCell::new(input_encoder.output.clone())), 0);
+        .add_child(input_encoder.output(), 0);
     learner
         .context
-        .add_child(Rc::new(RefCell::new(context_encoder.output.clone())), 0);
+        .add_child(context_encoder.output(), 0);
 
     // Initialize
     let result = learner.init();
@@ -60,21 +60,15 @@ fn test_context_learner_historical_count_empty() {
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_context_learner_first_exposure_high_anomaly() {
     let mut input_encoder = DiscreteTransformer::new(10, 10, 2, 0);
-    let input_out = Rc::new(RefCell::new(input_encoder.output.clone()));
-let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
-    let context_out = Rc::new(RefCell::new(context_encoder.output.clone()));
-
-    let input_out = Rc::new(RefCell::new(input_encoder.output.clone()));
-    let context_out = Rc::new(RefCell::new(context_encoder.output.clone()));
+    let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
 
     let mut learner = ContextLearner::new(10, 2, 4, 16, 8, 20, 2, 1, 2, false, 42);
 
     // Connect
-    learner.input.add_child(input_out.clone(), 0);
-    learner.context.add_child(context_out.clone(), 0);
+    learner.input.add_child(input_encoder.output(), 0);
+    learner.context.add_child(context_encoder.output(), 0);
     learner.init().unwrap();
 
     // First exposure should have high anomaly
@@ -89,22 +83,19 @@ let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_context_learner_learning_reduces_anomaly() {
     let mut input_encoder = DiscreteTransformer::new(10, 10, 2, 0);
-    let input_out = Rc::new(RefCell::new(input_encoder.output.clone()));
-let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
-    let context_out = Rc::new(RefCell::new(context_encoder.output.clone()));
+    let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
 
     let mut learner = ContextLearner::new(10, 2, 8, 32, 20, 20, 2, 1, 2, false, 42);
 
     // Connect
     learner
         .input
-        .add_child(input_out.clone(), 0);
+        .add_child(input_encoder.output(), 0);
     learner
         .context
-        .add_child(context_out.clone(), 0);
+        .add_child(context_encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn association multiple times
@@ -126,12 +117,11 @@ let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_context_learner_different_context_causes_anomaly() {
     let mut input_encoder = DiscreteTransformer::new(10, 10, 2, 0);
-    let input_out = Rc::new(RefCell::new(input_encoder.output.clone()));
-let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
-    let context_out = Rc::new(RefCell::new(context_encoder.output.clone()));
+    let input_out = input_encoder.output();
+    let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
+    let context_out = context_encoder.output();
 
     let mut learner = ContextLearner::new(10, 2, 8, 32, 20, 20, 2, 1, 2, false, 42);
 
@@ -167,12 +157,11 @@ let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_context_learner_historical_count_grows() {
     let mut input_encoder = DiscreteTransformer::new(5, 5, 2, 0);
-    let input_out = Rc::new(RefCell::new(input_encoder.output.clone()));
-let mut context_encoder = DiscreteTransformer::new(3, 64, 2, 0);
-    let context_out = Rc::new(RefCell::new(context_encoder.output.clone()));
+    let input_out = input_encoder.output();
+    let mut context_encoder = DiscreteTransformer::new(3, 64, 2, 0);
+    let context_out = context_encoder.output();
 
     let mut learner = ContextLearner::new(5, 2, 4, 16, 8, 20, 2, 1, 2, false, 42);
 
@@ -211,9 +200,9 @@ let mut context_encoder = DiscreteTransformer::new(3, 64, 2, 0);
 #[test]
 fn test_context_learner_multiple_associations() {
     let mut input_encoder = DiscreteTransformer::new(10, 10, 2, 0);
-    let input_out = Rc::new(RefCell::new(input_encoder.output.clone()));
-let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
-    let context_out = Rc::new(RefCell::new(context_encoder.output.clone()));
+    let input_out = input_encoder.output();
+    let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
+    let context_out = context_encoder.output();
 
     let mut learner = ContextLearner::new(10, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
 
@@ -257,9 +246,9 @@ let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
 #[test]
 fn test_context_learner_clear() {
     let mut input_encoder = DiscreteTransformer::new(5, 5, 2, 0);
-    let input_out = Rc::new(RefCell::new(input_encoder.output.clone()));
-let mut context_encoder = DiscreteTransformer::new(3, 64, 2, 0);
-    let context_out = Rc::new(RefCell::new(context_encoder.output.clone()));
+    let input_out = input_encoder.output();
+    let mut context_encoder = DiscreteTransformer::new(3, 64, 2, 0);
+    let context_out = context_encoder.output();
 
     let mut learner = ContextLearner::new(5, 2, 4, 16, 8, 20, 2, 1, 2, false, 42);
 
@@ -295,12 +284,11 @@ fn test_context_learner_memory_usage() {
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_context_learner_output_sparse() {
     let mut input_encoder = DiscreteTransformer::new(10, 10, 2, 0);
-    let input_out = Rc::new(RefCell::new(input_encoder.output.clone()));
-let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
-    let context_out = Rc::new(RefCell::new(context_encoder.output.clone()));
+    let input_out = input_encoder.output();
+    let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
+    let context_out = context_encoder.output();
 
     let mut learner = ContextLearner::new(10, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
 

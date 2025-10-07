@@ -71,7 +71,7 @@
 //! );
 //!
 //! // Connect input
-//! learner.input.add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
+//! learner.input.add_child(encoder.output(), 0);
 //! learner.init().unwrap();
 //!
 //! // Learn sequence: 0 → 1 → 2 → 0 → 1 → 2 ...
@@ -493,6 +493,10 @@ impl Block for SequenceLearner {
         bytes += self.input_acts.capacity() * std::mem::size_of::<usize>();
         bytes += self.d_acts.capacity() * std::mem::size_of::<usize>();
         bytes
+    }
+
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        Rc::clone(&self.output)
     }
 }
 

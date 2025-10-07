@@ -43,7 +43,7 @@ fn test_sequence_learner_init() {
     // Connect input
     learner
         .input
-        .add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
+        .add_child(encoder.output(), 0);
 
     // Initialize
     let result = learner.init();
@@ -63,7 +63,6 @@ fn test_sequence_learner_historical_count_empty() {
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_sequence_learner_first_pattern_high_anomaly() {
     let mut encoder = DiscreteTransformer::new(10, 10, 2, 0);
 
@@ -72,7 +71,7 @@ fn test_sequence_learner_first_pattern_high_anomaly() {
     // Connect
     learner
         .input
-        .add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
+        .add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // First pattern should have high anomaly
@@ -85,7 +84,6 @@ fn test_sequence_learner_first_pattern_high_anomaly() {
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_sequence_learner_repeated_sequence_reduces_anomaly() {
     let mut encoder = DiscreteTransformer::new(5, 5, 2, 0);
 
@@ -94,7 +92,7 @@ fn test_sequence_learner_repeated_sequence_reduces_anomaly() {
     // Connect
     learner
         .input
-        .add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
+        .add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn sequence: 0 → 1 → 2 → 0 → 1 → 2
@@ -121,7 +119,6 @@ fn test_sequence_learner_repeated_sequence_reduces_anomaly() {
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_sequence_learner_broken_sequence_high_anomaly() {
     let mut encoder = DiscreteTransformer::new(5, 5, 2, 0);
 
@@ -130,7 +127,7 @@ fn test_sequence_learner_broken_sequence_high_anomaly() {
     // Connect
     learner
         .input
-        .add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
+        .add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn sequence: 0 → 1 → 2
@@ -169,7 +166,6 @@ fn test_sequence_learner_broken_sequence_high_anomaly() {
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_sequence_learner_historical_count_grows() {
     let mut encoder = DiscreteTransformer::new(5, 5, 2, 0);
 
@@ -178,7 +174,7 @@ fn test_sequence_learner_historical_count_grows() {
     // Connect
     learner
         .input
-        .add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
+        .add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     assert_eq!(learner.get_historical_count(), 0);
@@ -203,7 +199,7 @@ fn test_sequence_learner_complex_sequence() {
     // Connect
     learner
         .input
-        .add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
+        .add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn a longer sequence
@@ -241,7 +237,7 @@ fn test_sequence_learner_clear() {
     // Connect
     learner
         .input
-        .add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
+        .add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Process some data
@@ -265,7 +261,6 @@ fn test_sequence_learner_memory_usage() {
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_sequence_learner_output_sparse() {
     let mut encoder = DiscreteTransformer::new(10, 10, 2, 0);
 
@@ -274,7 +269,7 @@ fn test_sequence_learner_output_sparse() {
     // Connect
     learner
         .input
-        .add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
+        .add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Process
@@ -290,7 +285,6 @@ fn test_sequence_learner_output_sparse() {
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_sequence_learner_alternating_patterns() {
     let mut encoder = DiscreteTransformer::new(4, 4, 2, 0);
 
@@ -299,7 +293,7 @@ fn test_sequence_learner_alternating_patterns() {
     // Connect
     learner
         .input
-        .add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
+        .add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn alternating pattern: 0 → 1 → 0 → 1

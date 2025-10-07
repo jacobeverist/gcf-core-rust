@@ -31,7 +31,7 @@
 //! let mut pooler = PatternPooler::new(1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0);
 //!
 //! // Connect encoder to pooler
-//! pooler.input.add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
+//! pooler.input.add_child(encoder.output(), 0);
 //! pooler.init().unwrap();
 //!
 //! // Encode and learn sparse representation
@@ -40,11 +40,13 @@
 //! pooler.execute(true).unwrap();  // Learn=true
 //!
 //! // Verify sparse output
-//! assert_eq!(pooler.output.state.num_set(), 40);
+//! assert_eq!(pooler.output().borrow().state.num_set(), 40);
 //! ```
 
 use crate::{Block, BlockBase, BlockInput, BlockMemory, BlockOutput, Result};
+use std::cell::RefCell;
 use std::path::Path;
+use std::rc::Rc;
 
 /// Learns sparse distributed representations via competitive learning.
 ///
@@ -64,7 +66,7 @@ pub struct PatternPooler {
     pub input: BlockInput,
 
     /// Block output with history
-    pub output: BlockOutput,
+    pub output: Rc<RefCell<BlockOutput>>,
 
     /// Block memory with synaptic learning
     pub memory: BlockMemory,
@@ -138,10 +140,13 @@ impl PatternPooler {
 
         let num_rpd = 128; // Typical receptors per dendrite (matches C++)
 
+        let output = Rc::new(RefCell::new(BlockOutput::new()));
+        output.borrow_mut().setup(num_t, num_s);
+
         Self {
             base: BlockBase::new(seed),
             input: BlockInput::new(),
-            output: BlockOutput::new(),
+            output,
             memory: BlockMemory::new(num_s, num_rpd, perm_thr, perm_inc, perm_dec, pct_learn),
             num_s,
             num_as,
@@ -176,8 +181,7 @@ impl PatternPooler {
 
 impl Block for PatternPooler {
     fn init(&mut self) -> Result<()> {
-        // Initialize output
-        self.output.setup(self.num_t, self.num_s);
+        // Output already set up in new()
 
         // Initialize memory with pooled connectivity
         let num_input_bits = self.input.num_bits();
@@ -200,12 +204,12 @@ impl Block for PatternPooler {
 
     fn clear(&mut self) {
         self.input.clear();
-        self.output.clear();
+        self.output.borrow_mut().clear();
         self.memory.clear();
     }
 
     fn step(&mut self) {
-        self.output.step();
+        self.output.borrow_mut().step();
     }
 
     fn pull(&mut self) {
@@ -224,7 +228,7 @@ impl Block for PatternPooler {
         }
 
         // Clear output
-        self.output.state.clear_all();
+        self.output.borrow_mut().state.clear_all();
 
         // Compute overlaps for all dendrites
         for d in 0..self.num_s {
@@ -238,7 +242,7 @@ impl Block for PatternPooler {
 
         // Activate top num_as winners
         for &idx in indices.iter().take(self.num_as) {
-            self.output.state.set_bit(idx);
+            self.output.borrow_mut().state.set_bit(idx);
         }
     }
 
@@ -255,7 +259,7 @@ impl Block for PatternPooler {
 
         // Learn on winning dendrites only
         for d in 0..self.num_s {
-            if self.output.state.get_bit(d) == 1 {
+            if self.output.borrow().state.get_bit(d) == 1 {
                 self.memory
                     .learn_conn(d, &self.input.state, self.base.rng());
             }
@@ -263,17 +267,21 @@ impl Block for PatternPooler {
     }
 
     fn store(&mut self) {
-        self.output.store();
+        self.output.borrow_mut().store();
     }
 
     fn memory_usage(&self) -> usize {
         let base_size = std::mem::size_of::<Self>();
         let overlaps_size = self.overlaps.len() * std::mem::size_of::<usize>();
         let input_size = self.input.memory_usage();
-        let output_size = self.output.memory_usage();
+        let output_size = self.output.borrow().memory_usage();
         let memory_size = self.memory.memory_usage();
 
         base_size + overlaps_size + input_size + output_size + memory_size
+    }
+
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        Rc::clone(&self.output)
     }
 }
 

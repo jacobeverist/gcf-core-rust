@@ -2,18 +2,15 @@
 
 use gnomics::blocks::{ContextLearner, DiscreteTransformer, SequenceLearner};
 use gnomics::Block;
-use std::cell::RefCell;
-use std::rc::Rc;
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_sequence_learner_multistep_prediction() {
     let mut encoder = DiscreteTransformer::new(5, 5, 2, 0);
     let mut learner = SequenceLearner::new(5, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
 
     learner
         .input
-        .add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
+        .add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn sequence: 0 → 1 → 2 → 3 → 4
@@ -65,7 +62,6 @@ fn test_sequence_learner_multistep_prediction() {
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_context_learner_with_multiple_contexts() {
     let mut input_encoder = DiscreteTransformer::new(10, 10, 2, 0);
     let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
@@ -73,10 +69,10 @@ fn test_context_learner_with_multiple_contexts() {
 
     learner
         .input
-        .add_child(Rc::new(RefCell::new(input_encoder.output.clone())), 0);
+        .add_child(input_encoder.output(), 0);
     learner
         .context
-        .add_child(Rc::new(RefCell::new(context_encoder.output.clone())), 0);
+        .add_child(context_encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn multiple context-dependent patterns
@@ -147,7 +143,7 @@ fn test_sequence_learner_cyclic_pattern() {
 
     learner
         .input
-        .add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
+        .add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn cyclic pattern: 0 → 1 → 2 → 3 → 0 → 1 → ...
@@ -183,7 +179,6 @@ fn test_sequence_learner_cyclic_pattern() {
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_context_learner_disambiguation() {
     // Test that context helps disambiguate same input with different meanings
     let mut input_encoder = DiscreteTransformer::new(5, 5, 2, 0);
@@ -192,10 +187,10 @@ fn test_context_learner_disambiguation() {
 
     learner
         .input
-        .add_child(Rc::new(RefCell::new(input_encoder.output.clone())), 0);
+        .add_child(input_encoder.output(), 0);
     learner
         .context
-        .add_child(Rc::new(RefCell::new(context_encoder.output.clone())), 0);
+        .add_child(context_encoder.output(), 0);
     learner.init().unwrap();
 
     // Same input (0) appears in two different contexts (0 and 1)
@@ -256,14 +251,13 @@ fn test_context_learner_disambiguation() {
 }
 
 #[test]
-#[ignore = "TODO: Fix BlockOutput cloning issue - see ARCHITECTURE_ISSUES.md"]
 fn test_sequence_learner_branching_sequences() {
     let mut encoder = DiscreteTransformer::new(8, 8, 2, 0);
     let mut learner = SequenceLearner::new(8, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
 
     learner
         .input
-        .add_child(Rc::new(RefCell::new(encoder.output.clone())), 0);
+        .add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn two branching sequences from same start:

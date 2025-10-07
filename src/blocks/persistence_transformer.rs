@@ -24,11 +24,13 @@
 //! pt.execute(false).unwrap();
 //!
 //! // Output encodes persistence duration
-//! assert_eq!(pt.output.state.num_set(), 128);
+//! assert_eq!(pt.output.borrow().state.num_set(), 128);
 //! ```
 
 use crate::{Block, BlockBase, BlockOutput, Result};
+use std::cell::RefCell;
 use std::path::Path;
+use std::rc::Rc;
 
 /// Encodes temporal persistence of scalar values.
 ///
@@ -54,7 +56,7 @@ pub struct PersistenceTransformer {
     base: BlockBase,
 
     /// Block output with history
-    pub output: BlockOutput,
+    pub output: Rc<RefCell<BlockOutput>>,
 
     // Parameters
     min_val: f64,
@@ -122,9 +124,13 @@ impl PersistenceTransformer {
         let dif_val = max_val - min_val;
         let dif_s = num_s - num_as;
 
+        // Initialize output
+        let output = Rc::new(RefCell::new(BlockOutput::new()));
+        output.borrow_mut().setup(num_t, num_s);
+
         let mut pt = Self {
             base: BlockBase::new(seed),
-            output: BlockOutput::new(),
+            output,
             min_val,
             max_val,
             dif_val,
@@ -137,8 +143,6 @@ impl PersistenceTransformer {
             pct_val_prev: 0.0,
         };
 
-        // Initialize output
-        pt.output.setup(num_t, num_s);
         pt.base.set_initialized(true);
 
         pt
@@ -217,14 +221,14 @@ impl Block for PersistenceTransformer {
     }
 
     fn clear(&mut self) {
-        self.output.clear();
+        self.output.borrow_mut().clear();
         self.value = 0.0;
         self.counter = 0;
         self.pct_val_prev = 0.0;
     }
 
     fn step(&mut self) {
-        self.output.step();
+        self.output.borrow_mut().step();
     }
 
     fn pull(&mut self) {
@@ -268,8 +272,9 @@ impl Block for PersistenceTransformer {
         let beg = ((self.dif_s as f64) * pct_t) as usize;
 
         // Clear output and activate contiguous window
-        self.output.state.clear_all();
-        self.output.state.set_range(beg, self.num_as);
+        let mut output = self.output.borrow_mut();
+        output.state.clear_all();
+        output.state.set_range(beg, self.num_as);
     }
 
     fn learn(&mut self) {
@@ -277,11 +282,15 @@ impl Block for PersistenceTransformer {
     }
 
     fn store(&mut self) {
-        self.output.store();
+        self.output.borrow_mut().store();
+    }
+
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        Rc::clone(&self.output)
     }
 
     fn memory_usage(&self) -> usize {
-        std::mem::size_of::<Self>() + self.output.memory_usage()
+        std::mem::size_of::<Self>() + self.output.borrow().memory_usage()
     }
 }
 
@@ -399,7 +408,7 @@ mod tests {
         pt.compute();
 
         // Should have exactly num_as active bits
-        assert_eq!(pt.output.state.num_set(), 128);
+        assert_eq!(pt.output.borrow().state.num_set(), 128);
     }
 
     #[test]
@@ -418,7 +427,7 @@ mod tests {
         }
 
         // Different persistence levels should have different patterns
-        let overlap = pt1.output.state.num_similar(&pt2.output.state);
+        let overlap = pt1.output.borrow().state.num_similar(&pt2.output.borrow().state);
         assert!(overlap < 128, "Different persistence should have different patterns");
     }
 
@@ -429,7 +438,7 @@ mod tests {
         pt.set_value(0.5);
         pt.execute(false).unwrap();
 
-        assert_eq!(pt.output.state.num_set(), 128);
+        assert_eq!(pt.output.borrow().state.num_set(), 128);
     }
 
     #[test]
@@ -444,7 +453,7 @@ mod tests {
 
         pt.clear();
 
-        assert_eq!(pt.output.state.num_set(), 0);
+        assert_eq!(pt.output.borrow().state.num_set(), 0);
         assert_eq!(pt.get_counter(), 0);
     }
 
@@ -466,7 +475,7 @@ mod tests {
         for i in 0..=100 {
             pt.compute();
             if i % 20 == 0 {
-                patterns.push(pt.output.state.clone());
+                patterns.push(pt.output.borrow().state.clone());
             }
         }
 

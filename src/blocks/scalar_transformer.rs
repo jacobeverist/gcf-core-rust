@@ -24,7 +24,7 @@
 //! st.execute(false).unwrap();
 //!
 //! // Output has exactly 128 active bits
-//! assert_eq!(st.output.state.num_set(), 128);
+//! assert_eq!(st.output().borrow().state.num_set(), 128);
 //!
 //! // Test semantic similarity
 //! let mut st2 = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
@@ -32,12 +32,14 @@
 //! st2.execute(false).unwrap();
 //!
 //! // Similar values have high overlap
-//! let overlap = st.output.state.num_similar(&st2.output.state);
+//! let overlap = st.output().borrow().state.num_similar(&st2.output().borrow().state);
 //! assert!(overlap > 100);  // Significant overlap
 //! ```
 
 use crate::{Block, BlockBase, BlockOutput, Result};
+use std::cell::RefCell;
 use std::path::Path;
+use std::rc::Rc;
 
 /// Encodes continuous scalar values into overlapping binary patterns.
 ///
@@ -61,7 +63,7 @@ pub struct ScalarTransformer {
     base: BlockBase,
 
     /// Block output with history
-    pub output: BlockOutput,
+    pub output: Rc<RefCell<BlockOutput>>,
 
     // Parameters
     min_val: f64,
@@ -121,9 +123,12 @@ impl ScalarTransformer {
         let dif_val = max_val - min_val;
         let dif_s = num_s - num_as;
 
-        let mut st = Self {
+        let output = Rc::new(RefCell::new(BlockOutput::new()));
+        output.borrow_mut().setup(num_t, num_s);
+
+        let st = Self {
             base: BlockBase::new(seed),
-            output: BlockOutput::new(),
+            output,
             min_val,
             max_val,
             dif_val,
@@ -133,10 +138,6 @@ impl ScalarTransformer {
             value: min_val,
             value_prev: 0.123456789, // Unlikely sentinel value (matches C++)
         };
-
-        // Initialize output
-        st.output.setup(num_t, num_s);
-        st.base.set_initialized(true);
 
         st
     }
@@ -208,13 +209,13 @@ impl Block for ScalarTransformer {
     }
 
     fn clear(&mut self) {
-        self.output.clear();
+        self.output.borrow_mut().clear();
         self.value = self.min_val;
         self.value_prev = 0.123456789;
     }
 
     fn step(&mut self) {
-        self.output.step();
+        self.output.borrow_mut().step();
     }
 
     fn pull(&mut self) {
@@ -234,8 +235,9 @@ impl Block for ScalarTransformer {
             let beg = ((self.dif_s as f64) * percent) as usize;
 
             // Clear output and activate contiguous window
-            self.output.state.clear_all();
-            self.output.state.set_range(beg, self.num_as);
+            let mut output = self.output.borrow_mut();
+            output.state.clear_all();
+            output.state.set_range(beg, self.num_as);
 
             self.value_prev = self.value;
         }
@@ -246,11 +248,15 @@ impl Block for ScalarTransformer {
     }
 
     fn store(&mut self) {
-        self.output.store();
+        self.output.borrow_mut().store();
     }
 
     fn memory_usage(&self) -> usize {
-        std::mem::size_of::<Self>() + self.output.memory_usage()
+        std::mem::size_of::<Self>() + self.output.borrow().memory_usage()
+    }
+
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        Rc::clone(&self.output)
     }
 }
 
@@ -311,7 +317,7 @@ mod tests {
         st.compute();
 
         // Should have exactly num_as active bits
-        assert_eq!(st.output.state.num_set(), 128);
+        assert_eq!(st.output.borrow().state.num_set(), 128);
     }
 
     #[test]
@@ -321,15 +327,15 @@ mod tests {
         // Minimum value
         st.set_value(0.0);
         st.compute();
-        assert_eq!(st.output.state.num_set(), 128);
-        let acts_min = st.output.state.get_acts();
+        assert_eq!(st.output.borrow().state.num_set(), 128);
+        let acts_min = st.output.borrow().state.get_acts();
         assert_eq!(acts_min[0], 0); // Should start at bit 0
 
         // Maximum value
         st.set_value(1.0);
         st.compute();
-        assert_eq!(st.output.state.num_set(), 128);
-        let acts_max = st.output.state.get_acts();
+        assert_eq!(st.output.borrow().state.num_set(), 128);
+        let acts_max = st.output.borrow().state.get_acts();
         assert_eq!(acts_max[acts_max.len() - 1], 1023); // Should end at last bit
     }
 
@@ -339,11 +345,11 @@ mod tests {
 
         st.set_value(0.5);
         st.compute();
-        let acts1 = st.output.state.get_acts();
+        let acts1 = st.output.borrow().state.get_acts();
 
         // Encode again without changing value
         st.compute();
-        let acts2 = st.output.state.get_acts();
+        let acts2 = st.output.borrow().state.get_acts();
 
         // Should be identical (optimization check)
         assert_eq!(acts1, acts2);
@@ -356,7 +362,7 @@ mod tests {
         st.set_value(0.5);
         st.execute(false).unwrap();
 
-        assert_eq!(st.output.state.num_set(), 128);
+        assert_eq!(st.output.borrow().state.num_set(), 128);
     }
 
     #[test]
@@ -368,7 +374,7 @@ mod tests {
 
         st.clear();
 
-        assert_eq!(st.output.state.num_set(), 0);
+        assert_eq!(st.output.borrow().state.num_set(), 0);
         assert_eq!(st.get_value(), st.min_val());
     }
 

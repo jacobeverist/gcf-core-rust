@@ -4,15 +4,13 @@
 //! correctly through the hierarchy with lazy copying and change tracking.
 
 use gnomics::{Block, BlockInput, BlockOutput, CURR, PREV};
-use rand::rngs::StdRng;
-use rand::SeedableRng;
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
 
 /// Mock encoder block that generates patterns
 struct MockEncoder {
-    output: BlockOutput,
+    output: Rc<RefCell<BlockOutput>>,
     pattern_index: usize,
 }
 
@@ -22,7 +20,7 @@ impl MockEncoder {
         output.setup(2, 1024);
 
         Self {
-            output,
+            output: Rc::new(RefCell::new(output)),
             pattern_index: 0,
         }
     }
@@ -31,8 +29,8 @@ impl MockEncoder {
         self.pattern_index = index;
     }
 
-    fn get_output(&self) -> &BlockOutput {
-        &self.output
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        Rc::clone(&self.output)
     }
 }
 
@@ -46,11 +44,11 @@ impl Block for MockEncoder {
     }
 
     fn clear(&mut self) {
-        self.output.clear();
+        self.output.borrow_mut().clear();
     }
 
     fn step(&mut self) {
-        self.output.step();
+        self.output.borrow_mut().step();
     }
 
     fn pull(&mut self) {
@@ -59,27 +57,32 @@ impl Block for MockEncoder {
 
     fn compute(&mut self) {
         // Generate different pattern based on index
-        self.output.state.clear_all();
+        let mut output = self.output.borrow_mut();
+        output.state.clear_all();
 
         let base = self.pattern_index * 100;
         for i in 0..10 {
-            self.output.state.set_bit(base + i);
+            output.state.set_bit(base + i);
         }
     }
 
     fn store(&mut self) {
-        self.output.store();
+        self.output.borrow_mut().store();
     }
 
     fn memory_usage(&self) -> usize {
-        self.output.memory_usage()
+        self.output.borrow().memory_usage()
+    }
+
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        Rc::clone(&self.output)
     }
 }
 
 /// Mock processor block that processes inputs
 struct MockProcessor {
     input: BlockInput,
-    output: BlockOutput,
+    output: Rc<RefCell<BlockOutput>>,
     process_count: usize,
 }
 
@@ -90,13 +93,17 @@ impl MockProcessor {
 
         Self {
             input: BlockInput::new(),
-            output,
+            output: Rc::new(RefCell::new(output)),
             process_count: 0,
         }
     }
 
     fn get_process_count(&self) -> usize {
         self.process_count
+    }
+
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        Rc::clone(&self.output)
     }
 }
 
@@ -111,12 +118,12 @@ impl Block for MockProcessor {
 
     fn clear(&mut self) {
         self.input.clear();
-        self.output.clear();
+        self.output.borrow_mut().clear();
         self.process_count = 0;
     }
 
     fn step(&mut self) {
-        self.output.step();
+        self.output.borrow_mut().step();
     }
 
     fn pull(&mut self) {
@@ -132,25 +139,30 @@ impl Block for MockProcessor {
         self.process_count += 1;
 
         // Resize output if needed to match input size
-        if self.output.state.num_bits() < self.input.num_bits() {
-            self.output.state.resize(self.input.num_bits());
+        let mut output = self.output.borrow_mut();
+        if output.state.num_bits() < self.input.num_bits() {
+            output.state.resize(self.input.num_bits());
         }
 
         // Copy input to output (simple passthrough for testing)
-        self.output.state.clear_all();
+        output.state.clear_all();
         for i in 0..self.input.num_bits() {
             if self.input.state.get_bit(i) > 0 {
-                self.output.state.set_bit(i);
+                output.state.set_bit(i);
             }
         }
     }
 
     fn store(&mut self) {
-        self.output.store();
+        self.output.borrow_mut().store();
     }
 
     fn memory_usage(&self) -> usize {
-        self.input.memory_usage() + self.output.memory_usage()
+        self.input.memory_usage() + self.output.borrow().memory_usage()
+    }
+
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        Rc::clone(&self.output)
     }
 }
 
@@ -160,23 +172,17 @@ fn test_basic_connection() {
     let mut encoder = MockEncoder::new();
     let mut processor = MockProcessor::new();
 
-    // Wrap encoder output in Rc<RefCell<>>
-    let encoder_output = Rc::new(RefCell::new(encoder.output.clone()));
-
     // Connect processor to encoder
-    processor.input.add_child(encoder_output.clone(), 0);
+    processor.input.add_child(encoder.output(), 0);
 
     // Set pattern and process
     encoder.set_pattern(0);
     encoder.execute(false).unwrap();
 
-    // Update shared output
-    *encoder_output.borrow_mut() = encoder.output.clone();
-
     processor.execute(false).unwrap();
 
     // Verify data flowed
-    assert_eq!(processor.output.state.num_set(), 10);
+    assert_eq!(processor.output().borrow().state.num_set(), 10);
     assert_eq!(processor.get_process_count(), 1);
 }
 
@@ -185,20 +191,17 @@ fn test_lazy_copying_skips_unchanged() {
     let mut encoder = MockEncoder::new();
     let mut processor = MockProcessor::new();
 
-    let encoder_output = Rc::new(RefCell::new(encoder.output.clone()));
-    processor.input.add_child(encoder_output.clone(), 0);
+    processor.input.add_child(encoder.output(), 0);
 
     // First feedforward - encoder produces output
     encoder.set_pattern(0);
     encoder.execute(false).unwrap();
-    *encoder_output.borrow_mut() = encoder.output.clone();
     processor.execute(false).unwrap();
 
     assert_eq!(processor.get_process_count(), 1);
 
     // Second feedforward - encoder produces SAME output
     encoder.execute(false).unwrap();
-    *encoder_output.borrow_mut() = encoder.output.clone();
     processor.execute(false).unwrap();
 
     // Process count should NOT increase (change tracking worked!)
@@ -210,13 +213,11 @@ fn test_change_tracking_detects_changes() {
     let mut encoder = MockEncoder::new();
     let mut processor = MockProcessor::new();
 
-    let encoder_output = Rc::new(RefCell::new(encoder.output.clone()));
-    processor.input.add_child(encoder_output.clone(), 0);
+    processor.input.add_child(encoder.output(), 0);
 
     // First pattern
     encoder.set_pattern(0);
     encoder.execute(false).unwrap();
-    *encoder_output.borrow_mut() = encoder.output.clone();
     processor.execute(false).unwrap();
 
     assert_eq!(processor.get_process_count(), 1);
@@ -224,7 +225,6 @@ fn test_change_tracking_detects_changes() {
     // Second pattern (different)
     encoder.set_pattern(1);
     encoder.execute(false).unwrap();
-    *encoder_output.borrow_mut() = encoder.output.clone();
     processor.execute(false).unwrap();
 
     // Process count SHOULD increase (change detected)
@@ -237,11 +237,8 @@ fn test_multiple_children_concatenation() {
     let mut encoder2 = MockEncoder::new();
     let mut processor = MockProcessor::new();
 
-    let encoder1_output = Rc::new(RefCell::new(encoder1.output.clone()));
-    let encoder2_output = Rc::new(RefCell::new(encoder2.output.clone()));
-
-    processor.input.add_child(encoder1_output.clone(), 0);
-    processor.input.add_child(encoder2_output.clone(), 0);
+    processor.input.add_child(encoder1.output(), 0);
+    processor.input.add_child(encoder2.output(), 0);
 
     // Generate different patterns
     encoder1.set_pattern(0);  // Bits 0-9
@@ -250,21 +247,20 @@ fn test_multiple_children_concatenation() {
     encoder1.execute(false).unwrap();
     encoder2.execute(false).unwrap();
 
-    *encoder1_output.borrow_mut() = encoder1.output.clone();
-    *encoder2_output.borrow_mut() = encoder2.output.clone();
-
     processor.execute(false).unwrap();
 
     // Should have bits from both encoders (concatenated)
-    assert_eq!(processor.output.state.num_set(), 20);
+    let output = processor.output();
+    let output_borrow = output.borrow();
+    assert_eq!(output_borrow.state.num_set(), 20);
 
     // Check bits from first encoder (offset 0)
-    assert_eq!(processor.output.state.get_bit(0), 1);
-    assert_eq!(processor.output.state.get_bit(9), 1);
+    assert_eq!(output_borrow.state.get_bit(0), 1);
+    assert_eq!(output_borrow.state.get_bit(9), 1);
 
     // Check bits from second encoder (offset 1024)
-    assert_eq!(processor.output.state.get_bit(1024 + 100), 1);
-    assert_eq!(processor.output.state.get_bit(1024 + 109), 1);
+    assert_eq!(output_borrow.state.get_bit(1024 + 100), 1);
+    assert_eq!(output_borrow.state.get_bit(1024 + 109), 1);
 }
 
 #[test]
@@ -273,11 +269,8 @@ fn test_partial_change_optimization() {
     let mut encoder2 = MockEncoder::new();
     let mut processor = MockProcessor::new();
 
-    let encoder1_output = Rc::new(RefCell::new(encoder1.output.clone()));
-    let encoder2_output = Rc::new(RefCell::new(encoder2.output.clone()));
-
-    processor.input.add_child(encoder1_output.clone(), 0);
-    processor.input.add_child(encoder2_output.clone(), 0);
+    processor.input.add_child(encoder1.output(), 0);
+    processor.input.add_child(encoder2.output(), 0);
 
     // First round
     encoder1.set_pattern(0);
@@ -285,8 +278,6 @@ fn test_partial_change_optimization() {
 
     encoder1.execute(false).unwrap();
     encoder2.execute(false).unwrap();
-    *encoder1_output.borrow_mut() = encoder1.output.clone();
-    *encoder2_output.borrow_mut() = encoder2.output.clone();
     processor.execute(false).unwrap();
 
     assert_eq!(processor.get_process_count(), 1);
@@ -296,8 +287,6 @@ fn test_partial_change_optimization() {
 
     encoder1.execute(false).unwrap();  // No change
     encoder2.execute(false).unwrap();  // Changed
-    *encoder1_output.borrow_mut() = encoder1.output.clone();
-    *encoder2_output.borrow_mut() = encoder2.output.clone();
     processor.execute(false).unwrap();
 
     // Should still process (at least one child changed)
@@ -315,8 +304,10 @@ fn test_temporal_access() {
     }
 
     // Access current and previous
-    let curr = encoder.output.get_bitarray(CURR);
-    let prev = encoder.output.get_bitarray(PREV);
+    let output = encoder.output();
+    let output_borrow = output.borrow();
+    let curr = output_borrow.get_bitarray(CURR);
+    let prev = output_borrow.get_bitarray(PREV);
 
     // Current should have pattern 4
     assert_eq!(curr.get_bit(400), 1);
@@ -332,8 +323,7 @@ fn test_memory_usage() {
     let mut encoder = MockEncoder::new();
     let mut processor = MockProcessor::new();
 
-    let encoder_output = Rc::new(RefCell::new(encoder.output.clone()));
-    processor.input.add_child(encoder_output.clone(), 0);
+    processor.input.add_child(encoder.output(), 0);
 
     let encoder_mem = encoder.memory_usage();
     let processor_mem = processor.memory_usage();
