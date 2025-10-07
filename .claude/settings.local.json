@@ -2,7 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(git commit:*)",
-      "Bash(cargo test:*)"
+      "Bash(cargo test:*)",
+      "Bash(cargo build:*)",
+      "Bash(git stash:*)",
+      "Bash(for file in tests/test_temporal_integration.rs tests/test_sequence_learner.rs tests/test_learning_integration.rs tests/test_context_learner.rs tests/test_transformer_integration.rs tests/test_context_learner_simple.rs)",
+      "Bash(do)",
+      "Bash(done)",
+      "Bash(awk:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

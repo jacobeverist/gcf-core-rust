@@ -637,7 +637,7 @@ See `.claude/reports/` for detailed phase documentation.
 - **Tests**: Some tests expect exact boundaries; tests marked as ignored to document this design choice
 
 **Issue 3: PersistenceTransformer Initialization** (7 ignored tests)
-- **Status**: Pre-existing bug from C++
+- **Status**: Pre-existing bug from C++ 
 - **Impact**: First execute() call incorrectly resets counter
 - **Workaround**: Documented behavior, can be worked around
 - **Solution**: Initialize `pct_val_prev` to match initial value

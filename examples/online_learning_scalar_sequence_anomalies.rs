@@ -1,0 +1,172 @@
+//! Online Learning with Scalar Sequence Anomaly Detection
+//!
+//! This example demonstrates:
+//! - ScalarTransformer for encoding continuous values
+//! - SequenceLearner for learning temporal sequences
+//! - Anomaly detection in repeating patterns
+//!
+//! The system learns a repeating sequence (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
+//! and detects when an unexpected value appears in the pattern.
+
+use gnomics::{Block, ScalarTransformer, SequenceLearner};
+use itertools::Itertools;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("\n=== Online Learning: Scalar Sequence Anomaly Detection ===\n");
+
+    // Create Scalar Transformer
+    // Encodes continuous values [0.0, 1.0] into 64-bit patterns with 8 active bits
+    let mut transformer = ScalarTransformer::new(
+        0.0,  // min_val: minimum input value
+        1.0,  // max_val: maximum input value
+        64,   // num_s: number of statelets
+        8,    // num_as: number of active statelets
+        2,    // num_t: history depth
+        42,   // seed: RNG seed for reproducibility
+    );
+
+    // Create Sequence Learner
+    // Learns temporal sequences and predicts next patterns
+    let mut learner = SequenceLearner::new(
+        64,    // num_c: 64 columns (matches transformer output)
+        10,    // num_spc: 10 statelets per column
+        10,    // num_dps: 10 dendrites per statelet
+        12,    // num_rpd: 12 receptors per dendrite
+        6,     // d_thresh: dendrite threshold (activations needed)
+        20,    // perm_thr: receptor permanence threshold
+        2,     // perm_inc: receptor permanence increment
+        1,     // perm_dec: receptor permanence decrement
+        3,     // num_t: history depth
+        false, // always_update: only update on changes
+        42,    // seed: RNG seed for reproducibility
+    );
+
+    // Connect encoder to learner
+    // The learner's input reads from the transformer's output
+    learner.input.add_child(transformer.output.clone(), 0);
+    learner.init()?;
+
+    // Define the repeating sequence with an anomaly at the end
+    // Pattern: 0.0 → 0.2 → 0.4 → 0.6 → 0.8 → 1.0 (repeated)
+    // Anomaly: Last sequence has 0.2 instead of 0.4 (position 122)
+    let values = vec![
+        // Repetitions 1-20 (normal pattern)
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        // Repetition 21 with anomaly at position 4
+        0.0, 0.2, 0.4, 0.2, 0.8, 1.0,  // <-- Anomaly: 0.2 instead of 0.6
+    ];
+
+    let mut scores = Vec::new();
+    let mut patterns = Vec::new();
+
+    println!("Processing {} values in sequence...\n", values.len());
+
+    // Process each value in the sequence
+    for (i, &value) in values.iter().enumerate() {
+        // Set the scalar value to encode
+        transformer.set_value(value);
+
+        // Execute the transformer (no learning needed for encoder)
+        transformer.execute(false)?;
+
+        // Get encoder output pattern (for debugging if needed)
+        let _encoder_pattern = transformer.output.borrow().state.clone();
+
+        // Execute the sequence learner (with learning enabled)
+        learner.execute(true)?;
+
+        // Get learner output pattern
+        let learner_pattern = learner.output.borrow().state.clone();
+
+        // Print learner state at beginning of each sequence (when value = 0.0)
+        // if value == 0.0 {
+        //     println!("Step {}: learner pattern = {:?}", i, learner_pattern);
+        // }
+
+        //println!("Step {}: learner pattern = ", i);
+        if value == 0.0 {
+            println!("{:?}", learner_pattern.get_bits().iter().format(""));
+        }
+
+        // Get anomaly score (0.0 = expected, 1.0 = completely unexpected)
+        let score = learner.get_anomaly_score();
+
+        // Print high anomaly scores
+        if score > 0.5 {
+            // println!(
+            //     "⚠️  Step {}: value={:.1}, anomaly={:.2}% (HIGH)",
+            //     i,
+            //     value,
+            //     score * 100.0
+            // );
+        }
+        /*
+        else {
+
+            println!(
+                "⚠️  Step {}: value={:.1}, anomaly={:.2}% (LOW)",
+                i,
+                value,
+                score * 100.0
+            );
+        }
+        */
+
+        scores.push(score);
+        patterns.push(learner_pattern);
+    }
+
+    // Summary statistics
+    println!("\n=== Summary ===");
+    let avg_score: f64 = scores.iter().sum::<f64>() / scores.len() as f64;
+    let max_score = scores.iter().fold(0.0f64, |a, &b| a.max(b));
+    let max_idx = scores
+        .iter()
+        .position(|&s| s == max_score)
+        .unwrap_or(0);
+
+    println!("Total steps: {}", values.len());
+    println!("Average anomaly score: {:.2}%", avg_score * 100.0);
+    println!("Maximum anomaly score: {:.2}%", max_score * 100.0);
+    println!("Peak anomaly at step {} (value={:.1})", max_idx, values[max_idx]);
+
+    // Verify the anomaly was detected at the expected position (step 123)
+    // The anomaly is at index 123 where 0.2 appears instead of 0.6
+    let anomaly_idx = 123;
+    let anomaly_score = scores[anomaly_idx];
+
+    if anomaly_score > 0.5 {  // High anomaly score indicates detection
+        println!(
+            "\n✅ Anomaly successfully detected at step {} with score {:.2}%",
+            anomaly_idx,
+            anomaly_score * 100.0
+        );
+    } else {
+        println!(
+            "\n❌ Anomaly not detected at step {} (score: {:.2}%)",
+            anomaly_idx,
+            anomaly_score * 100.0
+        );
+    }
+
+    Ok(())
+}
