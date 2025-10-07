@@ -59,6 +59,7 @@ use std::rc::Rc;
 /// - Memory: ~1KB for 1024 bits with history depth 2
 /// - No learning overhead (encoder only)
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct ScalarTransformer {
     base: BlockBase,
 

@@ -59,6 +59,7 @@ use std::rc::Rc;
 /// - Encoding time: ~10µs for 1024 dendrites (overlap computation + sorting)
 /// - Learning time: ~5µs for 40 winners (selective update)
 /// - Memory: ~200KB for 1024 dendrites × 128 receptors with pooled connectivity
+#[allow(dead_code)]
 pub struct PatternPooler {
     base: BlockBase,
 

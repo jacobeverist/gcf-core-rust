@@ -85,12 +85,12 @@
 //! }
 //! ```
 
-use crate::{Block, BlockBase, BlockInput, BlockMemory, BlockOutput, Result};
 use crate::bitarray::BitArray;
 use crate::utils;
+use crate::{Block, BlockBase, BlockInput, BlockMemory, BlockOutput, Result};
+use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
-use std::cell::RefCell;
 
 /// Learns temporal sequences and predicts next patterns.
 ///
@@ -103,6 +103,7 @@ use std::cell::RefCell;
 /// - Encoding time: ~50-100µs for 512 columns × 4 statelets (dendrite overlap checks)
 /// - Learning time: ~20-50µs per active statelet (dendrite assignment + learning)
 /// - Memory: ~500KB for 2048 statelets × 8 dendrites × 32 receptors
+#[allow(dead_code)]
 pub struct SequenceLearner {
     base: BlockBase,
 
@@ -119,31 +120,31 @@ pub struct SequenceLearner {
     pub memory: BlockMemory,
 
     // Architecture parameters
-    num_c: usize,      // Number of columns
-    num_spc: usize,    // Statelets per column
-    num_dps: usize,    // Dendrites per statelet
-    num_dpc: usize,    // Dendrites per column (num_spc × num_dps)
-    num_rpd: usize,    // Receptors per dendrite
-    num_s: usize,      // Total statelets (num_c × num_spc)
-    num_d: usize,      // Total dendrites (num_s × num_dps)
-    d_thresh: u32,     // Dendrite activation threshold
-    num_t: usize,      // History depth
+    num_c: usize,   // Number of columns
+    num_spc: usize, // Statelets per column
+    num_dps: usize, // Dendrites per statelet
+    num_dpc: usize, // Dendrites per column (num_spc × num_dps)
+    num_rpd: usize, // Receptors per dendrite
+    num_s: usize,   // Total statelets (num_c × num_spc)
+    num_d: usize,   // Total dendrites (num_s × num_dps)
+    d_thresh: u32,  // Dendrite activation threshold
+    num_t: usize,   // History depth
 
     // Learning parameters
-    perm_thr: u8,      // Permanence threshold
-    perm_inc: u8,      // Permanence increment
-    perm_dec: u8,      // Permanence decrement
+    perm_thr: u8, // Permanence threshold
+    perm_inc: u8, // Permanence increment
+    perm_dec: u8, // Permanence decrement
 
     // State
-    next_sd: Vec<usize>,  // Next available dendrite per statelet
-    d_used: BitArray,     // Dendrite usage mask (1=used, 0=available)
-    anomaly_score: f64,   // Current anomaly score (0.0-1.0)
-    always_update: bool,  // Update even if inputs unchanged
+    next_sd: Vec<usize>, // Next available dendrite per statelet
+    d_used: BitArray,    // Dendrite usage mask (1=used, 0=available)
+    anomaly_score: f64,  // Current anomaly score (0.0-1.0)
+    always_update: bool, // Update even if inputs unchanged
 
     // Working memory
-    input_acts: Vec<usize>,  // Active column indices
-    d_acts: Vec<usize>,      // Active dendrite indices
-    surprise_flag: bool,     // Surprise detected for current column
+    input_acts: Vec<usize>, // Active column indices
+    d_acts: Vec<usize>,     // Active dendrite indices
+    surprise_flag: bool,    // Surprise detected for current column
 }
 
 impl SequenceLearner {
@@ -472,7 +473,8 @@ impl Block for SequenceLearner {
             // Learn on all active dendrites
             let d_acts = self.d_acts.clone();
             for d in d_acts {
-                self.memory.learn_move(d, &self.context.state, self.base.rng());
+                self.memory
+                    .learn_move(d, &self.context.state, self.base.rng());
                 self.d_used.set_bit(d);
             }
         }

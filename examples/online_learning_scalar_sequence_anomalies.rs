@@ -7,6 +7,7 @@
 //!
 //! The system learns a repeating sequence (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
 //! and detects when an unexpected value appears in the pattern.
+#![allow(unused_imports)]
 
 use gnomics::{Block, ScalarTransformer, SequenceLearner};
 use itertools::Itertools;
@@ -17,12 +18,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create Scalar Transformer
     // Encodes continuous values [0.0, 1.0] into 64-bit patterns with 8 active bits
     let mut transformer = ScalarTransformer::new(
-        0.0,  // min_val: minimum input value
-        1.0,  // max_val: maximum input value
-        64,   // num_s: number of statelets
-        8,    // num_as: number of active statelets
-        2,    // num_t: history depth
-        42,   // seed: RNG seed for reproducibility
+        0.0, // min_val: minimum input value
+        1.0, // max_val: maximum input value
+        64,  // num_s: number of statelets
+        8,   // num_as: number of active statelets
+        2,   // num_t: history depth
+        42,  // seed: RNG seed for reproducibility
     );
 
     // Create Sequence Learner
@@ -51,28 +52,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Anomaly: Last sequence has 0.2 instead of 0.4 (position 122)
     let values = vec![
         // Repetitions 1-20 (normal pattern)
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
-        0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
+        0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0,
         // Repetition 21 with anomaly at position 4
-        0.0, 0.2, 0.4, 0.2, 0.8, 1.0,  // <-- Anomaly: 0.2 instead of 0.6
+        0.0, 0.2, 0.4, 0.2, 0.8, 1.0, // <-- Anomaly: 0.2 instead of 0.6
     ];
 
     let mut scores = Vec::new();
@@ -102,9 +90,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         //     println!("Step {}: learner pattern = {:?}", i, learner_pattern);
         // }
 
-        //println!("Step {}: learner pattern = ", i);
         if value == 0.0 {
-            println!("{:?}", learner_pattern.get_bits().iter().format(""));
+            println!("Step {}: learner pattern = ", i);
+            //println!("{:?}", learner_pattern.get_bits().iter().format(""));
         }
 
         // Get anomaly score (0.0 = expected, 1.0 = completely unexpected)
@@ -112,12 +100,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Print high anomaly scores
         if score > 0.5 {
-            // println!(
-            //     "⚠️  Step {}: value={:.1}, anomaly={:.2}% (HIGH)",
-            //     i,
-            //     value,
-            //     score * 100.0
-            // );
+            println!(
+                "⚠️  Step {}: value={:.1}, anomaly={:.2}% (HIGH)",
+                i,
+                value,
+                score * 100.0
+            );
         }
         /*
         else {
@@ -139,22 +127,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n=== Summary ===");
     let avg_score: f64 = scores.iter().sum::<f64>() / scores.len() as f64;
     let max_score = scores.iter().fold(0.0f64, |a, &b| a.max(b));
-    let max_idx = scores
-        .iter()
-        .position(|&s| s == max_score)
-        .unwrap_or(0);
+    let max_idx = scores.iter().position(|&s| s == max_score).unwrap_or(0);
 
     println!("Total steps: {}", values.len());
     println!("Average anomaly score: {:.2}%", avg_score * 100.0);
     println!("Maximum anomaly score: {:.2}%", max_score * 100.0);
-    println!("Peak anomaly at step {} (value={:.1})", max_idx, values[max_idx]);
+    println!(
+        "Peak anomaly at step {} (value={:.1})",
+        max_idx, values[max_idx]
+    );
 
     // Verify the anomaly was detected at the expected position (step 123)
     // The anomaly is at index 123 where 0.2 appears instead of 0.6
     let anomaly_idx = 123;
     let anomaly_score = scores[anomaly_idx];
 
-    if anomaly_score > 0.5 {  // High anomaly score indicates detection
+    if anomaly_score > 0.5 {
+        // High anomaly score indicates detection
         println!(
             "\n✅ Anomaly successfully detected at step {} with score {:.2}%",
             anomaly_idx,

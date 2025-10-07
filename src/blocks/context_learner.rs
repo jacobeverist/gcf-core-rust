@@ -98,6 +98,7 @@ use std::cell::RefCell;
 /// - Encoding time: ~50-100µs for 512 columns × 4 statelets (dendrite overlap checks)
 /// - Learning time: ~20-50µs per active statelet (dendrite assignment + learning)
 /// - Memory: ~500KB for 2048 statelets × 8 dendrites × 32 receptors
+#[allow(dead_code)]
 pub struct ContextLearner {
     base: BlockBase,
 
