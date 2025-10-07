@@ -1,9 +1,10 @@
 //! Simple direct tests for ContextLearner (without transformer dependencies)
 
 use gnomics::blocks::ContextLearner;
-use gnomics::{Block, BlockOutput};
+use gnomics::{Block, BlockOutput, DiscreteTransformer};
 use std::cell::RefCell;
 use std::rc::Rc;
+use itertools::Itertools;
 
 #[test]
 fn test_context_learner_direct_activation() {
@@ -46,14 +47,18 @@ fn test_context_learner_direct_activation() {
 
 #[test]
 fn test_context_learner_learning_works() {
-    let mut learner = ContextLearner::new(3, 2, 8, 32, 20, 20, 2, 1, 2, false, 42);
+    let mut learner = ContextLearner::new(10, 4, 8, 32, 20, 20, 2, 1, 2, true, 42);
 
     // Setup outputs BEFORE connecting (critical for proper sizing)
     let input_out = Rc::new(RefCell::new(BlockOutput::new()));
     let context_out = Rc::new(RefCell::new(BlockOutput::new()));
 
-    input_out.borrow_mut().setup(2, 3);
-    context_out.borrow_mut().setup(2, 64);
+    input_out.borrow_mut().setup(2, 10);
+    context_out.borrow_mut().setup(2, 40);
+
+    // let mut input_encoder = DiscreteTransformer::new(10, 10, 2, 0);
+    // let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
+    // let mut learner = ContextLearner::new(10, 2, 8, 32, 20, 20, 2, 1, 2, true, 42);
 
     // Connect after setup
     learner.input.add_child(input_out.clone(), 0);
@@ -72,6 +77,7 @@ fn test_context_learner_learning_works() {
     learner.execute(true).unwrap();
     let first_anomaly = learner.get_anomaly_score();
     let first_count = learner.get_historical_count();
+    println!("{:?}", learner.output.borrow().state.clone().get_bits().iter().format(""));
 
     // Repeat same pattern multiple times
     for _ in 0..10 {
@@ -80,6 +86,7 @@ fn test_context_learner_learning_works() {
         learner.compute();
         learner.store();
         learner.learn();
+        println!("{:?}", learner.output.borrow().state.clone().get_bits().iter().format(""));
     }
 
     let last_anomaly = learner.get_anomaly_score();

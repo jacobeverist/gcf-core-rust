@@ -87,15 +87,15 @@ fn test_context_learner_learning_reduces_anomaly() {
     let mut input_encoder = DiscreteTransformer::new(10, 10, 2, 0);
     let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
 
-    let mut learner = ContextLearner::new(10, 2, 8, 32, 20, 20, 2, 1, 2, false, 42);
+    let mut learner = ContextLearner::new(10, 2, 8, 32, 20, 20, 2, 1, 2, true, 42);
 
     // Connect
     learner
         .input
-        .add_child(input_encoder.output(), 0);
+        .add_child(input_encoder.output().clone(), 0);
     learner
         .context
-        .add_child(context_encoder.output(), 0);
+        .add_child(context_encoder.output().clone(), 0);
     learner.init().unwrap();
 
     // Learn association multiple times
@@ -110,6 +110,8 @@ fn test_context_learner_learning_reduces_anomaly() {
         anomalies.push(learner.get_anomaly_score());
     }
 
+
+
     // Anomaly should decrease over time
     assert!(anomalies[9] < anomalies[0],
         "Anomaly should decrease with learning: first={:.3}, last={:.3}",
@@ -119,19 +121,17 @@ fn test_context_learner_learning_reduces_anomaly() {
 #[test]
 fn test_context_learner_different_context_causes_anomaly() {
     let mut input_encoder = DiscreteTransformer::new(10, 10, 2, 0);
-    let input_out = input_encoder.output();
     let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
-    let context_out = context_encoder.output();
 
-    let mut learner = ContextLearner::new(10, 2, 8, 32, 20, 20, 2, 1, 2, false, 42);
+    let mut learner = ContextLearner::new(10, 2, 8, 32, 20, 20, 2, 1, 2, true, 42);
 
     // Connect
     learner
         .input
-        .add_child(input_out.clone(), 0);
+        .add_child(input_encoder.output().clone(), 0);
     learner
         .context
-        .add_child(context_out.clone(), 0);
+        .add_child(context_encoder.output().clone(), 0);
     learner.init().unwrap();
 
     // Learn association: input=0 with context=0
