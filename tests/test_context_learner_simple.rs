@@ -106,6 +106,9 @@ fn test_context_learner_learning_works() {
     // Historical count should stay the same since the context is constant (dendrites assigned)
     assert!(last_count == first_count,
         "Historical count should grow: first={}, last={}", first_count, last_count);
+
+    assert!(last_count > 0, "Should have learned some patterns");
+
 }
 
 #[test]

@@ -606,8 +606,6 @@ gnomics/
 │   │       ├── pattern_classifier.rs
 │   │       ├── context_learner.rs
 │   │       └── sequence_learner.rs
-│   └── cpp/                       # C++ reference implementation
-│       └── blocks/
 │
 ├── tests/
 │   └──                       # Integration tests
