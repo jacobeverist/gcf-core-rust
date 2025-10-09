@@ -96,7 +96,6 @@
 
 // Module declarations
 pub mod bitarray;
-pub mod bitarray_bitvec;
 pub mod error;
 pub mod utils;
 
@@ -112,7 +111,6 @@ pub mod blocks;
 
 // Re-exports for convenient access
 pub use bitarray::{bitarray_copy_words, BitArray, Word, BITS_PER_WORD};
-pub use bitarray_bitvec::{bitarray_copy_words_bitvec, BitArrayBitvec};
 pub use error::{GnomicsError, Result};
 
 // Phase 2 re-exports
