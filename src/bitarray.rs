@@ -545,7 +545,7 @@ impl BitArray {
 
     /// Estimate memory usage in bytes.
     pub fn memory_usage(&self) -> usize {
-        std::mem::size_of::<Self>() + self.bv.capacity() * std::mem::size_of::<Word>()
+        std::mem::size_of::<Self>() + self.bv.capacity().div_ceil(8)
     }
 
     /// Print bits in compact format (for debugging).
