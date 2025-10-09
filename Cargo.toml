@@ -54,10 +54,6 @@ name = "test_bitarray"
 path = "tests/test_bitarray.rs"
 
 [[test]]
-name = "test_bitarray_bitvec"
-path = "tests/test_bitarray_bitvec.rs"
-
-[[test]]
 name = "test_block_integration"
 path = "tests/test_block_integration.rs"
 
@@ -114,7 +110,7 @@ name = "bitarray_bench"
 harness = false
 
 [[bench]]
-name = "bitarray_comparison"
+name = "memory_test"
 harness = false
 
 [[bench]]
