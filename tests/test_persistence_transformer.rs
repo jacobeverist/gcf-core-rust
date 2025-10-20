@@ -406,13 +406,13 @@ fn test_persistence_history_tracking() {
     // Low persistence
     pt.set_value(0.5);
     pt.execute(false).unwrap();
-    let acts1 = pt.output.borrow().get_bitarray(0).get_acts();
+    let acts1 = pt.output.borrow().get_bitfield(0).get_acts();
 
     // Build more persistence
     for _ in 0..10 {
         pt.execute(false).unwrap();
     }
-    let acts2 = pt.output.borrow().get_bitarray(0).get_acts();
+    let acts2 = pt.output.borrow().get_bitfield(0).get_acts();
 
     // Should be different
     assert_ne!(acts1, acts2, "Different persistence should encode differently");

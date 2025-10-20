@@ -8,7 +8,7 @@ This document details the multi-layered efficiency strategy of the Gnomics frame
 
 The Gnomics framework achieves exceptional performance through strategically combining **dense** and **sparse** representations across different architectural layers:
 
-#### 1. Dense BitArray for Active Patterns
+#### 1. Dense BitField for Active Patterns
 - Stores binary patterns with 10-20% active bits (SDRs) in packed 32-bit words
 - **32× compression** vs byte/bool arrays
 - **256× compression** vs 32-bit integer arrays
@@ -41,7 +41,7 @@ The Gnomics framework achieves exceptional performance through strategically com
 This dual optimization provides dramatic performance improvements in real-world scenarios where many inputs remain stable across time steps.
 
 **Summary**:
-- **Patterns are dense** (BitArray) → Fast operations, compact storage
+- **Patterns are dense** (BitField) → Fast operations, compact storage
 - **Connections are sparse** (indexed receptors) → Scalable learning
 - **Address space is concatenated** (BlockInput) → Unified receptor indexing
 - **Operations are lazy** (change-driven) → Minimal redundant work
@@ -66,7 +66,7 @@ class BlockMemory {
 1. BlockInput concatenates child outputs: `[child1_bits | child2_bits | child3_bits]`
 2. Total input space size: `sum(child_sizes)`
 3. Each receptor's r_addrs value is an index from 0 to (total_input_space_size - 1)
-4. During learning/overlap computation, receptors directly index into input.state BitArray
+4. During learning/overlap computation, receptors directly index into input.state BitField
 
 **Example:**
 ```
@@ -97,7 +97,7 @@ pub struct BlockMemory {
 }
 
 impl BlockMemory {
-    pub fn overlap(&self, dendrite: usize, input: &BitArray) -> usize {
+    pub fn overlap(&self, dendrite: usize, input: &BitField) -> usize {
         let start = dendrite * self.num_rpd;
         let end = start + self.num_rpd;
 
@@ -132,7 +132,7 @@ class BlockInput {
     std::vector<uint32_t> times;             // Time offsets
     std::vector<uint32_t> word_offsets;      // Concatenation offsets
     std::vector<uint32_t> word_sizes;        // Size in words
-    BitArray state;                          // Concatenated state
+    BitField state;                          // Concatenated state
 };
 
 // Connection - no data copied
@@ -147,8 +147,8 @@ void BlockInput::add_child(BlockOutput* src, uint32_t src_t) {
 // Data transfer - efficient word-level copy
 void BlockInput::pull() {
     for (uint32_t c = 0; c < children.size(); c++) {
-        BitArray* child = &children[c]->get_bitarray(times[c]);
-        bitarray_copy(&state, child, word_offsets[c], 0, word_sizes[c]);
+        BitField* child = &children[c]->get_bitfield(times[c]);
+        bitfield_copy(&state, child, word_offsets[c], 0, word_sizes[c]);
     }
 }
 ```
@@ -236,8 +236,8 @@ For blocks with expensive operations (e.g., PatternPooler with thousands of over
 
 ```rust
 pub struct BlockOutput {
-    pub state: BitArray,
-    history: Vec<BitArray>,
+    pub state: BitField,
+    history: Vec<BitField>,
     changes: Vec<bool>,
     curr_idx: usize,
     changed_flag: bool,
@@ -339,7 +339,7 @@ pub struct BlockInput {
     times: Vec<usize>,
     word_offsets: Vec<usize>,
     word_sizes: Vec<usize>,
-    pub state: BitArray,
+    pub state: BitField,
 }
 
 impl BlockInput {
@@ -374,12 +374,12 @@ impl BlockInput {
                 continue;  // Skip copy - no need to overwrite with same data!
             }
 
-            let src_bitarray = child.get_bitarray(self.times[i]);
+            let src_bitfield = child.get_bitfield(self.times[i]);
 
             // Fast word-level copy
-            bitarray_copy_words(
+            bitfield_copy_words(
                 &mut self.state,
-                src_bitarray,
+                src_bitfield,
                 self.word_offsets[i],
                 0,
                 self.word_sizes[i]
@@ -401,9 +401,9 @@ impl BlockInput {
 
 /// Efficient word-level copy function
 #[inline(always)]
-pub fn bitarray_copy_words(
-    dst: &mut BitArray,
-    src: &BitArray,
+pub fn bitfield_copy_words(
+    dst: &mut BitField,
+    src: &BitField,
     dst_word_offset: usize,
     src_word_offset: usize,
     num_words: usize
@@ -449,7 +449,7 @@ pub fn pull(&mut self) {
         }
 
         // Only copy when necessary
-        bitarray_copy_words(...);  // ~100ns saved per skipped child
+        bitfield_copy_words(...);  // ~100ns saved per skipped child
     }
 }
 ```
@@ -484,7 +484,7 @@ Operation                          C++ Time    Rust Time    Overhead
 add_child()                       ~5ns        ~8ns         +60% (3ns)
 pull() per CHANGED child          ~100ns      ~107ns       +7% (7ns)
 pull() per UNCHANGED child        ~8ns        ~7ns         -12% (faster!)
-bitarray_copy_words               ~50ns       ~52ns        +4% (2ns)
+bitfield_copy_words               ~50ns       ~52ns        +4% (2ns)
 
 Scenario: 10 children, 20% change rate
 -------------------------------------------------------------------------
@@ -533,12 +533,12 @@ impl BlockInput {
 - Less ergonomic API
 - Doesn't significantly improve performance over Rc<RefCell<>>
 
-## BitArray Requirements for Lazy Copying
+## BitField Requirements for Lazy Copying
 
 ### Word-Level Access
 
 ```rust
-impl BitArray {
+impl BitField {
     /// Direct access to underlying words for efficient copying
     pub fn words(&self) -> &[u32] {
         &self.words
@@ -920,7 +920,7 @@ fn bench_pull_multiple_children(b: &mut Bencher) {
 #[test]
 fn test_pull_matches_cpp_output() {
     // Set up identical scenario in both implementations
-    // Compare resulting input.state BitArrays
+    // Compare resulting input.state BitFields
     // Should match bit-for-bit
 }
 ```
@@ -935,7 +935,7 @@ fn test_pull_matches_cpp_output() {
 5. ✅ **Scalability**: Performance remains constant with graph complexity
 
 ### Change Tracking
-1. ✅ **Correctness**: Detects changes by comparing BitArrays with `!=` operator
+1. ✅ **Correctness**: Detects changes by comparing BitFields with `!=` operator
 2. ✅ **Performance**: children_changed() completes in <10ns per child
 3. ✅ **Integration**: Works seamlessly with `Rc<RefCell<>>` pattern
 4. ✅ **Optimization**: Enables 5-100× speedup in real-world scenarios
@@ -953,7 +953,7 @@ fn test_pull_matches_cpp_output() {
 1. **add_child()**: Single Rc::clone overhead
 2. **pull()**: Word-level copy with multiple children (1, 2, 4, 8)
 3. **children_changed()**: Boolean check with borrow overhead
-4. **store()**: BitArray comparison and flag update
+4. **store()**: BitField comparison and flag update
 5. **End-to-end**: Pipeline with 10-80% change rate
 
 ### Success thresholds:

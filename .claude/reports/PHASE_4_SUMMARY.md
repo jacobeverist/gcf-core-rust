@@ -158,14 +158,14 @@ pub fn get_probabilities(&self) -> Vec<f64> {
 **Fix**:
 ```rust
 // BEFORE (incorrect)
-self.d_conns.resize(self.num_d, BitArray::new(num_i));
+self.d_conns.resize(self.num_d, BitField::new(num_i));
 for d in 0..self.num_d {
     self.update_conns(d);  // BUG: conns_flag still false!
 }
 self.conns_flag = true;
 
 // AFTER (correct)
-self.d_conns.resize(self.num_d, BitArray::new(num_i));
+self.d_conns.resize(self.num_d, BitField::new(num_i));
 self.conns_flag = true;  // CRITICAL: Set before update_conns
 for d in 0..self.num_d {
     self.update_conns(d);
@@ -241,7 +241,7 @@ if !self.history.is_empty() {
 ### Library Tests
 
 **Total**: 120/120 passing (100%)
-- Phase 1: BitArray, utils, error handling
+- Phase 1: BitField, utils, error handling
 - Phase 2: Block infrastructure, lazy copying, change tracking
 - Phase 3: All transformers (Scalar, Discrete, Persistence)
 - Phase 4: Core learning block functionality

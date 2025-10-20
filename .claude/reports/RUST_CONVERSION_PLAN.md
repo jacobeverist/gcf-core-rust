@@ -127,7 +127,7 @@ pub trait Block {
 
 The Gnomics framework achieves exceptional performance through strategically combining **dense** and **sparse** representations:
 
-#### 1. Dense BitArray for Active Patterns
+#### 1. Dense BitField for Active Patterns
 - Stores binary patterns with 10-20% active bits (SDRs) in packed 32-bit words
 - **32× compression** vs byte/bool arrays
 - **256× compression** vs 32-bit integer arrays
@@ -156,7 +156,7 @@ The Gnomics framework achieves exceptional performance through strategically com
 - **Combined: 5-100× speedup** in real-world applications with sparse input changes
 
 **Summary**:
-- **Patterns are dense** (BitArray) → Fast operations, compact storage
+- **Patterns are dense** (BitField) → Fast operations, compact storage
 - **Connections are sparse** (indexed receptors) → Scalable learning
 - **Operations are lazy** (change-driven) → Minimal redundant work
 - **Result**: Memory-efficient, computationally fast framework
@@ -176,8 +176,8 @@ input.add_child(&child.output, time);
 // Later, during pull() - efficient word-level copy
 void BlockInput::pull() {
     for (uint32_t c = 0; c < children.size(); c++) {
-        BitArray* child = &children[c]->get_bitarray(times[c]);
-        bitarray_copy(&state, child, word_offsets[c], 0, word_sizes[c]);
+        BitField* child = &children[c]->get_bitfield(times[c]);
+        bitfield_copy(&state, child, word_offsets[c], 0, word_sizes[c]);
     }
 }
 ```
@@ -185,7 +185,7 @@ void BlockInput::pull() {
 Key characteristics:
 1. **No upfront copying:** `add_child()` only stores pointer + metadata (time offset, word offsets)
 2. **Deferred copying:** Data copied only when `pull()` is called
-3. **Word-level efficiency:** Uses `bitarray_copy()` for fast memcpy-like operations
+3. **Word-level efficiency:** Uses `bitfield_copy()` for fast memcpy-like operations
 4. **Concatenation:** Multiple children concatenated into single input state via word offsets
 5. **Shared access:** Multiple BlockInputs can reference same BlockOutput
 
@@ -196,7 +196,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 pub struct BlockInput {
-    state: BitArray,
+    state: BitField,
     children: Vec<Rc<RefCell<BlockOutput>>>,
     times: Vec<usize>,
     word_offsets: Vec<usize>,
@@ -235,12 +235,12 @@ impl BlockInput {
                 continue;  // Skip ~100ns memcpy operation!
             }
 
-            let src_bitarray = child.get_bitarray(self.times[i]);
+            let src_bitfield = child.get_bitfield(self.times[i]);
 
-            // Fast word-level copy (like C++ bitarray_copy)
-            bitarray_copy_words(
+            // Fast word-level copy (like C++ bitfield_copy)
+            bitfield_copy_words(
                 &mut self.state,
-                src_bitarray,
+                src_bitfield,
                 self.word_offsets[i],
                 0,
                 self.word_sizes[i]
@@ -259,11 +259,11 @@ impl BlockInput {
     }
 }
 
-/// Zero-copy word-level transfer (equivalent to C++ bitarray_copy)
+/// Zero-copy word-level transfer (equivalent to C++ bitfield_copy)
 #[inline]
-fn bitarray_copy_words(
-    dst: &mut BitArray,
-    src: &BitArray,
+fn bitfield_copy_words(
+    dst: &mut BitField,
+    src: &BitField,
     dst_word_offset: usize,
     src_word_offset: usize,
     num_words: usize
@@ -414,8 +414,8 @@ This optimization enables **dramatic** speedups in real-world scenarios:
 
 ```rust
 pub struct BlockOutput {
-    pub state: BitArray,
-    history: Vec<BitArray>,
+    pub state: BitField,
+    history: Vec<BitField>,
     changes: Vec<bool>,        // Change tracking per timestep
     changed_flag: bool,         // Did current output change?
     curr_idx: usize,
@@ -423,7 +423,7 @@ pub struct BlockOutput {
 
 impl BlockOutput {
     pub fn store(&mut self) {
-        // Compare with previous state (uses BitArray::operator!=)
+        // Compare with previous state (uses BitField::operator!=)
         let prev_idx = self.idx(1);
         self.changed_flag = self.state != self.history[prev_idx];
 
@@ -474,7 +474,7 @@ impl Block for PatternPooler {
 Operation                           Time     Cost
 --------------------------------------------------
 children_changed() per child        ~5ns     RefCell borrow + bool check
-BitArray comparison (!=)            ~50ns    Word-level memcmp
+BitField comparison (!=)            ~50ns    Word-level memcmp
 Expensive encode (PatternPooler)    ~1μs     Overlap computation
 
 Break-even: Skip 1 encode saves 200× the check cost
@@ -497,7 +497,7 @@ pooler.input.add_child(Rc::clone(&encoder_out), 0);
 
 **Critical Implementation Details:**
 
-1. **BitArray equality**: Must implement `PartialEq` efficiently using word-level comparison
+1. **BitField equality**: Must implement `PartialEq` efficiently using word-level comparison
 2. **Borrow cost**: `RefCell::borrow()` adds ~2ns overhead (acceptable)
 3. **Short-circuit**: `children_changed()` returns immediately on first change found
 4. **History tracking**: Changes tracked per timestep for temporal queries
@@ -522,7 +522,7 @@ pub fn process<B: Block>(block: &mut B) {
 }
 ```
 
-### 3. BitArray Implementation with Word-Level Operations
+### 3. BitField Implementation with Word-Level Operations
 
 **C++ uses:** 32-bit word manipulation with platform-specific intrinsics
 
@@ -531,18 +531,18 @@ pub fn process<B: Block>(block: &mut B) {
 ```rust
 use bitvec::prelude::*;
 
-pub struct BitArray {
+pub struct BitField {
     bits: BitVec<u32, Lsb0>,
     num_bits: usize,
 }
 
 // Or custom for maximum performance
-pub struct BitArray {
+pub struct BitField {
     words: Vec<u32>,
     num_bits: usize,
 }
 
-impl BitArray {
+impl BitField {
     #[inline]
     pub fn set_bit(&mut self, b: usize) {
         let word_idx = b >> 5;  // b / 32
@@ -563,7 +563,7 @@ impl BitArray {
 
 **Key for Lazy Copying:**
 ```rust
-impl BitArray {
+impl BitField {
     /// Get direct access to words for efficient copying
     pub fn words(&self) -> &[u32] {
         &self.words
@@ -580,9 +580,9 @@ impl BitArray {
 
 /// Fast word-level copy (used by BlockInput::pull())
 #[inline(always)]
-pub fn bitarray_copy_words(
-    dst: &mut BitArray,
-    src: &BitArray,
+pub fn bitfield_copy_words(
+    dst: &mut BitField,
+    src: &BitField,
     dst_word_offset: usize,
     src_word_offset: usize,
     num_words: usize
@@ -598,7 +598,7 @@ This compiles to a single `memcpy` call, matching C++ performance.
 
 See detailed explanation in Challenge #1 above. Key points:
 - Use `Rc<RefCell<BlockOutput>>` for shared ownership
-- Implement `bitarray_copy_words()` using slice `copy_from_slice()`
+- Implement `bitfield_copy_words()` using slice `copy_from_slice()`
 - Maintains lazy copying semantics with minimal overhead
 - Word offsets enable efficient concatenation
 
@@ -637,12 +637,12 @@ impl BlockBase {
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
-pub struct BitArray {
+pub struct BitField {
     words: Vec<u32>,
     num_bits: usize,
 }
 
-impl BitArray {
+impl BitField {
     pub fn save(&self, path: &Path) -> Result<(), std::io::Error> {
         let file = File::create(path)?;
         bincode::serialize_into(file, self)?;
@@ -743,19 +743,19 @@ packed_simd = "0.3"         # Explicit SIMD operations
 
 **Tasks:**
 1. Create Cargo workspace structure
-2. Implement `BitArray` with comprehensive tests
+2. Implement `BitField` with comprehensive tests
 3. Implement `utils` module (shuffle, random)
 4. Implement error types
 5. Set up CI/CD with GitHub Actions
 
 **Deliverables:**
-- `src/bitarray.rs` with complete implementation
+- `src/bitfield.rs` with complete implementation
 - `src/utils.rs` with utility functions
 - Test suite in `tests/` with 90%+ coverage
 - Documentation with examples
 
 **Files to Convert:**
-- `src/cpp/bitarray.hpp/cpp` → `src/bitarray.rs`
+- `src/cpp/bitfield.hpp/cpp` → `src/bitfield.rs`
 - `src/cpp/utils.hpp` → `src/utils.rs`
 
 ### Phase 2: Block Infrastructure (Weeks 3-4)
@@ -766,12 +766,12 @@ packed_simd = "0.3"         # Explicit SIMD operations
 1. Define `Block` trait
 2. **Implement `BlockOutput` with history and change tracking** (CRITICAL)
    - History circular buffer with time-based indexing
-   - Change detection via BitArray comparison in `store()`
+   - Change detection via BitField comparison in `store()`
    - `has_changed()` and `has_changed_at(time)` methods
-   - Efficient equality check for BitArray (word-level memcmp)
+   - Efficient equality check for BitField (word-level memcmp)
 3. **Implement `BlockInput` with lazy copying and change tracking** (CRITICAL)
    - Use `Rc<RefCell<BlockOutput>>` for shared ownership
-   - Implement efficient `bitarray_copy_words()` function
+   - Implement efficient `bitfield_copy_words()` function
    - Maintain word offset metadata for concatenation
    - Ensure `pull()` does efficient word-level copying
    - Implement `children_changed()` with short-circuit evaluation
@@ -781,7 +781,7 @@ packed_simd = "0.3"         # Explicit SIMD operations
    - `add_child()` overhead vs C++ version
    - `pull()` with 1, 2, 4, 8 children vs C++ version
    - `children_changed()` with various child counts
-   - `store()` with BitArray comparison
+   - `store()` with BitField comparison
    - End-to-end pipeline with 10%, 50%, 90% change rates
 
 **Deliverables:**
@@ -906,7 +906,7 @@ gnomics/
 ├── RUST_CONVERSION_PLAN.md
 ├── src/
 │   ├── cpp/                  # Existing C++ source
-│   │   ├── bitarray.cpp/hpp
+│   │   ├── bitfield.cpp/hpp
 │   │   ├── block.cpp/hpp
 │   │   ├── block_input.cpp/hpp
 │   │   ├── block_output.cpp/hpp
@@ -916,7 +916,7 @@ gnomics/
 │   │       └── ...
 │   └──                  # New Rust source (mirrors C++ structure)
 │       ├── lib.rs
-│       ├── bitarray.rs
+│       ├── bitfield.rs
 │       ├── utils.rs
 │       ├── error.rs
 │       ├── block.rs          # Trait definition
@@ -937,11 +937,11 @@ gnomics/
 │           └── blank_block.rs
 ├── tests/
 │   ├── cpp/                  # Existing C++ tests
-│   │   ├── test_bitarray.cpp
+│   │   ├── test_bitfield.cpp
 │   │   ├── test_pattern_classifier.cpp
 │   │   └── ...
 │   └──                  # New Rust tests (mirrors C++ tests)
-│       ├── test_bitarray.rs
+│       ├── test_bitfield.rs
 │       ├── test_pattern_classifier.rs
 │       ├── test_pattern_pooler.rs
 │       ├── test_sequence_learner.rs
@@ -951,7 +951,7 @@ gnomics/
 │   ├── classification.rs
 │   └── sequence_learning.rs
 ├── benches/                  # Rust benchmarks
-│   ├── bitarray_bench.rs
+│   ├── bitfield_bench.rs
 │   └── blocks_bench.rs
 └── bindings/                 # Language bindings (Phase 7)
     ├── python/
@@ -985,22 +985,22 @@ gnomics/
    - Integration tests in `tests/` directory
    - Benchmarks in `benches/` directory
 
-### Example: BitArray Implementation
+### Example: BitField Implementation
 
 ```rust
-// src/bitarray.rs
+// src/bitfield
 
 use std::ops::{BitAnd, BitOr, BitXor, Not};
 
 /// Efficient bit array using 32-bit words
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BitArray {
+pub struct BitField {
     words: Vec<u32>,
     num_bits: usize,
 }
 
-impl BitArray {
-    /// Create a new BitArray with `n` bits, all initialized to 0
+impl BitField {
+    /// Create a new BitField with `n` bits, all initialized to 0
     pub fn new(n: usize) -> Self {
         let num_words = (n + 31) / 32;
         Self {
@@ -1072,8 +1072,8 @@ impl BitArray {
         self.words.fill(0);
     }
 
-    /// Count similar set bits between two BitArrays
-    pub fn num_similar(&self, other: &BitArray) -> usize {
+    /// Count similar set bits between two BitFields
+    pub fn num_similar(&self, other: &BitField) -> usize {
         assert_eq!(self.words.len(), other.words.len());
         self.words.iter()
             .zip(other.words.iter())
@@ -1093,38 +1093,38 @@ impl BitArray {
 }
 
 // Implement bitwise operators
-impl BitAnd for &BitArray {
-    type Output = BitArray;
+impl BitAnd for &BitField {
+    type Output = BitField;
 
-    fn bitand(self, rhs: Self) -> BitArray {
+    fn bitand(self, rhs: Self) -> BitField {
         assert_eq!(self.num_bits, rhs.num_bits);
         let words = self.words.iter()
             .zip(rhs.words.iter())
             .map(|(a, b)| a & b)
             .collect();
-        BitArray { words, num_bits: self.num_bits }
+        BitField { words, num_bits: self.num_bits }
     }
 }
 
-impl BitOr for &BitArray {
-    type Output = BitArray;
+impl BitOr for &BitField {
+    type Output = BitField;
 
-    fn bitor(self, rhs: Self) -> BitArray {
+    fn bitor(self, rhs: Self) -> BitField {
         assert_eq!(self.num_bits, rhs.num_bits);
         let words = self.words.iter()
             .zip(rhs.words.iter())
             .map(|(a, b)| a | b)
             .collect();
-        BitArray { words, num_bits: self.num_bits }
+        BitField { words, num_bits: self.num_bits }
     }
 }
 
-impl Not for &BitArray {
-    type Output = BitArray;
+impl Not for &BitField {
+    type Output = BitField;
 
-    fn not(self) -> BitArray {
+    fn not(self) -> BitField {
         let words = self.words.iter().map(|w| !w).collect();
-        BitArray { words, num_bits: self.num_bits }
+        BitField { words, num_bits: self.num_bits }
     }
 }
 
@@ -1134,7 +1134,7 @@ mod tests {
 
     #[test]
     fn test_basic_operations() {
-        let mut ba = BitArray::new(32);
+        let mut ba = BitField::new(32);
         assert_eq!(ba.num_set(), 0);
 
         ba.set_bit(5);
@@ -1152,11 +1152,11 @@ mod tests {
 
     #[test]
     fn test_bitwise_ops() {
-        let mut ba1 = BitArray::new(32);
+        let mut ba1 = BitField::new(32);
         ba1.set_bit(0);
         ba1.set_bit(5);
 
-        let mut ba2 = BitArray::new(32);
+        let mut ba2 = BitField::new(32);
         ba2.set_bit(5);
         ba2.set_bit(10);
 
@@ -1277,8 +1277,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_bitarray_basic() {
-        let mut ba = BitArray::new(1024);
+    fn test_bitfield_basic() {
+        let mut ba = BitField::new(1024);
         ba.set_bit(100);
         assert!(ba.get_bit(100));
         assert_eq!(ba.num_set(), 1);
@@ -1290,7 +1290,7 @@ mod tests {
         st.set_value(0.5);
         st.encode();
 
-        let acts = st.output().state().get_acts();
+        let acts = st.get_output().state().get_acts();
         assert_eq!(acts.len(), 128);
     }
 }
@@ -1311,7 +1311,7 @@ fn test_classification_pipeline() {
     let mut classifier = PatternClassifier::new(4, 1024, 8, /* params */);
 
     // Connect blocks
-    classifier.input_mut().add_child(encoder.output(), 0);
+    classifier.input_mut().add_child(encoder.get_output(), 0);
     classifier.init().unwrap();
 
     // Train
@@ -1341,8 +1341,8 @@ use proptest::prelude::*;
 
 proptest! {
     #[test]
-    fn test_bitarray_set_get_consistency(bits in prop::collection::vec(any::<bool>(), 1..1000)) {
-        let mut ba = BitArray::new(bits.len());
+    fn test_bitfield_set_get_consistency(bits in prop::collection::vec(any::<bool>(), 1..1000)) {
+        let mut ba = BitField::new(bits.len());
         for (i, &b) in bits.iter().enumerate() {
             if b {
                 ba.set_bit(i);
@@ -1361,14 +1361,14 @@ proptest! {
 Use `criterion` for performance testing:
 
 ```rust
-// benches/bitarray_bench.rs
+// benches/bitfield_bench.rs
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use gnomics::BitArray;
+use gnomics::BitField;
 
 fn bench_set_bits(c: &mut Criterion) {
-    c.bench_function("bitarray set 1000 bits", |b| {
-        let mut ba = BitArray::new(10000);
+    c.bench_function("bitfield set 1000 bits", |b| {
+        let mut ba = BitField::new(10000);
         b.iter(|| {
             for i in 0..1000 {
                 ba.set_bit(black_box(i));
@@ -1414,10 +1414,10 @@ cargo test --test cross_validation -- --test-data test_vectors.json
 | **BlockInput::pull (per child)** | **~100ns** | **<120ns** | **copy_from_slice, inline** |
 | **BlockInput::children_changed** | **~3ns/child** | **<10ns/child** | **Fast borrow + bool check** |
 | **BlockOutput::store with compare** | **~60ns** | **<100ns** | **Word-level memcmp** |
-| BitArray == comparison | ~40ns/1024bits | <60ns | memcmp or word loop |
-| BitArray set_bit | ~2ns | <3ns | Inline, bounds check in debug only |
-| BitArray num_set | ~50ns/1024bits | <60ns | SIMD popcount |
-| bitarray_copy_words | ~50ns/1024bits | <60ns | copy_from_slice |
+| BitField == comparison | ~40ns/1024bits | <60ns | memcmp or word loop |
+| BitField set_bit | ~2ns | <3ns | Inline, bounds check in debug only |
+| BitField num_set | ~50ns/1024bits | <60ns | SIMD popcount |
+| bitfield_copy_words | ~50ns/1024bits | <60ns | copy_from_slice |
 | Pattern encode | ~1μs | <1.2μs | Optimize hot loop |
 | Learn step | ~10μs | <12μs | Inline memory access |
 
@@ -1430,7 +1430,7 @@ cargo test --test cross_validation -- --test-data test_vectors.json
 cargo bench
 
 # Compare with baseline
-cargo bench --bench bitarray -- --baseline c++_baseline
+cargo bench --bench bitfield -- --baseline c++_baseline
 
 # Benchmark critical lazy copying operations
 cargo bench --bench block_io
@@ -1445,7 +1445,7 @@ cargo flamegraph --bench block_io
 // benches/block_io_bench.rs
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use gnomics::{BlockInput, BlockOutput, BitArray};
+use gnomics::{BlockInput, BlockOutput, BitField};
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -1625,7 +1625,7 @@ path = "src/lib.rs"
 
 [[test]]
 name = "integration"
-path = "tests/test_bitarray.rs"
+path = "tests/test_bitfield.rs"
 
 [dependencies]
 bitvec = "1.0"
@@ -1692,7 +1692,7 @@ cargo fmt
 cargo clippy -- -D warnings
 
 # Run specific test
-cargo test test_bitarray
+cargo test test_bitfield
 
 # Benchmark specific function
 cargo bench bench_set_bits
@@ -1708,14 +1708,14 @@ make
 # Run C++ tests
 cmake -DGnomics_TESTS=true ..
 make
-./tests/cpp/test_bitarray
+./tests/cpp/test_bitfield
 
 # Compare outputs
 # ---------------
 
 # Run both versions and compare
-./build/tests/cpp/test_bitarray > cpp_output.txt
-cargo test test_bitarray -- --nocapture > rust_output.txt
+./build/tests/cpp/test_bitfield > cpp_output.txt
+cargo test test_bitfield -- --nocapture > rust_output.txt
 diff cpp_output.txt rust_output.txt
 ```
 
@@ -1755,7 +1755,7 @@ This conversion plan provides a comprehensive roadmap for migrating Gnomic Compu
 2. Create `Cargo.toml` at project root
 3. Set up `src/` directory structure
 4. Set up Rust development environment and toolchain
-5. Begin Phase 1 implementation (BitArray + utils)
+5. Begin Phase 1 implementation (BitField + utils)
 6. Schedule weekly progress reviews
 7. Set up CI/CD to test both C++ and Rust versions
 

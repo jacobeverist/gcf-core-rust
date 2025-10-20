@@ -1,4 +1,4 @@
-use gnomics::{BlockMemory, BitArray};
+use gnomics::{BlockMemory, BitField};
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 
@@ -16,7 +16,7 @@ fn main() {
     memory.init(40, &mut rng);  // 40 bits total context
     
     // Create context pattern with 25 active bits
-    let mut context = BitArray::new(40);
+    let mut context = BitField::new(40);
     for i in 0..25 {
         context.set_bit(i);
     }

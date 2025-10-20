@@ -83,30 +83,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         learner.execute(true)?;
 
         // Get learner output pattern
-        let learner_pattern = learner.output.borrow().state.clone();
+        // let learner_pattern = learner.output.borrow().state.clone();
+        // let learner_pattern = learner.output.borrow().get_state();
+        let learner_pattern = learner.get_output_state();
 
         // Print learner state at beginning of each sequence (when value = 0.0)
         // if value == 0.0 {
         //     println!("Step {}: learner pattern = {:?}", i, learner_pattern);
         // }
 
-        if value == 0.0 {
-            println!("Step {}: learner pattern = ", i);
-            //println!("{:?}", learner_pattern.get_bits().iter().format(""));
-        }
 
         // Get anomaly score (0.0 = expected, 1.0 = completely unexpected)
         let score = learner.get_anomaly_score();
 
-        // Print high anomaly scores
-        if score > 0.5 {
+        // if value == 0.0
+        {
+        //     println!("Step {:?}, Value {:?}: learner pattern = ", i, value);
             println!(
                 "⚠️  Step {}: value={:.1}, anomaly={:.2}% (HIGH)",
                 i,
                 value,
                 score * 100.0
             );
+            println!("{:?}", learner_pattern.get_bits().iter().format(""));
         }
+
+        // Print high anomaly scores
+        // if score > 0.5 {
+        //     println!(
+        //         "⚠️  Step {}: value={:.1}, anomaly={:.2}% (HIGH)",
+        //         i,
+        //         value,
+        //         score * 100.0
+        //     );
+        // }
         /*
         else {
 

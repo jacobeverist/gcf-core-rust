@@ -1,9 +1,9 @@
-//! Comprehensive tests for BitArray implementation.
+//! Comprehensive tests for BitField implementation.
 //!
 //! These tests match the behavior demonstrated in the C++ test file
-//! (tests/cpp/test_bitarray.cpp) and add additional property-based tests.
+//! (tests/cpp/test_bitfield.cpp) and add additional property-based tests.
 
-use gnomics::{bitarray_copy_words, BitArray};
+use gnomics::{bitfield_copy_words, BitField};
 use proptest::prelude::*;
 use rand::SeedableRng;
 
@@ -13,7 +13,7 @@ use rand::SeedableRng;
 
 #[test]
 fn test_construction() {
-    let ba = BitArray::new(1024);
+    let ba = BitField::new(1024);
     assert_eq!(ba.num_bits(), 1024);
     assert_eq!(ba.num_words(), 32);
     assert_eq!(ba.num_set(), 0);
@@ -21,7 +21,7 @@ fn test_construction() {
 
 #[test]
 fn test_resize() {
-    let mut ba = BitArray::new(32);
+    let mut ba = BitField::new(32);
     ba.set_all();
     assert_eq!(ba.num_set(), 32);
 
@@ -32,7 +32,7 @@ fn test_resize() {
 
 #[test]
 fn test_erase() {
-    let mut ba = BitArray::new(32);
+    let mut ba = BitField::new(32);
     ba.set_all();
     ba.erase();
     assert_eq!(ba.num_bits(), 0);
@@ -45,7 +45,7 @@ fn test_erase() {
 
 #[test]
 fn test_set_bit() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.set_bit(4);
     assert_eq!(ba.get_bit(4), 1);
     assert_eq!(ba.num_set(), 1);
@@ -53,7 +53,7 @@ fn test_set_bit() {
 
 #[test]
 fn test_get_bit() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.set_bit(4);
     assert_eq!(ba.get_bit(4), 1);
     assert_eq!(ba.get_bit(5), 0);
@@ -61,7 +61,7 @@ fn test_get_bit() {
 
 #[test]
 fn test_clear_bit() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.set_bit(4);
     ba.clear_bit(4);
     assert_eq!(ba.get_bit(4), 0);
@@ -69,7 +69,7 @@ fn test_clear_bit() {
 
 #[test]
 fn test_toggle_bit() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.toggle_bit(7);
     assert_eq!(ba.get_bit(7), 1);
     ba.toggle_bit(7);
@@ -78,7 +78,7 @@ fn test_toggle_bit() {
 
 #[test]
 fn test_assign_bit() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.assign_bit(7, 1);
     assert_eq!(ba.get_bit(7), 1);
     ba.assign_bit(7, 0);
@@ -91,7 +91,7 @@ fn test_assign_bit() {
 
 #[test]
 fn test_set_range() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.set_range(2, 8);
     assert_eq!(ba.num_set(), 8);
     let acts = ba.get_acts();
@@ -100,7 +100,7 @@ fn test_set_range() {
 
 #[test]
 fn test_toggle_range() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.set_range(2, 8); // Sets bits 2-9
     ba.toggle_range(4, 8); // Toggles bits 4-11
     let acts = ba.get_acts();
@@ -110,7 +110,7 @@ fn test_toggle_range() {
 
 #[test]
 fn test_clear_range() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.set_range(2, 8);
     ba.clear_range(2, 10);
     assert_eq!(ba.num_set(), 0);
@@ -122,14 +122,14 @@ fn test_clear_range() {
 
 #[test]
 fn test_set_all() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.set_all();
     assert_eq!(ba.num_set(), 1024);
 }
 
 #[test]
 fn test_clear_all() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.set_all();
     ba.clear_all();
     assert_eq!(ba.num_set(), 0);
@@ -137,7 +137,7 @@ fn test_clear_all() {
 
 #[test]
 fn test_toggle_all() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.set_all();
     ba.toggle_all();
     assert_eq!(ba.num_set(), 0);
@@ -149,7 +149,7 @@ fn test_toggle_all() {
 
 #[test]
 fn test_set_bits() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     let vals = vec![0, 1, 0, 1, 0, 1, 0, 1];
     ba.set_bits(&vals);
     let acts = ba.get_acts();
@@ -158,7 +158,7 @@ fn test_set_bits() {
 
 #[test]
 fn test_set_acts() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.set_acts(&[2, 4, 6, 8]);
     assert_eq!(ba.num_set(), 4);
     assert_eq!(ba.get_acts(), vec![2, 4, 6, 8]);
@@ -166,14 +166,14 @@ fn test_set_acts() {
 
 #[test]
 fn test_get_bits() {
-    let mut ba = BitArray::new(8);
+    let mut ba = BitField::new(8);
     ba.set_acts(&[1, 3, 5, 7]);
     assert_eq!(ba.get_bits(), vec![0, 1, 0, 1, 0, 1, 0, 1]);
 }
 
 #[test]
 fn test_get_acts() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.set_range(4, 8);
     let acts = ba.get_acts();
     assert_eq!(acts.len(), 8);
@@ -186,22 +186,22 @@ fn test_get_acts() {
 
 #[test]
 fn test_num_set() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.set_range(4, 8);
     assert_eq!(ba.num_set(), 8);
 }
 
 #[test]
 fn test_num_cleared() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.set_range(4, 8);
     assert_eq!(ba.num_cleared(), 1016);
 }
 
 #[test]
 fn test_num_similar() {
-    let mut ba0 = BitArray::new(1024);
-    let mut ba2 = BitArray::new(1024);
+    let mut ba0 = BitField::new(1024);
+    let mut ba2 = BitField::new(1024);
 
     ba0.set_range(4, 8);
     ba2.set_range(6, 10);
@@ -216,7 +216,7 @@ fn test_num_similar() {
 
 #[test]
 fn test_find_next_set_bit() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.set_range(4, 8);
 
     assert_eq!(ba.find_next_set_bit(0), Some(4));
@@ -226,7 +226,7 @@ fn test_find_next_set_bit() {
 
 #[test]
 fn test_find_next_set_bit_range() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.set_range(4, 8);
 
     let result = ba.find_next_set_bit_range(6, 18);
@@ -242,14 +242,14 @@ fn test_find_next_set_bit_range() {
 #[test]
 fn test_random_shuffle() {
     let mut rng = rand::rngs::StdRng::seed_from_u64(0);
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.set_range(0, 100);
 
     let acts_before = ba.get_acts();
     ba.random_shuffle(&mut rng);
     let acts_after = ba.get_acts();
 
-    // Should have same number of bits
+    // Should have the same number of bits
     assert_eq!(acts_before.len(), acts_after.len());
     // But different positions (with very high probability)
     assert_ne!(acts_before, acts_after);
@@ -258,7 +258,7 @@ fn test_random_shuffle() {
 #[test]
 fn test_random_set_num() {
     let mut rng = rand::rngs::StdRng::seed_from_u64(0);
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
 
     ba.random_set_num(&mut rng, 100);
     assert_eq!(ba.num_set(), 100);
@@ -267,7 +267,7 @@ fn test_random_set_num() {
 #[test]
 fn test_random_set_pct() {
     let mut rng = rand::rngs::StdRng::seed_from_u64(0);
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
 
     ba.random_set_pct(&mut rng, 0.1);
     let num_set = ba.num_set();
@@ -281,8 +281,8 @@ fn test_random_deterministic() {
     let mut rng1 = rand::rngs::StdRng::seed_from_u64(42);
     let mut rng2 = rand::rngs::StdRng::seed_from_u64(42);
 
-    let mut ba1 = BitArray::new(1024);
-    let mut ba2 = BitArray::new(1024);
+    let mut ba1 = BitField::new(1024);
+    let mut ba2 = BitField::new(1024);
 
     ba1.random_set_num(&mut rng1, 100);
     ba2.random_set_num(&mut rng2, 100);
@@ -296,7 +296,7 @@ fn test_random_deterministic() {
 
 #[test]
 fn test_bitwise_not() {
-    let mut ba0 = BitArray::new(1024);
+    let mut ba0 = BitField::new(1024);
     ba0.set_bit(2);
     ba0.set_bit(3);
 
@@ -306,8 +306,8 @@ fn test_bitwise_not() {
 
 #[test]
 fn test_bitwise_and() {
-    let mut ba0 = BitArray::new(1024);
-    let mut ba1 = BitArray::new(1024);
+    let mut ba0 = BitField::new(1024);
+    let mut ba1 = BitField::new(1024);
 
     ba0.set_bit(2);
     ba0.set_bit(3);
@@ -321,8 +321,8 @@ fn test_bitwise_and() {
 
 #[test]
 fn test_bitwise_or() {
-    let mut ba0 = BitArray::new(1024);
-    let mut ba1 = BitArray::new(1024);
+    let mut ba0 = BitField::new(1024);
+    let mut ba1 = BitField::new(1024);
 
     ba0.set_bit(2);
     ba0.set_bit(3);
@@ -336,8 +336,8 @@ fn test_bitwise_or() {
 
 #[test]
 fn test_bitwise_xor() {
-    let mut ba0 = BitArray::new(1024);
-    let mut ba1 = BitArray::new(1024);
+    let mut ba0 = BitField::new(1024);
+    let mut ba1 = BitField::new(1024);
 
     ba0.set_bit(2);
     ba0.set_bit(3);
@@ -355,8 +355,8 @@ fn test_bitwise_xor() {
 
 #[test]
 fn test_equality() {
-    let mut ba0 = BitArray::new(1024);
-    let mut ba1 = BitArray::new(1024);
+    let mut ba0 = BitField::new(1024);
+    let mut ba1 = BitField::new(1024);
 
     ba0.set_bit(5);
     ba1.set_bit(5);
@@ -370,8 +370,9 @@ fn test_equality() {
 #[test]
 fn test_equality_performance() {
     // Test that equality uses fast word-level comparison
-    let mut ba1 = BitArray::new(10000);
-    let mut ba2 = BitArray::new(10000);
+    let mut ba1 = BitField::new(10000);
+    #[allow(unused_assignments)]
+    let mut ba2 = BitField::new(10000);
 
     ba1.random_set_pct(&mut rand::rngs::StdRng::seed_from_u64(0), 0.2);
     ba2 = ba1.clone();
@@ -390,7 +391,7 @@ fn test_equality_performance() {
 
 #[test]
 fn test_word_access() {
-    let mut ba = BitArray::new(128);
+    let mut ba = BitField::new(128);
     ba.set_range(0, 64);
 
     let words = ba.words();
@@ -400,12 +401,12 @@ fn test_word_access() {
 }
 
 #[test]
-fn test_bitarray_copy_words() {
-    let mut src = BitArray::new(128);
-    let mut dst = BitArray::new(256);
+fn test_bitfield_copy_words() {
+    let mut src = BitField::new(128);
+    let mut dst = BitField::new(256);
 
     src.set_range(0, 64);
-    bitarray_copy_words(&mut dst, &src, 2, 0, 2);
+    bitfield_copy_words(&mut dst, &src, 2, 0, 2);
 
     // Check that words 2-3 in dst match words 0-1 in src
     assert_eq!(dst.words()[2], src.words()[0]);
@@ -413,19 +414,19 @@ fn test_bitarray_copy_words() {
 }
 
 #[test]
-fn test_bitarray_copy_words_multiple() {
-    let mut src1 = BitArray::new(64);
-    let mut src2 = BitArray::new(64);
-    let mut dst = BitArray::new(256);
+fn test_bitfield_copy_words_multiple() {
+    let mut src1 = BitField::new(64);
+    let mut src2 = BitField::new(64);
+    let mut dst = BitField::new(256);
 
     src1.set_range(0, 32);
     src2.set_range(0, 32);
 
     // Copy src1 to words 0-1
-    bitarray_copy_words(&mut dst, &src1, 0, 0, 2);
+    bitfield_copy_words(&mut dst, &src1, 0, 0, 2);
 
     // Copy src2 to words 2-3
-    bitarray_copy_words(&mut dst, &src2, 2, 0, 2);
+    bitfield_copy_words(&mut dst, &src2, 2, 0, 2);
 
     // Verify
     assert_eq!(dst.words()[0], src1.words()[0]);
@@ -440,20 +441,20 @@ fn test_bitarray_copy_words_multiple() {
 
 #[test]
 fn test_memory_usage() {
-    let ba = BitArray::new(1024);
+    let ba = BitField::new(1024);
     let usage = ba.memory_usage();
     assert!(usage >= 128); // At least 32 words * 4 bytes
 }
 
 #[test]
 fn test_num_words() {
-    let ba = BitArray::new(1024);
+    let ba = BitField::new(1024);
     assert_eq!(ba.num_words(), 32);
 
-    let ba = BitArray::new(1000);
+    let ba = BitField::new(1000);
     assert_eq!(ba.num_words(), 32); // Rounds up
 
-    let ba = BitArray::new(32);
+    let ba = BitField::new(32);
     assert_eq!(ba.num_words(), 1);
 }
 
@@ -462,8 +463,8 @@ fn test_num_words() {
 // =============================================================================
 
 #[test]
-fn test_empty_bitarray() {
-    let ba = BitArray::new(0);
+fn test_empty_bitfield() {
+    let ba = BitField::new(0);
     assert_eq!(ba.num_bits(), 0);
     assert_eq!(ba.num_words(), 0);
     assert_eq!(ba.num_set(), 0);
@@ -471,7 +472,7 @@ fn test_empty_bitarray() {
 
 #[test]
 fn test_single_bit() {
-    let mut ba = BitArray::new(1);
+    let mut ba = BitField::new(1);
     assert_eq!(ba.num_set(), 0);
     ba.set_bit(0);
     assert_eq!(ba.num_set(), 1);
@@ -479,7 +480,7 @@ fn test_single_bit() {
 
 #[test]
 fn test_cross_word_boundary() {
-    let mut ba = BitArray::new(128);
+    let mut ba = BitField::new(128);
     ba.set_bit(31); // Last bit of word 0
     ba.set_bit(32); // First bit of word 1
     ba.set_bit(63); // Last bit of word 1
@@ -496,7 +497,7 @@ fn test_cross_word_boundary() {
 proptest! {
     #[test]
     fn prop_set_get_consistency(bits in prop::collection::vec(any::<bool>(), 1..1000)) {
-        let mut ba = BitArray::new(bits.len());
+        let mut ba = BitField::new(bits.len());
         for (i, &b) in bits.iter().enumerate() {
             if b {
                 ba.set_bit(i);
@@ -511,7 +512,7 @@ proptest! {
     #[test]
     fn prop_num_set_matches_acts_len(n in 1..2000usize, seed in any::<u64>()) {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        let mut ba = BitArray::new(n);
+        let mut ba = BitField::new(n);
         ba.random_set_num(&mut rng, n / 4);
 
         prop_assert_eq!(ba.num_set(), ba.get_acts().len());
@@ -519,7 +520,7 @@ proptest! {
 
     #[test]
     fn prop_clear_all_zeros(n in 1..2000usize) {
-        let mut ba = BitArray::new(n);
+        let mut ba = BitField::new(n);
         ba.set_all();
         ba.clear_all();
 
@@ -528,7 +529,7 @@ proptest! {
 
     #[test]
     fn prop_set_all_fills(n in 1..2000usize) {
-        let mut ba = BitArray::new(n);
+        let mut ba = BitField::new(n);
         ba.set_all();
 
         prop_assert_eq!(ba.num_set(), n);
@@ -538,7 +539,7 @@ proptest! {
     fn prop_toggle_twice_identity(n in 1..1000usize, bit in 0..999usize) {
         if bit >= n { return Ok(()); }
 
-        let mut ba = BitArray::new(n);
+        let mut ba = BitField::new(n);
         let initial = ba.get_bit(bit);
         ba.toggle_bit(bit);
         ba.toggle_bit(bit);
@@ -549,8 +550,8 @@ proptest! {
     #[test]
     fn prop_and_commutative(n in 32..512usize, seed in any::<u64>()) {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        let mut ba1 = BitArray::new(n);
-        let mut ba2 = BitArray::new(n);
+        let mut ba1 = BitField::new(n);
+        let mut ba2 = BitField::new(n);
 
         ba1.random_set_pct(&mut rng, 0.3);
         ba2.random_set_pct(&mut rng, 0.3);
@@ -564,8 +565,8 @@ proptest! {
     #[test]
     fn prop_or_commutative(n in 32..512usize, seed in any::<u64>()) {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        let mut ba1 = BitArray::new(n);
-        let mut ba2 = BitArray::new(n);
+        let mut ba1 = BitField::new(n);
+        let mut ba2 = BitField::new(n);
 
         ba1.random_set_pct(&mut rng, 0.3);
         ba2.random_set_pct(&mut rng, 0.3);
@@ -579,7 +580,7 @@ proptest! {
     #[test]
     fn prop_double_negation(n in 32..512usize, seed in any::<u64>()) {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        let mut ba = BitArray::new(n);
+        let mut ba = BitField::new(n);
         ba.random_set_pct(&mut rng, 0.5);
 
         let result = !&!&ba;
@@ -593,7 +594,7 @@ proptest! {
 
 #[test]
 fn test_clone() {
-    let mut ba = BitArray::new(1024);
+    let mut ba = BitField::new(1024);
     ba.random_set_num(&mut rand::rngs::StdRng::seed_from_u64(0), 100);
 
     let ba_clone = ba.clone();

@@ -1,10 +1,10 @@
-# BitArray Migration Plan: Custom Implementation → bitvec Crate
+# BitField Migration Plan: Custom Implementation → bitvec Crate
 
 ## Executive Summary
 
-This document outlines a plan to migrate the Gnomics BitArray implementation from a custom `Vec<u32>`-based approach to using the `bitvec` crate, while maintaining all critical functionality required for Phase 2 (lazy copying, change tracking, and word-level operations).
+This document outlines a plan to migrate the Gnomics BitField implementation from a custom `Vec<u32>`-based approach to using the `bitvec` crate, while maintaining all critical functionality required for Phase 2 (lazy copying, change tracking, and word-level operations).
 
-**Current Status:** Phase 1 complete with custom BitArray implementation (923 lines, 110 tests passing)
+**Current Status:** Phase 1 complete with custom BitField implementation (923 lines, 110 tests passing)
 
 **Estimated Effort:** 1-2 weeks (parallel with or before Phase 2 implementation)
 
@@ -57,7 +57,7 @@ From RUST_CONVERSION_PLAN.md line 529-562:
 
 The plan identified these critical needs:
 - Word-level access methods (`words()`, `words_mut()`, `num_words()`)
-- `bitarray_copy_words()` helper function for memcpy-like operations
+- `bitfield_copy_words()` helper function for memcpy-like operations
 - Direct control over memory layout for BlockInput concatenation
 - Zero-cost word-level copying for Phase 2
 
@@ -67,7 +67,7 @@ The plan identified these critical needs:
 
 ## Current Implementation Analysis {#current-analysis}
 
-### Current BitArray API (33 public methods)
+### Current BitField API (33 public methods)
 
 #### Core Operations
 - `new(n)` - Create with n bits
@@ -116,7 +116,7 @@ The plan identified these critical needs:
 - `words_mut()` - Get &mut [u32] slice
 
 #### Helper Functions
-- `bitarray_copy_words(dst, src, dst_offset, src_offset, num_words)` ⚠️ **CRITICAL**
+- `bitfield_copy_words(dst, src, dst_offset, src_offset, num_words)` ⚠️ **CRITICAL**
 - `erase()` - Clear and set to zero length
 
 #### Operators (via traits)
@@ -183,7 +183,7 @@ if new_state != old_state {  // PartialEq using word-level memcmp
 1. **Type System:**
    - `BitVec<T, O>` - Owned bit vector (like `Vec<T>`)
    - `BitSlice<T, O>` - Borrowed bit slice (like `&[T]`)
-   - `BitArray<T, O, N>` - Fixed-size array (like `[T; N]`)
+   - `BitField<T, O, N>` - Fixed-size array (like `[T; N]`)
    - `BitBox<T, O>` - Boxed bit slice (like `Box<[T]>`)
 
 2. **Type Parameters:**
@@ -250,7 +250,7 @@ if new_state != old_state {  // PartialEq using word-level memcmp
 use bitvec::prelude::*;
 
 // Custom implementation
-fn custom_copy(dst: &mut BitArray, src: &BitArray, dst_offset: usize, src_offset: usize, n: usize) {
+fn custom_copy(dst: &mut BitField, src: &BitField, dst_offset: usize, src_offset: usize, n: usize) {
     dst.words_mut()[dst_offset..dst_offset+n]
         .copy_from_slice(&src.words()[src_offset..src_offset+n]);
 }
@@ -338,7 +338,7 @@ for &idx in &[5, 10, 15] {
 
 ### Option 1: Direct bitvec Types (Pure Migration)
 
-**Approach:** Replace `BitArray` with `BitVec<u32, Lsb0>` directly
+**Approach:** Replace `BitField` with `BitVec<u32, Lsb0>` directly
 
 **Pros:**
 - Minimal code to maintain
@@ -353,15 +353,15 @@ for &idx in &[5, 10, 15] {
 **Example:**
 ```rust
 // Before
-pub struct BitArray { words: Vec<u32>, num_bits: usize }
+pub struct BitField { words: Vec<u32>, num_bits: usize }
 
 // After
-pub type BitArray = BitVec<u32, Lsb0>;
+pub type BitField = BitVec<u32, Lsb0>;
 ```
 
 ### Option 2: Wrapper Facade (Recommended)
 
-**Approach:** Keep `BitArray` struct wrapping `BitVec<u32, Lsb0>`
+**Approach:** Keep `BitField` struct wrapping `BitVec<u32, Lsb0>`
 
 **Pros:**
 - API compatibility maintained
@@ -377,11 +377,11 @@ pub type BitArray = BitVec<u32, Lsb0>;
 ```rust
 use bitvec::prelude::*;
 
-pub struct BitArray {
+pub struct BitField {
     bv: BitVec<u32, Lsb0>,
 }
 
-impl BitArray {
+impl BitField {
     pub fn new(n: usize) -> Self {
         Self { bv: BitVec::repeat(false, n) }
     }
@@ -428,15 +428,15 @@ impl BitArray {
 }
 
 // Preserve operators
-impl BitAnd for &BitArray {
-    type Output = BitArray;
-    fn bitand(self, rhs: Self) -> BitArray {
-        BitArray { bv: &self.bv & &rhs.bv }
+impl BitAnd for &BitField {
+    type Output = BitField;
+    fn bitand(self, rhs: Self) -> BitField {
+        BitField { bv: &self.bv & &rhs.bv }
     }
 }
 
 // Preserve comparison
-impl PartialEq for BitArray {
+impl PartialEq for BitField {
     fn eq(&self, other: &Self) -> bool {
         self.bv == other.bv
     }
@@ -459,13 +459,13 @@ impl PartialEq for BitArray {
 
 **Example:**
 ```rust
-pub trait BitArrayExt {
+pub trait BitFieldExt {
     fn set_acts(&mut self, indices: &[usize]);
     fn get_acts(&self) -> Vec<usize>;
     fn random_set_num(&mut self, rng: &mut impl Rng, n: usize);
 }
 
-impl BitArrayExt for BitVec<u32, Lsb0> {
+impl BitFieldExt for BitVec<u32, Lsb0> {
     fn set_acts(&mut self, indices: &[usize]) { /* ... */ }
     fn get_acts(&self) -> Vec<usize> { /* ... */ }
     fn random_set_num(&mut self, rng: &mut impl Rng, n: usize) { /* ... */ }
@@ -473,7 +473,7 @@ impl BitArrayExt for BitVec<u32, Lsb0> {
 
 // Usage
 use bitvec::prelude::*;
-use gnomics::BitArrayExt;
+use gnomics::BitFieldExt;
 
 let mut bv = BitVec::repeat(false, 1024);
 bv.set_acts(&[5, 10, 15]);
@@ -494,7 +494,7 @@ bv.set_acts(&[5, 10, 15]);
 **Goals:** Research and prototype
 
 **Tasks:**
-1. ✅ Analyze current BitArray API (completed above)
+1. ✅ Analyze current BitField API (completed above)
 2. ✅ Research bitvec capabilities (completed above)
 3. Create prototype wrapper implementation
 4. Validate word-level access performance
@@ -502,7 +502,7 @@ bv.set_acts(&[5, 10, 15]);
 6. Document API translation layer
 
 **Deliverables:**
-- Prototype `src/bitarray_bitvec.rs`
+- Prototype `src/bitfield_bitvec.rs`
 - Performance benchmark comparison
 - API mapping document (this section)
 
@@ -519,7 +519,7 @@ bv.set_acts(&[5, 10, 15]);
 6. Update serialization support
 
 **Deliverables:**
-- Updated `src/bitarray.rs` using bitvec
+- Updated `src/bitfield.rs` using bitvec
 - All methods implemented
 - Compilation successful
 
@@ -655,12 +655,12 @@ bv.set_acts(&[5, 10, 15]);
 ```rust
 #[test]
 fn test_word_level_copy() {
-    let mut dst = BitArray::new(1024);
-    let mut src = BitArray::new(1024);
+    let mut dst = BitField::new(1024);
+    let mut src = BitField::new(1024);
     src.set_acts(&[5, 100, 500]);
 
     // Critical: word-level copy must work
-    bitarray_copy_words(&mut dst, &src, 0, 0, src.num_words());
+    bitfield_copy_words(&mut dst, &src, 0, 0, src.num_words());
 
     assert_eq!(dst.get_acts(), vec![5, 100, 500]);
 }
@@ -670,8 +670,8 @@ fn test_word_level_copy() {
 ```rust
 #[test]
 fn test_change_tracking() {
-    let mut ba1 = BitArray::new(1024);
-    let mut ba2 = BitArray::new(1024);
+    let mut ba1 = BitField::new(1024);
+    let mut ba2 = BitField::new(1024);
 
     ba1.set_acts(&[5, 10]);
     ba2.set_acts(&[5, 10]);
@@ -685,12 +685,12 @@ fn test_change_tracking() {
 3. **Performance Benchmarks:**
 ```rust
 fn bench_word_copy(c: &mut Criterion) {
-    let src = BitArray::new(1024);
-    let mut dst = BitArray::new(1024);
+    let src = BitField::new(1024);
+    let mut dst = BitField::new(1024);
 
     c.bench_function("word_copy_1024bits", |b| {
         b.iter(|| {
-            bitarray_copy_words(&mut dst, &src, 0, 0, src.num_words());
+            bitfield_copy_words(&mut dst, &src, 0, 0, src.num_words());
         });
     });
 }
@@ -709,7 +709,7 @@ cargo bench
 cargo tarpaulin --out Html
 
 # Performance regression check
-cargo bench --bench bitarray_bench -- --baseline custom
+cargo bench --bench bitfield_bench -- --baseline custom
 ```
 
 ---
@@ -731,27 +731,27 @@ cargo bench --bench bitarray_bench -- --baseline custom
 ### Benchmark Suite
 
 ```rust
-// benches/bitarray_bitvec_comparison.rs
+// benches/bitfield_bitvec_comparison.rs
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use gnomics::BitArray;
+use gnomics::BitField;
 
 fn bench_custom_vs_bitvec(c: &mut Criterion) {
     let mut group = c.benchmark_group("custom_vs_bitvec");
 
     // Critical: Word-level copy
     group.bench_function("word_copy_custom", |b| {
-        let src = BitArray::new(1024);
-        let mut dst = BitArray::new(1024);
+        let src = BitField::new(1024);
+        let mut dst = BitField::new(1024);
         b.iter(|| {
-            bitarray_copy_words(&mut dst, &src, 0, 0, 32);
+            bitfield_copy_words(&mut dst, &src, 0, 0, 32);
         });
     });
 
     // Critical: Comparison for change tracking
     group.bench_function("partial_eq", |b| {
-        let ba1 = BitArray::new(1024);
-        let ba2 = BitArray::new(1024);
+        let ba1 = BitField::new(1024);
+        let ba2 = BitField::new(1024);
         b.iter(|| {
             black_box(&ba1 == &ba2);
         });
@@ -817,7 +817,7 @@ criterion_main!(benches);
 ## Implementation Checklist
 
 ### Prototype Phase
-- [ ] Create `src/bitarray_bitvec_prototype.rs`
+- [ ] Create `src/bitfield_bitvec_prototype.rs`
 - [ ] Implement wrapper with 10-12 core methods
 - [ ] Validate word-level access works
 - [ ] Run micro-benchmarks for critical operations
@@ -829,7 +829,7 @@ criterion_main!(benches);
 - [ ] Implement all 33 public methods
 - [ ] Implement 5 operator traits
 - [ ] Preserve serialization support
-- [ ] Update `bitarray_copy_words` helper
+- [ ] Update `bitfield_copy_words` helper
 - [ ] Add inline annotations where needed
 
 ### Testing Phase

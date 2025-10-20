@@ -2,7 +2,7 @@
 //!
 //! This example measures key operations and compares against C++ targets.
 
-use gnomics::{bitarray_copy_words, BitArray};
+use gnomics::{bitfield_copy_words, BitField};
 use rand::SeedableRng;
 use std::time::Instant;
 
@@ -40,7 +40,7 @@ fn main() {
     println!("\n=== Gnomics Rust Performance Validation ===\n");
     println!("Testing critical operations against C++ targets:\n");
 
-    let mut ba = BitArray::new(10000);
+    let mut ba = BitField::new(10000);
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
 
     // Individual bit operations
@@ -61,7 +61,7 @@ fn main() {
     });
 
     // Counting operations (1024 bits)
-    let mut ba1024 = BitArray::new(1024);
+    let mut ba1024 = BitField::new(1024);
     ba1024.random_set_pct(&mut rng, 0.2);
 
     measure("num_set (1024 bits)", 60.0, 100_000, || {
@@ -69,12 +69,12 @@ fn main() {
     });
 
     // Word-level copy (1024 bits = 32 words)
-    let mut src = BitArray::new(1024);
-    let mut dst = BitArray::new(2048);
+    let mut src = BitField::new(1024);
+    let mut dst = BitField::new(2048);
     src.random_set_pct(&mut rng, 0.2);
 
-    measure("bitarray_copy_words (1024b)", 60.0, 100_000, || {
-        bitarray_copy_words(&mut dst, &src, 0, 0, 32);
+    measure("bitfield_copy_words (1024b)", 60.0, 100_000, || {
+        bitfield_copy_words(&mut dst, &src, 0, 0, 32);
     });
 
     // Comparison (critical for change tracking)

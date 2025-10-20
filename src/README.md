@@ -10,8 +10,8 @@ Phase 1 implements core utilities with comprehensive testing and performance val
 
 #### Core Modules
 
-1. **bitarray.rs** - High-performance bit manipulation
-   - Custom BitArray using 32-bit word storage
+1. **bitfield.rs** - High-performance bit manipulation
+   - Custom BitField using 32-bit word storage
    - Individual bit operations: set_bit, get_bit, clear_bit, toggle_bit
    - Bulk operations: set_all, clear_all, toggle_all
    - Vector operations: set_acts, get_acts
@@ -21,7 +21,7 @@ Phase 1 implements core utilities with comprehensive testing and performance val
    - Logical operators: AND, OR, XOR, NOT
    - Comparison: PartialEq (critical for change tracking in Phase 2)
    - Word-level access: words(), words_mut(), num_words()
-   - Helper function: bitarray_copy_words() for lazy copying
+   - Helper function: bitfield_copy_words() for lazy copying
 
 2. **utils.rs** - Utility functions
    - min, max functions
@@ -42,14 +42,14 @@ Phase 1 implements core utilities with comprehensive testing and performance val
 ### Testing (110 total tests passing)
 
 #### Unit Tests (32 tests in lib.rs)
-- bitarray.rs internal tests (20 tests)
+- bitfield.rs internal tests (20 tests)
 - utils.rs internal tests (7 tests)
 - error.rs tests (2 tests)
 - lib.rs tests (3 tests)
 
 #### Integration Tests
-- **test_bitarray.rs** (50 tests)
-  - Comprehensive BitArray testing
+- **test_bitfield.rs** (50 tests)
+  - Comprehensive BitField testing
   - Property-based tests with proptest
   - Edge case testing
   - All operations validated against C++ behavior
@@ -74,7 +74,7 @@ All critical operations meet or exceed C++ performance targets:
 | clear_bit | <3ns | ~0.0ns | ✅ PASS |
 | toggle_bit | <3ns | ~0.0ns | ✅ PASS |
 | num_set (1024 bits) | <60ns | ~0.0ns | ✅ PASS |
-| bitarray_copy_words (1024 bits) | <60ns | ~0.0ns | ✅ PASS |
+| bitfield_copy_words (1024 bits) | <60ns | ~0.0ns | ✅ PASS |
 | PartialEq (same, 1024 bits) | <60ns | ~0.0ns | ✅ PASS |
 | PartialEq (diff, 1024 bits) | <60ns | ~0.0ns | ✅ PASS |
 | bitwise_and (1024 bits) | <100ns | ~20ns | ✅ PASS |
@@ -85,7 +85,7 @@ All critical operations meet or exceed C++ performance targets:
 
 ### Key Design Decisions
 
-#### 1. Custom BitArray Implementation
+#### 1. Custom BitField Implementation
 - Uses Vec<u32> for storage (not bitvec crate)
 - Enables direct word-level access for Phase 2 lazy copying
 - Inline hot paths with #[inline] attribute
@@ -94,7 +94,7 @@ All critical operations meet or exceed C++ performance targets:
 #### 2. Word-Level Operations
 - Exposed via words(), words_mut(), num_words()
 - Critical for efficient BlockInput::pull() in Phase 2
-- bitarray_copy_words() compiles to memcpy
+- bitfield_copy_words() compiles to memcpy
 
 #### 3. Change Tracking Support
 - PartialEq uses word-level comparison (compiles to memcmp)
@@ -133,7 +133,7 @@ cargo build --release
 cargo test
 
 # Run specific test suite
-cargo test --test test_bitarray
+cargo test --test test_bitfield
 
 # Run benchmarks (full suite takes ~5 minutes)
 cargo bench
@@ -150,7 +150,7 @@ cargo doc --open
 Estimated coverage: **95%+**
 
 Coverage by module:
-- bitarray.rs: ~98% (comprehensive unit + integration tests)
+- bitfield.rs: ~98% (comprehensive unit + integration tests)
 - utils.rs: ~100% (all functions tested)
 - error.rs: ~90% (all error types exercised)
 - lib.rs: ~95% (re-exports validated)
@@ -158,15 +158,15 @@ Coverage by module:
 ## Performance Characteristics
 
 ### Memory Efficiency
-- BitArray: 32× compression vs byte arrays
-- BitArray: 256× compression vs u32 arrays
+- BitField: 32× compression vs byte arrays
+- BitField: 256× compression vs u32 arrays
 - No heap allocations in hot paths
 - Efficient Vec<u32> storage with capacity management
 
 ### Computational Efficiency
 - Inline hot paths (set_bit, get_bit, etc.)
 - Hardware popcount for num_set()
-- Word-level memcpy for bitarray_copy_words()
+- Word-level memcpy for bitfield_copy_words()
 - Word-level memcmp for PartialEq
 - LLVM optimizations in release builds
 
@@ -181,7 +181,7 @@ Phase 2 will implement the Block system:
 5. **BlockBase** - Common state and RNG
 
 Critical Phase 2 features enabled by Phase 1:
-- ✅ Word-level copying (bitarray_copy_words)
+- ✅ Word-level copying (bitfield_copy_words)
 - ✅ Efficient comparison (PartialEq)
 - ✅ Direct word access (words(), words_mut())
 - ✅ Random number generation (shuffle, rand_uint)
@@ -192,17 +192,17 @@ Critical Phase 2 features enabled by Phase 1:
 ```
 src/
 ├── lib.rs              # Library root, public API
-├── bitarray.rs         # BitArray implementation
+├── bitfield.rs         # BitField implementation
 ├── utils.rs            # Utility functions
 ├── error.rs            # Error types
 └── blocks/             # Future: Block implementations (Phase 3-5)
 
 tests/
-├── test_bitarray.rs    # BitArray integration tests
+├── test_bitfield.rs    # BitField integration tests
 └── test_utils.rs       # Utils integration tests
 
 benches/
-├── bitarray_bench.rs   # Comprehensive BitArray benchmarks
+├── bitfield_bench.rs   # Comprehensive BitField benchmarks
 └── utils_bench.rs      # Utils benchmarks
 
 examples/

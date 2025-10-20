@@ -30,7 +30,7 @@
 //!
 //! ```
 //! use gnomics::BlockMemory;
-//! use gnomics::BitArray;
+//! use gnomics::BitField;
 //! use rand::SeedableRng;
 //! use rand::rngs::StdRng;
 //!
@@ -41,7 +41,7 @@
 //! memory.init_pooled(1024, &mut rng, 0.8, 0.5);
 //!
 //! // Create input pattern
-//! let mut input = BitArray::new(1024);
+//! let mut input = BitField::new(1024);
 //! input.set_bit(10);
 //! input.set_bit(20);
 //! input.set_bit(30);
@@ -53,7 +53,7 @@
 //! memory.learn(0, &input, &mut rng);
 //! ```
 
-use crate::bitarray::BitArray;
+use crate::bitfield::BitField;
 use crate::utils::{max, min};
 use rand::rngs::StdRng;
 use rand::Rng;
@@ -70,7 +70,7 @@ pub const PERM_MAX: u8 = 99;
 /// in the input space. Receptor permanences slowly adapt via Hebbian-like learning.
 pub struct BlockMemory {
     /// Dendrite activation state (1=active, 0=inactive)
-    pub state: BitArray,
+    pub state: BitField,
 
     // Parameters
     num_i: usize,     // Number of input bits
@@ -85,12 +85,12 @@ pub struct BlockMemory {
     // Arrays
     r_addrs: Vec<usize>, // Receptor addresses (flattened 2D: [num_d][num_rpd])
     r_perms: Vec<u8>,    // Receptor permanences (flattened 2D: [num_d][num_rpd])
-    d_conns: Vec<BitArray>, // Optional dendrite connections (for fast overlap)
-    lmask: BitArray,     // Learning mask (which receptors can learn)
+    d_conns: Vec<BitField>, // Optional dendrite connections (for fast overlap)
+    lmask: BitField,     // Learning mask (which receptors can learn)
 
     // Flags
     init_flag: bool,
-    conns_flag: bool, // Using connection BitArrays?
+    conns_flag: bool, // Using connection BitFields?
 }
 
 impl BlockMemory {
@@ -123,7 +123,7 @@ impl BlockMemory {
         let num_r = num_d * num_rpd;
 
         Self {
-            state: BitArray::new(num_d),
+            state: BitField::new(num_d),
             num_i: 0,
             num_d,
             num_rpd,
@@ -135,7 +135,7 @@ impl BlockMemory {
             r_addrs: vec![0; num_r],
             r_perms: vec![0; num_r],
             d_conns: Vec::new(),
-            lmask: BitArray::new(num_rpd),
+            lmask: BitField::new(num_rpd),
             init_flag: false,
             conns_flag: false,
         }
@@ -166,15 +166,15 @@ impl BlockMemory {
         self.init_flag = true;
     }
 
-    /// Initialize with optional connection BitArrays.
+    /// Initialize with optional connection BitFields.
     ///
-    /// Connection BitArrays enable fast `overlap_conn()` via `num_similar()`.
+    /// Connection BitFields enable fast `overlap_conn()` via `num_similar()`.
     pub fn init_conn(&mut self, num_i: usize, rng: &mut StdRng) {
         self.init(num_i, rng);
 
-        // Allocate connection BitArrays
+        // Allocate connection BitFields
         self.d_conns.clear();
-        self.d_conns.resize(self.num_d, BitArray::new(num_i));
+        self.d_conns.resize(self.num_d, BitField::new(num_i));
 
         self.conns_flag = true;
     }
@@ -259,7 +259,7 @@ impl BlockMemory {
         self.init_flag = true;
     }
 
-    /// Initialize pooled with connection BitArrays.
+    /// Initialize pooled with connection BitFields.
     pub fn init_pooled_conn(
         &mut self,
         num_i: usize,
@@ -269,9 +269,9 @@ impl BlockMemory {
     ) {
         self.init_pooled(num_i, rng, pct_pool, pct_conn);
 
-        // Allocate and update connection BitArrays
+        // Allocate and update connection BitFields
         self.d_conns.clear();
-        self.d_conns.resize(self.num_d, BitArray::new(num_i));
+        self.d_conns.resize(self.num_d, BitField::new(num_i));
 
         self.conns_flag = true;  // Set flag BEFORE calling update_conns
 
@@ -289,13 +289,13 @@ impl BlockMemory {
     /// # Arguments
     ///
     /// * `d` - Dendrite index
-    /// * `input` - Input BitArray
+    /// * `input` - Input BitField
     ///
     /// # Returns
     ///
     /// Overlap score (0 to num_rpd)
     #[inline]
-    pub fn overlap(&self, d: usize, input: &BitArray) -> usize {
+    pub fn overlap(&self, d: usize, input: &BitField) -> usize {
         assert!(self.init_flag, "must call init() first");
         assert!(d < self.num_d, "dendrite index out of bounds");
 
@@ -313,11 +313,11 @@ impl BlockMemory {
         overlap
     }
 
-    /// Compute overlap using connection BitArray (faster for large inputs).
+    /// Compute overlap using connection BitField (faster for large inputs).
     ///
     /// Requires `init_conn()` or `init_pooled_conn()`.
     #[inline]
-    pub fn overlap_conn(&self, d: usize, input: &BitArray) -> usize {
+    pub fn overlap_conn(&self, d: usize, input: &BitField) -> usize {
         assert!(self.init_flag && self.conns_flag);
         assert!(d < self.num_d);
 
@@ -336,7 +336,7 @@ impl BlockMemory {
     /// * `d` - Dendrite index
     /// * `input` - Input pattern
     /// * `rng` - RNG for shuffling learning mask
-    pub fn learn(&mut self, d: usize, input: &BitArray, rng: &mut StdRng) {
+    pub fn learn(&mut self, d: usize, input: &BitField, rng: &mut StdRng) {
         assert!(self.init_flag);
         assert!(d < self.num_d);
 
@@ -363,8 +363,8 @@ impl BlockMemory {
         }
     }
 
-    /// Learn with connection BitArray update.
-    pub fn learn_conn(&mut self, d: usize, input: &BitArray, rng: &mut StdRng) {
+    /// Learn with connection BitField update.
+    pub fn learn_conn(&mut self, d: usize, input: &BitField, rng: &mut StdRng) {
         assert!(self.conns_flag);
         self.learn(d, input, rng);
         self.update_conns(d);
@@ -376,7 +376,7 @@ impl BlockMemory {
     /// moved to a new random active input bit and reset to threshold.
     ///
     /// This maximizes receptor usage and prevents permanent dead receptors.
-    pub fn learn_move(&mut self, d: usize, input: &BitArray, rng: &mut StdRng) {
+    pub fn learn_move(&mut self, d: usize, input: &BitField, rng: &mut StdRng) {
         assert!(self.init_flag);
         assert!(d < self.num_d);
 
@@ -432,7 +432,7 @@ impl BlockMemory {
     }
 
     /// Learn and move with connection update.
-    pub fn learn_move_conn(&mut self, d: usize, input: &BitArray, rng: &mut StdRng) {
+    pub fn learn_move_conn(&mut self, d: usize, input: &BitField, rng: &mut StdRng) {
         assert!(self.conns_flag);
         self.learn_move(d, input, rng);
         self.update_conns(d);
@@ -442,7 +442,7 @@ impl BlockMemory {
     ///
     /// Decrements permanence for receptors connected to active input bits.
     /// Used for negative learning (e.g., penalize false positives).
-    pub fn punish(&mut self, d: usize, input: &BitArray, rng: &mut StdRng) {
+    pub fn punish(&mut self, d: usize, input: &BitField, rng: &mut StdRng) {
         assert!(self.init_flag);
         assert!(d < self.num_d);
 
@@ -466,7 +466,7 @@ impl BlockMemory {
     }
 
     /// Punish with connection update.
-    pub fn punish_conn(&mut self, d: usize, input: &BitArray, rng: &mut StdRng) {
+    pub fn punish_conn(&mut self, d: usize, input: &BitField, rng: &mut StdRng) {
         assert!(self.conns_flag);
         self.punish(d, input, rng);
         self.update_conns(d);
@@ -505,8 +505,8 @@ impl BlockMemory {
         self.r_perms[r_beg..r_end].to_vec()
     }
 
-    /// Get connection BitArray for a dendrite (if using connections).
-    pub fn conns(&self, d: usize) -> Option<&BitArray> {
+    /// Get connection BitField for a dendrite (if using connections).
+    pub fn conns(&self, d: usize) -> Option<&BitField> {
         if self.conns_flag {
             Some(&self.d_conns[d])
         } else {
@@ -530,7 +530,7 @@ impl BlockMemory {
         bytes
     }
 
-    /// Update connection BitArray for a dendrite.
+    /// Update connection BitField for a dendrite.
     ///
     /// Sets bits for all connected receptors (permanence >= threshold).
     fn update_conns(&mut self, d: usize) {
@@ -592,7 +592,7 @@ mod tests {
 
         memory.init_pooled(100, &mut rng, 0.5, 1.0); // All connected
 
-        let mut input = BitArray::new(100);
+        let mut input = BitField::new(100);
 
         // Get addresses for dendrite 0
         let addrs = memory.addrs(0);
@@ -619,7 +619,7 @@ mod tests {
             memory.r_addrs[i] = i * 10;
         }
 
-        let mut input = BitArray::new(100);
+        let mut input = BitField::new(100);
         input.set_bit(0);  // Matches r_addrs[0]
         input.set_bit(10); // Matches r_addrs[1]
 
@@ -650,7 +650,7 @@ mod tests {
             memory.r_addrs[i] = i * 10;
         }
 
-        let mut input = BitArray::new(100);
+        let mut input = BitField::new(100);
         input.set_bit(0);
 
         let perms_before = memory.perms(0);

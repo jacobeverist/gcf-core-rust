@@ -31,7 +31,7 @@
 //! let mut pooler = PatternPooler::new(1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0);
 //!
 //! // Connect encoder to pooler
-//! pooler.input.add_child(encoder.output(), 0);
+//! pooler.input.add_child(encoder.get_output(), 0);
 //! pooler.init().unwrap();
 //!
 //! // Encode and learn sparse representation
@@ -40,7 +40,7 @@
 //! pooler.execute(true).unwrap();  // Learn=true
 //!
 //! // Verify sparse output
-//! assert_eq!(pooler.output().borrow().state.num_set(), 40);
+//! assert_eq!(pooler.get_output().borrow().state.num_set(), 40);
 //! ```
 
 use crate::{Block, BlockBase, BlockInput, BlockMemory, BlockOutput, Result};
@@ -73,16 +73,16 @@ pub struct PatternPooler {
     pub memory: BlockMemory,
 
     // Parameters
-    num_s: usize,   // Number of statelets (dendrites)
-    num_as: usize,  // Active statelets
-    num_rpd: usize, // Receptors per dendrite
-    perm_thr: u8,   // Permanence threshold
-    perm_inc: u8,   // Permanence increment
-    perm_dec: u8,   // Permanence decrement
-    pct_pool: f64,  // Pooling percentage
-    pct_conn: f64,  // Initial connectivity
-    pct_learn: f64, // Learning percentage
-    num_t: usize,   // History depth
+    num_s: usize,        // Number of statelets (dendrites)
+    num_as: usize,       // Active statelets
+    num_rpd: usize,      // Receptors per dendrite
+    perm_thr: u8,        // Permanence threshold
+    perm_inc: u8,        // Permanence increment
+    perm_dec: u8,        // Permanence decrement
+    pct_pool: f64,       // Pooling percentage
+    pct_conn: f64,       // Initial connectivity
+    pct_learn: f64,      // Learning percentage
+    num_t: usize,        // History depth
     always_update: bool, // Update even if input unchanged
 
     // Working memory
@@ -186,8 +186,12 @@ impl Block for PatternPooler {
 
         // Initialize memory with pooled connectivity
         let num_input_bits = self.input.num_bits();
-        self.memory
-            .init_pooled_conn(num_input_bits, self.base.rng(), self.pct_pool, self.pct_conn);
+        self.memory.init_pooled_conn(
+            num_input_bits,
+            self.base.rng(),
+            self.pct_pool,
+            self.pct_conn,
+        );
 
         self.base.set_initialized(true);
         Ok(())
@@ -281,7 +285,7 @@ impl Block for PatternPooler {
         base_size + overlaps_size + input_size + output_size + memory_size
     }
 
-    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+    fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }
 }

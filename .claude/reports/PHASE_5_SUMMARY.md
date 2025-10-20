@@ -142,13 +142,13 @@ let num_bits = if num_b % 32 != 0 {
     num_b
 };
 self.state.resize(num_bits);  // WRONG: rounded value
-self.history.resize(num_t, BitArray::new(num_b));  // RIGHT: exact value
+self.history.resize(num_t, BitField::new(num_b));  // RIGHT: exact value
 ```
 
 **After**:
 ```rust
 self.state.resize(num_b);  // Use exact requested size
-self.history.resize(num_t, BitArray::new(num_b));
+self.history.resize(num_t, BitField::new(num_b));
 ```
 
 **Impact**: Fixed all input size assertion failures in ContextLearner init
@@ -279,7 +279,7 @@ Based on C++ baseline and Rust optimizations:
 
 **Breakdown**:
 - Dendrite overlap computation: O(num_s × num_dps) = 2048 × 8 = 16,384 checks
-- Per-check cost: ~3-5ns (BitArray overlap on 32-64 bits)
+- Per-check cost: ~3-5ns (BitField overlap on 32-64 bits)
 - Total: 16,384 × 4ns = 65µs
 - Additional overhead (surprise, random): ~10-35µs
 
@@ -581,7 +581,7 @@ if self.next_sd[s] < self.num_dps - 1 {
 
 **ALL PHASES COMPLETE** (Implementation):
 
-- ✅ **Phase 1**: BitArray, utilities, error handling (100%)
+- ✅ **Phase 1**: BitField, utilities, error handling (100%)
 - ✅ **Phase 2**: Block infrastructure, lazy copying, change tracking (100%)
 - ✅ **Phase 3**: Transformer blocks (Scalar, Discrete, Persistence) (100%)
 - ✅ **Phase 4**: Learning blocks (PatternPooler, PatternClassifier) (100%)

@@ -40,9 +40,10 @@
 //!     // ... other methods ...
 //! }
 //! ```
+#![allow(dead_code)]
 
 use crate::error::Result;
-use crate::BlockOutput;
+use crate::{BitField, BlockOutput};
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
@@ -120,10 +121,26 @@ pub trait Block {
     ///
     /// ```ignore
     /// // Connect blocks
-    /// let encoder_out = encoder.output();
+    /// let encoder_out = encoder.get_output();
     /// learner.input.add_child(encoder_out, 0);
     /// ```
-    fn output(&self) -> Rc<RefCell<BlockOutput>>;
+    fn get_output(&self) -> Rc<RefCell<BlockOutput>>;
+
+    /// Get a copy of the output BitField
+    ///
+    /// Returns a copy of the underlying BitField of the output buffer
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// // Get the output state
+    /// let encoder_output = encoder.get_output_state();
+    /// ```
+    fn get_output_state(&self) -> BitField {
+        self.get_output().borrow().state.clone()
+    }
+
+
 
     /// Execute the block's computation pipeline.
     ///
@@ -231,7 +248,11 @@ mod tests {
             0
         }
 
-        fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        // fn get_output_state(&self) -> BitField {
+        //     self.output.borrow().state.clone()
+        // }
+
+        fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
             Rc::clone(&self.output)
         }
     }

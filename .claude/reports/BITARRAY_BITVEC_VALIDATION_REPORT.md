@@ -1,4 +1,4 @@
-# BitArray bitvec Migration Validation Report
+# BitField bitvec Migration Validation Report
 
 **Date:** 2025-10-04
 **Status:** VALIDATION COMPLETE
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This report presents the results of a comprehensive validation comparing Gnomics' custom `BitArray` implementation against a prototype using the `bitvec` crate. The validation assessed API compatibility, correctness, and performance across 20+ operations critical to Phase 2 development.
+This report presents the results of a comprehensive validation comparing Gnomics' custom `BitField` implementation against a prototype using the `bitvec` crate. The validation assessed API compatibility, correctness, and performance across 20+ operations critical to Phase 2 development.
 
 ### Key Findings
 
@@ -33,21 +33,21 @@ This report presents the results of a comprehensive validation comparing Gnomics
 
 ### ✅ Completed Components
 
-1. **Prototype Implementation** (`src/bitarray_bitvec.rs`)
-   - Full API compatibility with custom BitArray
+1. **Prototype Implementation** (`src/bitfield_bitvec.rs`)
+   - Full API compatibility with custom BitField
    - 27 public methods implemented
    - 5 operator traits (BitAnd, BitOr, BitXor, Not, PartialEq)
    - Word-level access via bitvec's `as_raw_slice()` / `as_raw_mut_slice()`
    - Serde serialization support
 
-2. **Validation Tests** (`tests/test_bitarray_bitvec.rs`)
+2. **Validation Tests** (`tests/test_bitfield_bitvec.rs`)
    - 41 tests covering all critical operations
    - Word-level copying tests
    - Operator tests
    - Boundary condition tests
    - **Result:** 100% pass rate
 
-3. **Comparison Benchmarks** (`benches/bitarray_comparison.rs`)
+3. **Comparison Benchmarks** (`benches/bitfield_comparison.rs`)
    - 20 operation benchmarks
    - Side-by-side custom vs bitvec comparison
    - 1024-bit arrays (standard SDR size)
@@ -73,13 +73,13 @@ This report presents the results of a comprehensive validation comparing Gnomics
 | **set_bit** | 0.61ns | 1.01ns | **+65%** | <3ns | ⚠️ MARGINAL |
 | **get_bit** | 0.40ns | 0.48ns | **+20%** | <2ns | ⚠️ MARGINAL |
 | **num_set** | 19.8ns | 21.6ns | +9% | <60ns | ✅ PASS |
-| **bitarray_copy_words** | 5.0ns | 5.3ns | **+6%** | <120ns | ✅ PASS |
+| **bitfield_copy_words** | 5.0ns | 5.3ns | **+6%** | <120ns | ✅ PASS |
 | **equality_same** | 8.3ns | 165ns | **+1900%** | <100ns | ❌ FAIL |
 | **equality_different** | 4.1ns | 10.0ns | **+145%** | <100ns | ⚠️ FAIL |
 
 **Analysis:**
 
-1. ✅ **bitarray_copy_words** (5.0ns → 5.3ns, +6%): **EXCELLENT**
+1. ✅ **bitfield_copy_words** (5.0ns → 5.3ns, +6%): **EXCELLENT**
    - Well within target of <120ns
    - Validates word-level access works efficiently
    - Critical for Phase 2 lazy copying in `BlockInput::pull()`
@@ -229,7 +229,7 @@ If proceeding with bitvec, these optimizations could close the gap:
 ### 1. Custom Equality Implementation
 
 ```rust
-impl PartialEq for BitArrayBitvec {
+impl PartialEq for BitFieldBitvec {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.bv.as_raw_slice() == other.bv.as_raw_slice()
@@ -254,7 +254,7 @@ pub fn toggle_all(&mut self) {
 ### 3. Optimize Logical Operations
 
 ```rust
-impl BitAnd for BitArrayBitvec {
+impl BitAnd for BitFieldBitvec {
     fn bitand(self, rhs: Self) -> Self {
         let mut result = self;
         let result_words = result.bv.as_raw_mut_slice();
@@ -351,12 +351,12 @@ pub fn get_acts(&self) -> Vec<usize> {
 ### Option C: Hybrid Approach (FUTURE CONSIDERATION)
 
 **Rationale:**
-- Use custom BitArray for Phase 2 (proven performance)
+- Use custom BitField for Phase 2 (proven performance)
 - Revisit bitvec migration in Phase 3+ after optimization validation
 - Allows immediate progress on Phase 2
 
 **Strategy:**
-1. Continue with custom BitArray for Phase 2 development
+1. Continue with custom BitField for Phase 2 development
 2. Keep bitvec prototype as research branch
 3. Apply optimizations to prototype over time
 4. Migrate in Phase 3 if optimization validates performance
@@ -406,8 +406,8 @@ pub fn get_acts(&self) -> Vec<usize> {
 
 1. ✅ Mark validation complete
 2. ✅ Document findings in this report
-3. ✅ Keep bitvec prototype as reference (`src/bitarray_bitvec.rs`)
-4. ✅ Proceed with Phase 2 using custom BitArray
+3. ✅ Keep bitvec prototype as reference (`src/bitfield_bitvec.rs`)
+4. ✅ Proceed with Phase 2 using custom BitField
 5. 🔄 Revisit bitvec migration in Phase 3+ if maintenance burden grows
 
 ---
@@ -417,7 +417,7 @@ pub fn get_acts(&self) -> Vec<usize> {
 ### A. Test Results Summary
 
 ```
-Test Suite: test_bitarray_bitvec
+Test Suite: test_bitfield_bitvec
 Status: PASSED
 Tests: 41/41 (100%)
 Duration: <1 second
@@ -456,7 +456,7 @@ Categories:
 
 ### C. Implementation Statistics
 
-**Custom BitArray:**
+**Custom BitField:**
 - Lines of code: 923
 - Public methods: 33
 - Private helpers: 8
@@ -464,10 +464,10 @@ Categories:
 - Tests: 110 (32 unit + 50 integration + 28 property)
 - Benchmarks: 20
 
-**BitArrayBitvec Prototype:**
+**BitFieldBitvec Prototype:**
 - Lines of code: 612
 - Public methods: 27
-- Helper functions: 1 (bitarray_copy_words_bitvec)
+- Helper functions: 1 (bitfield_copy_words_bitvec)
 - Trait implementations: 5
 - Tests: 41
 - Benchmarks: 20 (shared with custom)
@@ -490,10 +490,10 @@ bitvec = { version = "1.0", features = ["serde"] }
 
 ### E. Files Created
 
-1. `src/bitarray_bitvec.rs` (612 lines)
-2. `tests/test_bitarray_bitvec.rs` (377 lines)
-3. `benches/bitarray_comparison.rs` (685 lines)
-4. `BITARRAY_BITVEC_VALIDATION_REPORT.md` (this file)
+1. `src/bitfield_bitvec.rs` (612 lines)
+2. `tests/test_bitfield_bitvec.rs` (377 lines)
+3. `benches/bitfield_comparison.rs` (685 lines)
+4. `BITFIELD_BITVEC_VALIDATION_REPORT.md` (this file)
 
 **Total:** 1,674 lines of prototype code
 
@@ -508,14 +508,14 @@ The bitvec prototype validation successfully demonstrates:
 ✅ **Correctness:** All tests pass
 ⚠️ **Performance:** Mixed results with significant regressions in critical paths
 
-**Final Decision:** **Continue with custom BitArray implementation**
+**Final Decision:** **Continue with custom BitField implementation**
 
 The custom implementation provides proven performance, complete testing, and zero risk to Phase 2 timeline. The bitvec prototype remains valuable as:
 - Research reference for future optimization
 - Validation that word-level access patterns work
 - Alternative if maintenance burden grows
 
-**Status:** Validation complete, proceed to Phase 2 with custom BitArray.
+**Status:** Validation complete, proceed to Phase 2 with custom BitField.
 
 ---
 

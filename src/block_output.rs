@@ -43,7 +43,7 @@
 //! assert!(!output.has_changed());
 //! ```
 
-use crate::bitarray::BitArray;
+use crate::bitfield::BitField;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 /// Time constant for current time step (t=0)
@@ -56,7 +56,7 @@ pub const PREV: usize = 1;
 ///
 /// # Fields
 ///
-/// - `state` - Working BitArray for current output
+/// - `state` - Working BitField for current output
 /// - `history` - Circular buffer of previous states
 /// - `changes` - Boolean flags tracking changes per time step
 /// - `changed_flag` - Did current state change from previous?
@@ -65,17 +65,17 @@ pub const PREV: usize = 1;
 ///
 /// # Performance
 ///
-/// Change tracking adds ~50ns overhead (BitArray comparison) but enables:
+/// Change tracking adds ~50ns overhead (BitField comparison) but enables:
 /// - ~100ns saved per child in `BlockInput::pull()` when unchanged
 /// - ~1-10μs saved in `Block::encode()` when no children changed
 /// - **Overall: 5-100× speedup** depending on change rate
 #[derive(Clone)]
 pub struct BlockOutput {
-    /// Working BitArray for current output (public for direct access)
-    pub state: BitArray,
+    /// Working BitField for current output (public for direct access)
+    pub state: BitField,
 
     /// Circular buffer of historical states
-    history: Vec<BitArray>,
+    history: Vec<BitField>,
 
     /// Change tracking per time step
     changes: Vec<bool>,
@@ -98,7 +98,7 @@ impl BlockOutput {
         static NEXT_ID: AtomicU32 = AtomicU32::new(0);
 
         Self {
-            state: BitArray::new(0),
+            state: BitField::new(0),
             history: Vec::new(),
             changes: Vec::new(),
             changed_flag: false,
@@ -112,7 +112,7 @@ impl BlockOutput {
     /// # Arguments
     ///
     /// * `num_t` - Number of time steps to store (must be >= 2)
-    /// * `num_b` - Number of bits per BitArray
+    /// * `num_b` - Number of bits per BitField
     ///
     /// # Panics
     ///
@@ -131,12 +131,12 @@ impl BlockOutput {
         assert!(num_t >= 2, "num_t must be >= 2");
         assert!(num_b > 0, "num_b must be > 0");
 
-        // Initialize state (BitArray handles word rounding internally)
+        // Initialize state (BitField handles word rounding internally)
         self.state.resize(num_b);
 
         // Initialize history
         self.history.clear();
-        self.history.resize(num_t, BitArray::new(num_b));
+        self.history.resize(num_t, BitField::new(num_b));
 
         // Initialize changes (all true initially)
         self.changes.clear();
@@ -157,6 +157,24 @@ impl BlockOutput {
             self.history[i].clear_all();
             self.changes[i] = true;
         }
+    }
+
+    /// Get get copy of BitField
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gnomics::BlockOutput;
+    ///
+    /// let mut output = BlockOutput::new();
+    /// output.setup(3, 32);
+    ///
+    /// // get a copy of the bit field
+    /// let mut state = output.get_state();
+    /// ```
+    #[inline]
+    pub fn get_state(&self) -> BitField {
+        self.state.clone()
     }
 
     /// Advance to next time step (update circular buffer index).
@@ -189,7 +207,7 @@ impl BlockOutput {
     ///
     /// # Performance
     ///
-    /// - BitArray comparison: ~50ns for 1024 bits (word-level memcmp)
+    /// - BitField comparison: ~50ns for 1024 bits (word-level memcmp)
     /// - Clone operation: ~50ns for 1024 bits
     /// - Total: ~100ns overhead
     /// - Benefit: Saves 100ns-10μs downstream when unchanged
@@ -212,7 +230,7 @@ impl BlockOutput {
     /// ```
     #[inline]
     pub fn store(&mut self) {
-        // CRITICAL: Compare with previous state using fast BitArray equality
+        // CRITICAL: Compare with previous state using fast BitField equality
         let prev_idx = self.idx(PREV);
         self.changed_flag = self.state != self.history[prev_idx];
 
@@ -221,7 +239,7 @@ impl BlockOutput {
         self.changes[self.curr_idx] = self.changed_flag;
     }
 
-    /// Get reference to BitArray at relative time offset.
+    /// Get reference to BitField at relative time offset.
     ///
     /// # Arguments
     ///
@@ -238,12 +256,12 @@ impl BlockOutput {
     /// output.state.set_bit(5);
     /// output.store();
     ///
-    /// let curr = output.get_bitarray(0);  // Current
-    /// let prev = output.get_bitarray(1);  // Previous
+    /// let curr = output.get_bitfield(0);  // Current
+    /// let prev = output.get_bitfield(1);  // Previous
     /// assert_eq!(curr.get_bit(5), 1);
     /// ```
     #[inline]
-    pub fn get_bitarray(&self, time: usize) -> &BitArray {
+    pub fn get_bitfield(&self, time: usize) -> &BitField {
         &self.history[self.idx(time)]
     }
 
@@ -438,11 +456,11 @@ mod tests {
 
         // Check historical changes
         assert!(!output.has_changed_at(0)); // Current (no change)
-        assert!(output.has_changed_at(1));  // Previous (had change)
+        assert!(output.has_changed_at(1)); // Previous (had change)
     }
 
     #[test]
-    fn test_get_bitarray() {
+    fn test_get_bitfield() {
         let mut output = BlockOutput::new();
         output.setup(3, 32);
 
@@ -457,8 +475,8 @@ mod tests {
         output.store();
 
         // Check we can retrieve both
-        let curr = output.get_bitarray(CURR);
-        let prev = output.get_bitarray(PREV);
+        let curr = output.get_bitfield(CURR);
+        let prev = output.get_bitfield(PREV);
 
         assert_eq!(curr.get_bit(10), 1);
         assert_eq!(prev.get_bit(5), 1);
@@ -502,7 +520,7 @@ mod tests {
 
         let usage = output.memory_usage();
         assert!(usage > 0);
-        // Should include state + 3 history BitArrays
+        // Should include state + 3 history BitFields
         assert!(usage > 4 * (1024 / 8));
     }
 }

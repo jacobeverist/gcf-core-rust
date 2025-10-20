@@ -50,8 +50,8 @@ debug = false
 inherits = "release"
 
 [[test]]
-name = "test_bitarray"
-path = "tests/test_bitarray.rs"
+name = "test_bitfield"
+path = "tests/test_bitfield.rs"
 
 [[test]]
 name = "test_block_integration"
@@ -106,7 +106,7 @@ name = "test_temporal_integration"
 path = "tests/test_temporal_integration.rs"
 
 [[bench]]
-name = "bitarray_bench"
+name = "bitfield_bench"
 harness = false
 
 [[bench]]

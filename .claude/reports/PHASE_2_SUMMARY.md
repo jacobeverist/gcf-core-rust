@@ -34,7 +34,7 @@ Phase 2 of the Rust conversion plan has been successfully completed. The block i
 | Test Suite | Tests | Pass Rate | Coverage |
 |------------|-------|-----------|----------|
 | Unit tests (lib) | 82 | 100% | 95%+ |
-| Integration tests (bitarray) | 50 | 100% | 95%+ |
+| Integration tests (bitfield) | 50 | 100% | 95%+ |
 | Integration tests (bitvec prototype) | 41 | 100% | Reference only |
 | Integration tests (block) | 7 | 100% | 95%+ |
 | Integration tests (utils) | 19 | 100% | 95%+ |
@@ -57,7 +57,7 @@ Phase 2 of the Rust conversion plan has been successfully completed. The block i
 - `pull()` with 1/2/4/8 children
 - `pull()` unchanged (skip optimization validation)
 - `children_changed()` with various counts
-- `store()` with BitArray comparison
+- `store()` with BitField comparison
 - `BlockMemory::overlap()`
 - `BlockMemory::learn()`
 - End-to-end pipeline simulations
@@ -82,7 +82,7 @@ Phase 2 of the Rust conversion plan has been successfully completed. The block i
 
 ```rust
 pub struct BlockInput {
-    state: BitArray,
+    state: BitField,
     children: Vec<Rc<RefCell<BlockOutput>>>,  // CRITICAL: Shared ownership
     times: Vec<usize>,
     word_offsets: Vec<usize>,
@@ -114,7 +114,7 @@ pub fn pull(&mut self) {
         }
 
         // Fast word-level copy (only when needed)
-        bitarray_copy_words(&mut self.state, src, ...);
+        bitfield_copy_words(&mut self.state, src, ...);
     }
 }
 ```
@@ -136,8 +136,8 @@ pub fn pull(&mut self) {
 
 ```rust
 pub struct BlockOutput {
-    pub state: BitArray,
-    history: Vec<BitArray>,
+    pub state: BitField,
+    history: Vec<BitField>,
     changes: Vec<bool>,        // Change tracking per timestep
     changed_flag: bool,         // Current change status
     curr_idx: usize,
@@ -145,7 +145,7 @@ pub struct BlockOutput {
 }
 
 pub fn store(&mut self) {
-    // Fast BitArray comparison (uses PartialEq, ~8ns for 1024 bits)
+    // Fast BitField comparison (uses PartialEq, ~8ns for 1024 bits)
     let prev_idx = self.idx(PREV);
     self.changed_flag = self.state != self.history[prev_idx];
 
@@ -203,9 +203,9 @@ fn encode(&mut self) {
 
 ```rust
 #[inline(always)]
-fn bitarray_copy_words(
-    dst: &mut BitArray,
-    src: &BitArray,
+fn bitfield_copy_words(
+    dst: &mut BitField,
+    src: &BitField,
     dst_word_offset: usize,
     src_word_offset: usize,
     num_words: usize,
@@ -242,15 +242,15 @@ All critical operations use `#[inline]` annotations and compile to optimal code:
 | `pull()` (1 child, 1024b) | <120ns | ~100-110ns | Word-level copy | ✅ On target |
 | `pull()` (unchanged) | N/A | ~5ns | Skip optimization | ✅ Excellent |
 | `children_changed()` | <10ns/child | ~5-7ns/child | Short-circuit | ✅ On target |
-| `store()` with comparison | <100ns | ~80-90ns | BitArray PartialEq | ✅ On target |
-| BitArray comparison | <60ns | ~50ns | Phase 1 validated | ✅ Proven |
+| `store()` with comparison | <100ns | ~80-90ns | BitField PartialEq | ✅ On target |
+| BitField comparison | <60ns | ~50ns | Phase 1 validated | ✅ Proven |
 | RefCell borrow | N/A | ~2ns | Runtime overhead | ✅ Minimal |
 
 **Notes:**
 - All hot paths marked with `#[inline]` or `#[inline(always)]`
 - Word-level operations use `copy_from_slice()` → memcpy
 - Short-circuit evaluation in `children_changed()` prevents unnecessary checks
-- BitArray PartialEq uses word-level comparison (proven in Phase 1)
+- BitField PartialEq uses word-level comparison (proven in Phase 1)
 
 ### Benchmark Infrastructure
 
@@ -369,20 +369,20 @@ pub struct BlockBase {
 - `num_rpd: usize` - Receptors per dendrite
 - `r_addrs: Vec<Vec<usize>>` - Receptor addresses (which input bits)
 - `r_perms: Vec<Vec<u8>>` - Receptor permanences (0-99)
-- `d_conns: Option<BitArray>` - Dendrite connectivity mask (optional)
+- `d_conns: Option<BitField>` - Dendrite connectivity mask (optional)
 
 **Learning Algorithms:**
 
 ```rust
-pub fn overlap(&self, d: usize, input: &BitArray) -> usize {
+pub fn overlap(&self, d: usize, input: &BitField) -> usize {
     // Count matching connected receptors
 }
 
-pub fn learn(&mut self, d: usize, input: &BitArray) {
+pub fn learn(&mut self, d: usize, input: &BitField) {
     // Strengthen matching, weaken non-matching
 }
 
-pub fn punish(&mut self, d: usize, input: &BitArray) {
+pub fn punish(&mut self, d: usize, input: &BitField) {
     // Weaken matching receptors
 }
 ```
@@ -436,7 +436,7 @@ pub fn punish(&mut self, d: usize, input: &BitArray) {
 ```
 Production Code:
 ├── Phase 1: ~1,700 lines
-│   ├── bitarray.rs: 923 lines
+│   ├── bitfield.rs: 923 lines
 │   ├── utils.rs: 204 lines
 │   ├── error.rs: 89 lines
 │   └── lib.rs: portions
@@ -452,7 +452,7 @@ Total Production: ~4,200 lines
 
 Test Code:
 ├── Unit tests: 82 tests (inline)
-├── Integration tests (bitarray): 50 tests
+├── Integration tests (bitfield): 50 tests
 ├── Integration tests (block): 7 tests
 ├── Integration tests (utils): 19 tests
 ├── Integration tests (bitvec): 41 tests (reference)
@@ -461,10 +461,10 @@ Test Code:
 Total Tests: 221 tests
 
 Benchmarks:
-├── bitarray_bench.rs: 378 lines
+├── bitfield_bench.rs: 378 lines
 ├── utils_bench.rs: 70 lines
 ├── block_bench.rs: 227 lines
-└── bitarray_comparison.rs: 602 lines (reference)
+└── bitfield_comparison.rs: 602 lines (reference)
 
 Total Benchmarks: ~1,277 lines
 ```
@@ -499,7 +499,7 @@ Phase 2:
    - Enables lazy copying exactly as designed
 
 2. **Change Tracking**
-   - BitArray PartialEq performs excellently (~50ns)
+   - BitField PartialEq performs excellently (~50ns)
    - has_changed() accurate and fast
    - Dual-level skip optimization validated
    - Integration tests confirm correct behavior
@@ -530,7 +530,7 @@ Phase 2:
    - Short-circuit evaluation reduces borrow count
 
 2. **Doc Test Gotchas**
-   - BitArray get_bit() returns u8, not bool
+   - BitField get_bit() returns u8, not bool
    - Use assert_eq!(ba.get_bit(5), 1) not assert!(ba.get_bit(5))
    - Doc tests must compile and run
 
@@ -634,8 +634,8 @@ Phase 2:
 - `RUST_CONVERSION_PLAN.md` - Complete conversion plan
 - `CLAUDE.md` - C++ framework documentation
 - `PHASE_1_SUMMARY.md` - Phase 1 completion report
-- `BITARRAY_BITVEC_MIGRATION_PLAN.md` - bitvec investigation
-- `BITARRAY_BITVEC_VALIDATION_REPORT.md` - Prototype results
+- `BITFIELD_BITVEC_MIGRATION_PLAN.md` - bitvec investigation
+- `BITFIELD_BITVEC_VALIDATION_REPORT.md` - Prototype results
 
 ### C++ Reference
 - `src/cpp/block.hpp/cpp` - C++ Block base class

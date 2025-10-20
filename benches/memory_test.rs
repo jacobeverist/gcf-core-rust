@@ -1,12 +1,12 @@
-//! Memory Usage Analysis for BitArray
+//! Memory Usage Analysis for BitField
 //!
-//! This example demonstrates BitArray memory consumption patterns
+//! This example demonstrates BitField memory consumption patterns
 //! by creating arrays of different sizes and reporting their memory usage.
 //! Useful for understanding the relationship between bit count and actual
 //! memory allocation.
 //use bitvec::prelude::*;
 
-use gnomics::{bitarray_copy_words, BitArray, Word, BITS_PER_WORD};
+use gnomics::{bitfield_copy_words, BitField, Word, BITS_PER_WORD};
 
 /// Number of test iterations with increasing array sizes
 const NUM_TEST_ITERATIONS: usize = 10;
@@ -15,7 +15,7 @@ const NUM_TEST_ITERATIONS: usize = 10;
 const BASE_SIZE_BITS: usize = 1024;
 
 fn main() {
-    println!("BitArray Memory Usage Analysis");
+    println!("BitField Memory Usage Analysis");
     println!("==============================");
     println!("Testing arrays from {} to {} bits\n",
              BASE_SIZE_BITS,
@@ -26,7 +26,7 @@ fn main() {
 
     for iteration in 1..NUM_TEST_ITERATIONS {
         let num_bits = iteration * BASE_SIZE_BITS;
-        let array = BitArray::new(num_bits);
+        let array = BitField::new(num_bits);
         let memory_bytes = array.memory_usage();
         let bytes_per_bit = memory_bytes as f64 / num_bits as f64;
 
@@ -37,8 +37,8 @@ fn main() {
                  num_bits,
                  memory_bytes,
                  bytes_per_bit,
-                 std::mem::size_of::<BitArray>())
+                 std::mem::size_of::<BitField>())
         }
 
-    println!("\nNote: Overhead includes Vec metadata and BitArray struct size");
+    println!("\nNote: Overhead includes Vec metadata and BitField struct size");
 }

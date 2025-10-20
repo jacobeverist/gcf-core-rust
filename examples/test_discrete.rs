@@ -6,7 +6,7 @@ fn main() {
     encoder.set_value(0);
     encoder.execute(false).unwrap();
     
-    let output = encoder.output();
+    let output = encoder.get_output();
     let num_active = output.borrow().state.num_set();
     let active_bits = output.borrow().state.get_acts();
     

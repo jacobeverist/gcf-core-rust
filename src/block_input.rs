@@ -1,7 +1,7 @@
 //! BlockInput - Manages block inputs with lazy copying from child outputs.
 //!
 //! This module provides the `BlockInput` structure that concatenates multiple child
-//! BlockOutputs into a single input BitArray. It implements critical lazy copying
+//! BlockOutputs into a single input BitField. It implements critical lazy copying
 //! optimization using `Rc<RefCell<BlockOutput>>` to avoid redundant memory operations.
 //!
 //! # Lazy Copying Optimization
@@ -55,7 +55,7 @@
 //! input.pull();
 //! ```
 
-use crate::bitarray::BitArray;
+use crate::bitfield::BitField;
 use crate::block_output::BlockOutput;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -65,7 +65,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 ///
 /// # Fields
 ///
-/// - `state` - Concatenated input BitArray
+/// - `state` - Concatenated input BitField
 /// - `children` - Shared references to child BlockOutputs
 /// - `times` - Time offsets for each child
 /// - `word_offsets` - Word positions in concatenation
@@ -79,7 +79,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 /// - `children_changed()`: ~3-10ns per child (short-circuit)
 pub struct BlockInput {
     /// Concatenated input state (public for direct access)
-    pub state: BitArray,
+    pub state: BitField,
 
     /// Shared references to child outputs (CRITICAL: uses Rc<RefCell<>>)
     children: Vec<Rc<RefCell<BlockOutput>>>,
@@ -103,7 +103,7 @@ impl BlockInput {
         static NEXT_ID: AtomicU32 = AtomicU32::new(0);
 
         Self {
-            state: BitArray::new(0),
+            state: BitField::new(0),
             children: Vec::new(),
             times: Vec::new(),
             word_offsets: Vec::new(),
@@ -215,12 +215,12 @@ impl BlockInput {
                 continue; // Skip memcpy!
             }
 
-            let src_bitarray = child.get_bitarray(self.times[i]);
+            let src_bitfield = child.get_bitfield(self.times[i]);
 
-            // Fast word-level copy (equivalent to C++ bitarray_copy)
-            bitarray_copy_words(
+            // Fast word-level copy (equivalent to C++ bitfield_copy)
+            bitfield_copy_words(
                 &mut self.state,
-                src_bitarray,
+                src_bitfield,
                 self.word_offsets[i],
                 0,
                 self.word_sizes[i],
@@ -319,14 +319,14 @@ impl Default for BlockInput {
     }
 }
 
-/// Fast word-level copy between BitArrays (equivalent to C++ bitarray_copy).
+/// Fast word-level copy between BitFields (equivalent to C++ bitfield_copy).
 ///
 /// **CRITICAL**: This compiles to a single memcpy call, matching C++ performance.
 ///
 /// # Arguments
 ///
-/// * `dst` - Destination BitArray
-/// * `src` - Source BitArray
+/// * `dst` - Destination BitField
+/// * `src` - Source BitField
 /// * `dst_word_offset` - Starting word position in destination
 /// * `src_word_offset` - Starting word position in source
 /// * `num_words` - Number of 32-bit words to copy
@@ -337,9 +337,9 @@ impl Default for BlockInput {
 /// - Compiles to memcpy (or inline rep movsq on x86-64)
 /// - Zero overhead compared to C++ version
 #[inline(always)]
-fn bitarray_copy_words(
-    dst: &mut BitArray,
-    src: &BitArray,
+fn bitfield_copy_words(
+    dst: &mut BitField,
+    src: &BitField,
     dst_word_offset: usize,
     src_word_offset: usize,
     num_words: usize,
@@ -574,16 +574,16 @@ mod tests {
     }
 
     #[test]
-    fn test_bitarray_copy_words() {
-        let mut dst = BitArray::new(128);
-        let mut src = BitArray::new(128);
+    fn test_bitfield_copy_words() {
+        let mut dst = BitField::new(128);
+        let mut src = BitField::new(128);
 
         src.set_bit(5);
         src.set_bit(10);
         src.set_bit(70); // This is in word 2 (bits 64-95)
 
         // Copy all 4 words (128 bits)
-        bitarray_copy_words(&mut dst, &src, 0, 0, 4);
+        bitfield_copy_words(&mut dst, &src, 0, 0, 4);
 
         assert_eq!(dst.get_bit(5), 1);
         assert_eq!(dst.get_bit(10), 1);
@@ -591,14 +591,14 @@ mod tests {
     }
 
     #[test]
-    fn test_bitarray_copy_words_with_offset() {
-        let mut dst = BitArray::new(128);
-        let mut src = BitArray::new(64);
+    fn test_bitfield_copy_words_with_offset() {
+        let mut dst = BitField::new(128);
+        let mut src = BitField::new(64);
 
         src.set_bit(5);
 
         // Copy to offset position in dst
-        bitarray_copy_words(&mut dst, &src, 2, 0, 2); // Offset by 2 words (64 bits)
+        bitfield_copy_words(&mut dst, &src, 2, 0, 2); // Offset by 2 words (64 bits)
 
         assert_eq!(dst.get_bit(5), 0); // Original position
         assert_eq!(dst.get_bit(64 + 5), 1); // Offset position

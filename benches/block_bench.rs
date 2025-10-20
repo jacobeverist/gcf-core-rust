@@ -144,7 +144,7 @@ fn bench_block_memory_overlap(c: &mut Criterion) {
         let mut rng = StdRng::seed_from_u64(42);
         memory.init_pooled(1024, &mut rng, 0.8, 0.5);
 
-        let mut input = gnomics::BitArray::new(1024);
+        let mut input = gnomics::BitField::new(1024);
         input.random_set_num(&mut rng, 128);
 
         b.iter(|| {
@@ -160,7 +160,7 @@ fn bench_block_memory_learn(c: &mut Criterion) {
         let mut rng = StdRng::seed_from_u64(42);
         memory.init_pooled(1024, &mut rng, 0.8, 0.5);
 
-        let mut input = gnomics::BitArray::new(1024);
+        let mut input = gnomics::BitField::new(1024);
         input.random_set_num(&mut rng, 128);
 
         b.iter(|| {

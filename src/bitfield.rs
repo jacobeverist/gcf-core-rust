@@ -1,4 +1,4 @@
-//! BitArray - Efficient bit manipulation using bitvec crate.
+//! BitField - Efficient bit manipulation using bitvec crate.
 //!
 //! This module provides a high-performance bit array implementation using the
 //! `bitvec` crate, providing battle-tested bit manipulation with word-level
@@ -20,9 +20,9 @@
 //! # Examples
 //!
 //! ```
-//! use gnomics::BitArray;
+//! use gnomics::BitField;
 //!
-//! let mut ba = BitArray::new(1024);
+//! let mut ba = BitField::new(1024);
 //! ba.set_bit(5);
 //! ba.set_bit(10);
 //! assert_eq!(ba.num_set(), 2);
@@ -80,20 +80,20 @@ const fn bitmask(n: usize) -> Word {
 /// - **Logical ops**: Direct word-level operations on raw slices
 /// - **get_acts**: Optimized word iteration with early exit
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct BitArray {
+pub struct BitField {
     /// Underlying bitvec storage with u32 words, LSB0 ordering
     bv: BitVec<u32, Lsb0>,
 }
 
-impl BitArray {
-    /// Create a new BitArray with `n` bits, all initialized to 0.
+impl BitField {
+    /// Create a new BitField with `n` bits, all initialized to 0.
     ///
     /// # Examples
     ///
     /// ```
-    /// use gnomics::BitArray;
+    /// use gnomics::BitField;
     ///
-    /// let ba = BitArray::new(1024);
+    /// let ba = BitField::new(1024);
     /// assert_eq!(ba.num_bits(), 1024);
     /// assert_eq!(ba.num_set(), 0);
     /// ```
@@ -104,7 +104,7 @@ impl BitArray {
         }
     }
 
-    /// Resize the BitArray to contain `n` bits.
+    /// Resize the BitField to contain `n` bits.
     ///
     /// New bits are initialized to 0. If shrinking, excess bits are discarded.
     pub fn resize(&mut self, n: usize) {
@@ -349,18 +349,18 @@ impl BitArray {
         self.bv.count_zeros()
     }
 
-    /// Count number of similar set bits between two BitArrays.
+    /// Count number of similar set bits between two BitFields.
     ///
     /// Returns count of bits that are 1 in both arrays (bitwise AND + popcount).
     ///
     /// # Panics
     ///
     /// Panics if arrays have different word counts.
-    pub fn num_similar(&self, other: &BitArray) -> usize {
+    pub fn num_similar(&self, other: &BitField) -> usize {
         assert_eq!(
             self.num_words(),
             other.num_words(),
-            "BitArrays must have same word count"
+            "BitFields must have same word count"
         );
 
         let self_words = self.bv.as_raw_slice();
@@ -577,22 +577,22 @@ impl BitArray {
 // Bitwise Operators (OPTIMIZED)
 // =============================================================================
 
-impl BitAnd for BitArray {
-    type Output = BitArray;
+impl BitAnd for BitField {
+    type Output = BitField;
 
     fn bitand(self, rhs: Self) -> Self::Output {
         &self & &rhs
     }
 }
 
-impl BitAnd for &BitArray {
-    type Output = BitArray;
+impl BitAnd for &BitField {
+    type Output = BitField;
 
     /// Bitwise AND operation.
     ///
     /// OPTIMIZED: Uses word-level operations on raw slices for 10x speedup.
     fn bitand(self, rhs: Self) -> Self::Output {
-        assert_eq!(self.bv.len(), rhs.bv.len(), "BitArrays must have same size");
+        assert_eq!(self.bv.len(), rhs.bv.len(), "BitFields must have same size");
 
         let mut result = self.clone();
         let result_words = result.bv.as_raw_mut_slice();
@@ -606,22 +606,22 @@ impl BitAnd for &BitArray {
     }
 }
 
-impl BitOr for BitArray {
-    type Output = BitArray;
+impl BitOr for BitField {
+    type Output = BitField;
 
     fn bitor(self, rhs: Self) -> Self::Output {
         &self | &rhs
     }
 }
 
-impl BitOr for &BitArray {
-    type Output = BitArray;
+impl BitOr for &BitField {
+    type Output = BitField;
 
     /// Bitwise OR operation.
     ///
     /// OPTIMIZED: Uses word-level operations on raw slices for 10x speedup.
     fn bitor(self, rhs: Self) -> Self::Output {
-        assert_eq!(self.bv.len(), rhs.bv.len(), "BitArrays must have same size");
+        assert_eq!(self.bv.len(), rhs.bv.len(), "BitFields must have same size");
 
         let mut result = self.clone();
         let result_words = result.bv.as_raw_mut_slice();
@@ -635,22 +635,22 @@ impl BitOr for &BitArray {
     }
 }
 
-impl BitXor for BitArray {
-    type Output = BitArray;
+impl BitXor for BitField {
+    type Output = BitField;
 
     fn bitxor(self, rhs: Self) -> Self::Output {
         &self ^ &rhs
     }
 }
 
-impl BitXor for &BitArray {
-    type Output = BitArray;
+impl BitXor for &BitField {
+    type Output = BitField;
 
     /// Bitwise XOR operation.
     ///
     /// OPTIMIZED: Uses word-level operations on raw slices for 10x speedup.
     fn bitxor(self, rhs: Self) -> Self::Output {
-        assert_eq!(self.bv.len(), rhs.bv.len(), "BitArrays must have same size");
+        assert_eq!(self.bv.len(), rhs.bv.len(), "BitFields must have same size");
 
         let mut result = self.clone();
         let result_words = result.bv.as_raw_mut_slice();
@@ -664,16 +664,16 @@ impl BitXor for &BitArray {
     }
 }
 
-impl Not for BitArray {
-    type Output = BitArray;
+impl Not for BitField {
+    type Output = BitField;
 
     fn not(self) -> Self::Output {
         !&self
     }
 }
 
-impl Not for &BitArray {
-    type Output = BitArray;
+impl Not for &BitField {
+    type Output = BitField;
 
     /// Bitwise NOT operation.
     ///
@@ -689,8 +689,8 @@ impl Not for &BitArray {
 // Comparison Operators (OPTIMIZED)
 // =============================================================================
 
-impl PartialEq for BitArray {
-    /// Compare BitArrays using word-level comparison.
+impl PartialEq for BitField {
+    /// Compare BitFields using word-level comparison.
     ///
     /// CRITICAL: Used for change tracking in BlockOutput::store() (Phase 2).
     ///
@@ -703,21 +703,21 @@ impl PartialEq for BitArray {
     }
 }
 
-impl Eq for BitArray {}
+impl Eq for BitField {}
 
 // =============================================================================
 // Helper Functions
 // =============================================================================
 
-/// Fast word-level copy from src to dst BitArray.
+/// Fast word-level copy from src to dst BitField.
 ///
 /// CRITICAL: Used by BlockInput::pull() in Phase 2 for lazy copying.
 /// This function enables efficient concatenation of child outputs.
 ///
 /// # Arguments
 ///
-/// * `dst` - Destination BitArray
-/// * `src` - Source BitArray
+/// * `dst` - Destination BitField
+/// * `src` - Source BitField
 /// * `dst_word_offset` - Word offset in destination
 /// * `src_word_offset` - Word offset in source
 /// * `num_words` - Number of words to copy
@@ -726,9 +726,9 @@ impl Eq for BitArray {}
 ///
 /// Compiles to memcpy for optimal performance (~60ns for 1024 bits).
 #[inline(always)]
-pub fn bitarray_copy_words(
-    dst: &mut BitArray,
-    src: &BitArray,
+pub fn bitfield_copy_words(
+    dst: &mut BitField,
+    src: &BitField,
     dst_word_offset: usize,
     src_word_offset: usize,
     num_words: usize,
@@ -754,7 +754,7 @@ mod tests {
 
     #[test]
     fn test_new() {
-        let ba = BitArray::new(1024);
+        let ba = BitField::new(1024);
         assert_eq!(ba.num_bits(), 1024);
         assert_eq!(ba.num_words(), 32);
         assert_eq!(ba.num_set(), 0);
@@ -762,7 +762,7 @@ mod tests {
 
     #[test]
     fn test_set_get_bit() {
-        let mut ba = BitArray::new(32);
+        let mut ba = BitField::new(32);
         assert_eq!(ba.get_bit(5), 0);
         ba.set_bit(5);
         assert_eq!(ba.get_bit(5), 1);
@@ -772,7 +772,7 @@ mod tests {
 
     #[test]
     fn test_toggle_bit() {
-        let mut ba = BitArray::new(32);
+        let mut ba = BitField::new(32);
         ba.toggle_bit(7);
         assert_eq!(ba.get_bit(7), 1);
         ba.toggle_bit(7);
@@ -781,7 +781,7 @@ mod tests {
 
     #[test]
     fn test_assign_bit() {
-        let mut ba = BitArray::new(32);
+        let mut ba = BitField::new(32);
         ba.assign_bit(3, 1);
         assert_eq!(ba.get_bit(3), 1);
         ba.assign_bit(3, 0);
@@ -790,7 +790,7 @@ mod tests {
 
     #[test]
     fn test_range_operations() {
-        let mut ba = BitArray::new(32);
+        let mut ba = BitField::new(32);
         ba.set_range(2, 8);
         assert_eq!(ba.num_set(), 8);
         assert_eq!(ba.get_acts(), vec![2, 3, 4, 5, 6, 7, 8, 9]);
@@ -805,7 +805,7 @@ mod tests {
 
     #[test]
     fn test_bulk_operations() {
-        let mut ba = BitArray::new(32);
+        let mut ba = BitField::new(32);
         ba.set_all();
         assert_eq!(ba.num_set(), 32);
 
@@ -820,7 +820,7 @@ mod tests {
 
     #[test]
     fn test_set_acts() {
-        let mut ba = BitArray::new(32);
+        let mut ba = BitField::new(32);
         ba.set_acts(&[2, 4, 6, 8]);
         assert_eq!(ba.num_set(), 4);
         assert_eq!(ba.get_acts(), vec![2, 4, 6, 8]);
@@ -828,22 +828,22 @@ mod tests {
 
     #[test]
     fn test_set_bits() {
-        let mut ba = BitArray::new(8);
+        let mut ba = BitField::new(8);
         ba.set_bits(&[0, 1, 0, 1, 0, 1, 0, 1]);
         assert_eq!(ba.get_acts(), vec![1, 3, 5, 7]);
     }
 
     #[test]
     fn test_get_bits() {
-        let mut ba = BitArray::new(8);
+        let mut ba = BitField::new(8);
         ba.set_acts(&[1, 3, 5, 7]);
         assert_eq!(ba.get_bits(), vec![0, 1, 0, 1, 0, 1, 0, 1]);
     }
 
     #[test]
     fn test_num_similar() {
-        let mut ba0 = BitArray::new(32);
-        let mut ba1 = BitArray::new(32);
+        let mut ba0 = BitField::new(32);
+        let mut ba1 = BitField::new(32);
 
         ba0.set_range(4, 8);
         ba1.set_range(6, 10);
@@ -854,7 +854,7 @@ mod tests {
 
     #[test]
     fn test_find_next_set_bit() {
-        let mut ba = BitArray::new(32);
+        let mut ba = BitField::new(32);
         ba.set_range(4, 8);
 
         assert_eq!(ba.find_next_set_bit(0), Some(4));
@@ -865,7 +865,7 @@ mod tests {
     #[test]
     fn test_random_operations() {
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
-        let mut ba = BitArray::new(1024);
+        let mut ba = BitField::new(1024);
 
         ba.random_set_num(&mut rng, 100);
         assert_eq!(ba.num_set(), 100);
@@ -876,8 +876,8 @@ mod tests {
 
     #[test]
     fn test_bitwise_and() {
-        let mut ba0 = BitArray::new(32);
-        let mut ba1 = BitArray::new(32);
+        let mut ba0 = BitField::new(32);
+        let mut ba1 = BitField::new(32);
 
         ba0.set_bit(2);
         ba0.set_bit(3);
@@ -891,8 +891,8 @@ mod tests {
 
     #[test]
     fn test_bitwise_or() {
-        let mut ba0 = BitArray::new(32);
-        let mut ba1 = BitArray::new(32);
+        let mut ba0 = BitField::new(32);
+        let mut ba1 = BitField::new(32);
 
         ba0.set_bit(2);
         ba0.set_bit(3);
@@ -906,8 +906,8 @@ mod tests {
 
     #[test]
     fn test_bitwise_xor() {
-        let mut ba0 = BitArray::new(32);
-        let mut ba1 = BitArray::new(32);
+        let mut ba0 = BitField::new(32);
+        let mut ba1 = BitField::new(32);
 
         ba0.set_bit(2);
         ba0.set_bit(3);
@@ -921,7 +921,7 @@ mod tests {
 
     #[test]
     fn test_bitwise_not() {
-        let mut ba = BitArray::new(32);
+        let mut ba = BitField::new(32);
         ba.set_bit(2);
         ba.set_bit(3);
 
@@ -931,8 +931,8 @@ mod tests {
 
     #[test]
     fn test_equality() {
-        let mut ba0 = BitArray::new(32);
-        let mut ba1 = BitArray::new(32);
+        let mut ba0 = BitField::new(32);
+        let mut ba1 = BitField::new(32);
 
         ba0.set_bit(5);
         ba1.set_bit(5);
@@ -944,12 +944,12 @@ mod tests {
     }
 
     #[test]
-    fn test_bitarray_copy_words() {
-        let mut src = BitArray::new(128);
-        let mut dst = BitArray::new(256);
+    fn test_bitfield_copy_words() {
+        let mut src = BitField::new(128);
+        let mut dst = BitField::new(256);
 
         src.set_range(0, 64);
-        bitarray_copy_words(&mut dst, &src, 2, 0, 2);
+        bitfield_copy_words(&mut dst, &src, 2, 0, 2);
 
         // Check that words 2-3 in dst match words 0-1 in src
         assert_eq!(dst.words()[2], src.words()[0]);
@@ -958,7 +958,7 @@ mod tests {
 
     #[test]
     fn test_resize() {
-        let mut ba = BitArray::new(32);
+        let mut ba = BitField::new(32);
         ba.set_all();
         assert_eq!(ba.num_set(), 32);
 
@@ -969,7 +969,7 @@ mod tests {
 
     #[test]
     fn test_erase() {
-        let mut ba = BitArray::new(32);
+        let mut ba = BitField::new(32);
         ba.set_all();
         ba.erase();
         assert_eq!(ba.num_bits(), 0);
@@ -978,7 +978,7 @@ mod tests {
 
     #[test]
     fn test_memory_usage() {
-        let ba = BitArray::new(1024);
+        let ba = BitField::new(1024);
         let usage = ba.memory_usage();
         assert!(usage >= 128); // At least 32 words * 4 bytes
     }

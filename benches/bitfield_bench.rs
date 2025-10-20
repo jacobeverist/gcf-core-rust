@@ -1,15 +1,15 @@
-//! Performance benchmarks for BitArray operations.
+//! Performance benchmarks for BitField operations.
 //!
 //! These benchmarks measure critical operations and compare against C++ targets:
 //! - set_bit target: <3ns
 //! - get_bit target: <2ns
 //! - num_set (1024 bits) target: <60ns
-//! - bitarray_copy_words (1024 bits) target: <60ns
+//! - bitfield_copy_words (1024 bits) target: <60ns
 //! - Logical operations (AND, OR, XOR)
 //! - PartialEq comparison (critical for change tracking)
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use gnomics::{bitarray_copy_words, BitArray};
+use gnomics::{bitfield_copy_words, BitField};
 use rand::SeedableRng;
 
 // =============================================================================
@@ -17,7 +17,7 @@ use rand::SeedableRng;
 // =============================================================================
 
 fn bench_set_bit(c: &mut Criterion) {
-    let mut ba = BitArray::new(10000);
+    let mut ba = BitField::new(10000);
 
     c.bench_function("set_bit", |b| {
         let mut i = 0;
@@ -29,7 +29,7 @@ fn bench_set_bit(c: &mut Criterion) {
 }
 
 fn bench_get_bit(c: &mut Criterion) {
-    let mut ba = BitArray::new(10000);
+    let mut ba = BitField::new(10000);
     ba.set_all();
 
     c.bench_function("get_bit", |b| {
@@ -42,7 +42,7 @@ fn bench_get_bit(c: &mut Criterion) {
 }
 
 fn bench_clear_bit(c: &mut Criterion) {
-    let mut ba = BitArray::new(10000);
+    let mut ba = BitField::new(10000);
     ba.set_all();
 
     c.bench_function("clear_bit", |b| {
@@ -55,7 +55,7 @@ fn bench_clear_bit(c: &mut Criterion) {
 }
 
 fn bench_toggle_bit(c: &mut Criterion) {
-    let mut ba = BitArray::new(10000);
+    let mut ba = BitField::new(10000);
 
     c.bench_function("toggle_bit", |b| {
         let mut i = 0;
@@ -74,7 +74,7 @@ fn bench_num_set(c: &mut Criterion) {
     let mut group = c.benchmark_group("num_set");
 
     for size in [32, 128, 1024, 4096, 16384].iter() {
-        let mut ba = BitArray::new(*size);
+        let mut ba = BitField::new(*size);
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
         ba.random_set_pct(&mut rng, 0.2);
 
@@ -89,8 +89,8 @@ fn bench_num_similar(c: &mut Criterion) {
     let mut group = c.benchmark_group("num_similar");
 
     for size in [128, 1024, 4096].iter() {
-        let mut ba1 = BitArray::new(*size);
-        let mut ba2 = BitArray::new(*size);
+        let mut ba1 = BitField::new(*size);
+        let mut ba2 = BitField::new(*size);
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
         ba1.random_set_pct(&mut rng, 0.2);
         ba2.random_set_pct(&mut rng, 0.2);
@@ -110,7 +110,7 @@ fn bench_set_all(c: &mut Criterion) {
     let mut group = c.benchmark_group("set_all");
 
     for size in [128, 1024, 4096].iter() {
-        let mut ba = BitArray::new(*size);
+        let mut ba = BitField::new(*size);
 
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, _| {
             b.iter(|| ba.set_all());
@@ -123,7 +123,7 @@ fn bench_clear_all(c: &mut Criterion) {
     let mut group = c.benchmark_group("clear_all");
 
     for size in [128, 1024, 4096].iter() {
-        let mut ba = BitArray::new(*size);
+        let mut ba = BitField::new(*size);
 
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, _| {
             b.iter(|| ba.clear_all());
@@ -140,7 +140,7 @@ fn bench_get_acts(c: &mut Criterion) {
     let mut group = c.benchmark_group("get_acts");
 
     for size in [128, 1024, 4096].iter() {
-        let mut ba = BitArray::new(*size);
+        let mut ba = BitField::new(*size);
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
         ba.random_set_pct(&mut rng, 0.2);
 
@@ -155,7 +155,7 @@ fn bench_set_acts(c: &mut Criterion) {
     let mut group = c.benchmark_group("set_acts");
 
     for size in [128, 1024, 4096].iter() {
-        let mut ba = BitArray::new(*size);
+        let mut ba = BitField::new(*size);
         let indices: Vec<usize> = (0..*size / 5).collect();
 
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, _| {
@@ -173,8 +173,8 @@ fn bench_bitwise_and(c: &mut Criterion) {
     let mut group = c.benchmark_group("bitwise_and");
 
     for size in [128, 1024, 4096].iter() {
-        let mut ba1 = BitArray::new(*size);
-        let mut ba2 = BitArray::new(*size);
+        let mut ba1 = BitField::new(*size);
+        let mut ba2 = BitField::new(*size);
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
         ba1.random_set_pct(&mut rng, 0.2);
         ba2.random_set_pct(&mut rng, 0.2);
@@ -190,8 +190,8 @@ fn bench_bitwise_or(c: &mut Criterion) {
     let mut group = c.benchmark_group("bitwise_or");
 
     for size in [128, 1024, 4096].iter() {
-        let mut ba1 = BitArray::new(*size);
-        let mut ba2 = BitArray::new(*size);
+        let mut ba1 = BitField::new(*size);
+        let mut ba2 = BitField::new(*size);
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
         ba1.random_set_pct(&mut rng, 0.2);
         ba2.random_set_pct(&mut rng, 0.2);
@@ -207,8 +207,8 @@ fn bench_bitwise_xor(c: &mut Criterion) {
     let mut group = c.benchmark_group("bitwise_xor");
 
     for size in [128, 1024, 4096].iter() {
-        let mut ba1 = BitArray::new(*size);
-        let mut ba2 = BitArray::new(*size);
+        let mut ba1 = BitField::new(*size);
+        let mut ba2 = BitField::new(*size);
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
         ba1.random_set_pct(&mut rng, 0.2);
         ba2.random_set_pct(&mut rng, 0.2);
@@ -224,7 +224,7 @@ fn bench_bitwise_not(c: &mut Criterion) {
     let mut group = c.benchmark_group("bitwise_not");
 
     for size in [128, 1024, 4096].iter() {
-        let mut ba = BitArray::new(*size);
+        let mut ba = BitField::new(*size);
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
         ba.random_set_pct(&mut rng, 0.2);
 
@@ -243,7 +243,7 @@ fn bench_equality_same(c: &mut Criterion) {
     let mut group = c.benchmark_group("equality_same");
 
     for size in [128, 1024, 4096, 16384].iter() {
-        let mut ba1 = BitArray::new(*size);
+        let mut ba1 = BitField::new(*size);
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
         ba1.random_set_pct(&mut rng, 0.2);
         let ba2 = ba1.clone();
@@ -259,8 +259,8 @@ fn bench_equality_different(c: &mut Criterion) {
     let mut group = c.benchmark_group("equality_different");
 
     for size in [128, 1024, 4096, 16384].iter() {
-        let mut ba1 = BitArray::new(*size);
-        let mut ba2 = BitArray::new(*size);
+        let mut ba1 = BitField::new(*size);
+        let mut ba2 = BitField::new(*size);
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
         ba1.random_set_pct(&mut rng, 0.2);
         ba2.random_set_pct(&mut rng, 0.2);
@@ -277,12 +277,12 @@ fn bench_equality_different(c: &mut Criterion) {
 // Word-Level Copy (CRITICAL for Phase 2 lazy copying)
 // =============================================================================
 
-fn bench_bitarray_copy_words(c: &mut Criterion) {
-    let mut group = c.benchmark_group("bitarray_copy_words");
+fn bench_bitfield_copy_words(c: &mut Criterion) {
+    let mut group = c.benchmark_group("bitfield_copy_words");
 
     for size in [128, 1024, 4096].iter() {
-        let mut src = BitArray::new(*size);
-        let mut dst = BitArray::new(*size * 2);
+        let mut src = BitField::new(*size);
+        let mut dst = BitField::new(*size * 2);
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
         src.random_set_pct(&mut rng, 0.2);
 
@@ -290,7 +290,7 @@ fn bench_bitarray_copy_words(c: &mut Criterion) {
 
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, _| {
             b.iter(|| {
-                bitarray_copy_words(black_box(&mut dst), black_box(&src), 0, 0, num_words);
+                bitfield_copy_words(black_box(&mut dst), black_box(&src), 0, 0, num_words);
             });
         });
     }
@@ -305,7 +305,7 @@ fn bench_random_set_num(c: &mut Criterion) {
     let mut group = c.benchmark_group("random_set_num");
 
     for size in [128, 1024, 4096].iter() {
-        let mut ba = BitArray::new(*size);
+        let mut ba = BitField::new(*size);
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
         let num = size / 5;
 
@@ -320,7 +320,7 @@ fn bench_random_shuffle(c: &mut Criterion) {
     let mut group = c.benchmark_group("random_shuffle");
 
     for size in [128, 1024, 4096].iter() {
-        let mut ba = BitArray::new(*size);
+        let mut ba = BitField::new(*size);
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
         ba.random_set_pct(&mut rng, 0.2);
 
@@ -340,7 +340,7 @@ fn bench_find_next_set_bit(c: &mut Criterion) {
     let mut group = c.benchmark_group("find_next_set_bit");
 
     for size in [128, 1024, 4096].iter() {
-        let mut ba = BitArray::new(*size);
+        let mut ba = BitField::new(*size);
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
         ba.random_set_pct(&mut rng, 0.2);
 
@@ -369,7 +369,7 @@ criterion_group!(
     bench_bitwise_not,
     bench_equality_same,
     bench_equality_different,
-    bench_bitarray_copy_words,
+    bench_bitfield_copy_words,
     bench_random_set_num,
     bench_random_shuffle,
     bench_find_next_set_bit

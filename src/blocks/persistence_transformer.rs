@@ -61,16 +61,16 @@ pub struct PersistenceTransformer {
     // Parameters
     min_val: f64,
     max_val: f64,
-    dif_val: f64,      // max_val - min_val
-    num_s: usize,      // Number of statelets
-    num_as: usize,     // Number of active statelets
-    dif_s: usize,      // num_s - num_as
-    max_step: usize,   // Maximum persistence steps to track
+    dif_val: f64,    // max_val - min_val
+    num_s: usize,    // Number of statelets
+    num_as: usize,   // Number of active statelets
+    dif_s: usize,    // num_s - num_as
+    max_step: usize, // Maximum persistence steps to track
 
     // State
     value: f64,
-    counter: usize,         // Current persistence counter
-    pct_val_prev: f64,      // Previous percentage value for change detection
+    counter: usize,    // Current persistence counter
+    pct_val_prev: f64, // Previous percentage value for change detection
 }
 
 impl PersistenceTransformer {
@@ -285,7 +285,7 @@ impl Block for PersistenceTransformer {
         self.output.borrow_mut().store();
     }
 
-    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+    fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }
 
@@ -356,10 +356,10 @@ mod tests {
 
         // Build up persistence (first encode is reset, next 3 increment)
         pt.set_value(0.5);
-        pt.compute();  // Reset to 0
-        pt.compute();  // 1
-        pt.compute();  // 2
-        pt.compute();  // 3
+        pt.compute(); // Reset to 0
+        pt.compute(); // 1
+        pt.compute(); // 2
+        pt.compute(); // 3
         assert_eq!(pt.get_counter(), 3);
 
         // Significant change (>10%) should reset
@@ -374,15 +374,15 @@ mod tests {
 
         // Build up persistence (first encode is reset, next 2 increment)
         pt.set_value(0.5);
-        pt.compute();  // Reset to 0
-        pt.compute();  // 1
-        pt.compute();  // 2
+        pt.compute(); // Reset to 0
+        pt.compute(); // 1
+        pt.compute(); // 2
         assert_eq!(pt.get_counter(), 2);
 
         // Small change (<10%) should not reset
-        pt.set_value(0.55);  // 5% change
+        pt.set_value(0.55); // 5% change
         pt.compute();
-        assert_eq!(pt.get_counter(), 3);  // Counter continues
+        assert_eq!(pt.get_counter(), 3); // Counter continues
     }
 
     #[test]
@@ -427,8 +427,15 @@ mod tests {
         }
 
         // Different persistence levels should have different patterns
-        let overlap = pt1.output.borrow().state.num_similar(&pt2.output.borrow().state);
-        assert!(overlap < 128, "Different persistence should have different patterns");
+        let overlap = pt1
+            .output
+            .borrow()
+            .state
+            .num_similar(&pt2.output.borrow().state);
+        assert!(
+            overlap < 128,
+            "Different persistence should have different patterns"
+        );
     }
 
     #[test]
@@ -482,7 +489,10 @@ mod tests {
         // Verify patterns change as persistence increases
         for i in 1..patterns.len() {
             let same = patterns[i - 1] == patterns[i];
-            assert!(!same, "Persistence patterns should differ at different levels");
+            assert!(
+                !same,
+                "Persistence patterns should differ at different levels"
+            );
         }
     }
 }

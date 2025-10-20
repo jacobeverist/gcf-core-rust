@@ -24,7 +24,7 @@
 //! st.execute(false).unwrap();
 //!
 //! // Output has exactly 128 active bits
-//! assert_eq!(st.output().borrow().state.num_set(), 128);
+//! assert_eq!(st.get_output().borrow().state.num_set(), 128);
 //!
 //! // Test semantic similarity
 //! let mut st2 = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
@@ -32,7 +32,7 @@
 //! st2.execute(false).unwrap();
 //!
 //! // Similar values have high overlap
-//! let overlap = st.output().borrow().state.num_similar(&st2.output().borrow().state);
+//! let overlap = st.get_output().borrow().state.num_similar(&st2.get_output().borrow().state);
 //! assert!(overlap > 100);  // Significant overlap
 //! ```
 
@@ -69,14 +69,14 @@ pub struct ScalarTransformer {
     // Parameters
     min_val: f64,
     max_val: f64,
-    dif_val: f64,      // max_val - min_val
-    num_s: usize,      // Number of statelets
-    num_as: usize,     // Number of active statelets
-    dif_s: usize,      // num_s - num_as
+    dif_val: f64,  // max_val - min_val
+    num_s: usize,  // Number of statelets
+    num_as: usize, // Number of active statelets
+    dif_s: usize,  // num_s - num_as
 
     // State
     value: f64,
-    value_prev: f64,   // For change detection optimization
+    value_prev: f64, // For change detection optimization
 }
 
 impl ScalarTransformer {
@@ -256,7 +256,7 @@ impl Block for ScalarTransformer {
         std::mem::size_of::<Self>() + self.output.borrow().memory_usage()
     }
 
-    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+    fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }
 }

@@ -32,7 +32,7 @@
 //! let mut classifier = PatternClassifier::new(4, 1024, 8, 20, 2, 1, 0.8, 0.5, 0.3, 2, 0);
 //!
 //! // Connect and initialize
-//! classifier.input.add_child(encoder.output(), 0);
+//! classifier.input.add_child(encoder.get_output(), 0);
 //! classifier.init().unwrap();
 //!
 //! // Train on label 0
@@ -93,8 +93,8 @@ pub struct PatternClassifier {
     num_t: usize,   // History depth
 
     // State
-    label: Option<usize>,      // Current label for supervised learning
-    overlaps: Vec<usize>,      // Overlap scores per dendrite
+    label: Option<usize>,        // Current label for supervised learning
+    overlaps: Vec<usize>,        // Overlap scores per dendrite
     statelet_labels: Vec<usize>, // Which label each statelet belongs to
 }
 
@@ -239,7 +239,7 @@ impl PatternClassifier {
     /// #
     /// # let mut encoder = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
     /// # let mut classifier = PatternClassifier::new(4, 1024, 8, 20, 2, 1, 0.8, 0.5, 0.3, 2, 0);
-    /// # classifier.input.add_child(encoder.output(), 0);
+    /// # classifier.input.add_child(encoder.get_output(), 0);
     /// # classifier.init().unwrap();
     /// # encoder.set_value(0.5);
     /// # encoder.execute(false).unwrap();
@@ -333,8 +333,12 @@ impl Block for PatternClassifier {
 
         // Initialize memory with pooled connectivity
         let num_input_bits = self.input.num_bits();
-        self.memory
-            .init_pooled_conn(num_input_bits, self.base.rng(), self.pct_pool, self.pct_conn);
+        self.memory.init_pooled_conn(
+            num_input_bits,
+            self.base.rng(),
+            self.pct_pool,
+            self.pct_conn,
+        );
 
         self.base.set_initialized(true);
         Ok(())
@@ -447,7 +451,7 @@ impl Block for PatternClassifier {
         base_size + overlaps_size + statelet_labels_size + input_size + output_size + memory_size
     }
 
-    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+    fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }
 }

@@ -65,10 +65,10 @@ pub struct DiscreteTransformer {
     pub output: Rc<RefCell<BlockOutput>>,
 
     // Parameters
-    num_v: usize,      // Number of discrete values
-    num_s: usize,      // Number of statelets
-    num_as: usize,     // Number of active statelets (num_s / num_v)
-    dif_s: usize,      // num_s - num_as
+    num_v: usize,  // Number of discrete values
+    num_s: usize,  // Number of statelets
+    num_as: usize, // Number of active statelets (num_s / num_v)
+    dif_s: usize,  // num_s - num_as
 
     // State
     value: usize,
@@ -240,7 +240,7 @@ impl Block for DiscreteTransformer {
         self.output.borrow_mut().store();
     }
 
-    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+    fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }
 
@@ -311,7 +311,11 @@ mod tests {
         dt2.compute();
 
         // Different categories should have zero overlap
-        let overlap = dt1.output.borrow().state.num_similar(&dt2.output.borrow().state);
+        let overlap = dt1
+            .output
+            .borrow()
+            .state
+            .num_similar(&dt2.output.borrow().state);
         assert_eq!(overlap, 0);
     }
 
@@ -421,10 +425,7 @@ mod tests {
         assert_eq!(dt.output.borrow().state.num_set(), 512);
 
         // Verify no overlap
-        let overlap = acts0
-            .iter()
-            .filter(|&&a| acts1.contains(&a))
-            .count();
+        let overlap = acts0.iter().filter(|&&a| acts1.contains(&a)).count();
         assert_eq!(overlap, 0);
     }
 }

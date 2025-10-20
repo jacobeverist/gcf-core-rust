@@ -7,6 +7,7 @@
 //! - Probability calculation
 //! - Integration with encoders
 
+#![allow(unused_imports)]
 use gnomics::{Block, PatternClassifier, ScalarTransformer};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -59,7 +60,7 @@ fn test_classifier_activation_per_group() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
     let mut classifier = PatternClassifier::new(4, 1024, 8, 20, 2, 1, 0.8, 0.5, 0.3, 2, 0);
 
-    classifier.input.add_child(encoder.output(), 0);
+    classifier.input.add_child(encoder.get_output(), 0);
     classifier.init().unwrap();
 
     encoder.set_value(0.5);
@@ -75,7 +76,7 @@ fn test_classifier_probabilities_sum() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
     let mut classifier = PatternClassifier::new(4, 1024, 8, 20, 2, 1, 0.8, 0.5, 0.3, 2, 0);
 
-    classifier.input.add_child(encoder.output(), 0);
+    classifier.input.add_child(encoder.get_output(), 0);
     classifier.init().unwrap();
 
     encoder.set_value(0.5);
@@ -122,7 +123,7 @@ fn test_classifier_learning_single_label() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 42);
     let mut classifier = PatternClassifier::new(4, 1024, 8, 20, 2, 1, 0.8, 0.5, 0.3, 2, 42);
 
-    classifier.input.add_child(encoder.output(), 0);
+    classifier.input.add_child(encoder.get_output(), 0);
     classifier.init().unwrap();
 
     // Train on label 0 with value 0.25
@@ -140,7 +141,7 @@ fn test_classifier_learning_single_label() {
     encoder.execute(false).unwrap();
     classifier.execute(false).unwrap();
 
-    let probs = classifier.get_probabilities();
+    let _probs = classifier.get_probabilities();
     let predicted = classifier.get_predicted_label();
 
     // Should predict label 0 (the one we trained on)
@@ -154,7 +155,7 @@ fn test_classifier_multiple_labels() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 2048, 256, 2, 42);
     let mut classifier = PatternClassifier::new(4, 2048, 16, 20, 2, 1, 0.8, 0.5, 0.3, 2, 42);
 
-    classifier.input.add_child(encoder.output(), 0);
+    classifier.input.add_child(encoder.get_output(), 0);
     classifier.init().unwrap();
 
     // Training data: map value ranges to labels
@@ -211,7 +212,7 @@ fn test_classifier_generalization() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 2048, 256, 2, 42);
     let mut classifier = PatternClassifier::new(2, 2048, 20, 20, 2, 1, 0.8, 0.5, 0.3, 2, 42);
 
-    classifier.input.add_child(encoder.output(), 0);
+    classifier.input.add_child(encoder.get_output(), 0);
     classifier.init().unwrap();
 
     // Train binary classifier: Label 0 for low values, Label 1 for high values
@@ -257,7 +258,7 @@ fn test_classifier_clear() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
     let mut classifier = PatternClassifier::new(4, 1024, 8, 20, 2, 1, 0.8, 0.5, 0.3, 2, 0);
 
-    classifier.input.add_child(encoder.output(), 0);
+    classifier.input.add_child(encoder.get_output(), 0);
     classifier.init().unwrap();
 
     encoder.set_value(0.5);
@@ -282,7 +283,7 @@ fn test_classifier_probability_distribution() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
     let mut classifier = PatternClassifier::new(4, 1024, 8, 20, 2, 1, 0.8, 0.5, 0.3, 2, 0);
 
-    classifier.input.add_child(encoder.output(), 0);
+    classifier.input.add_child(encoder.get_output(), 0);
     classifier.init().unwrap();
 
     encoder.set_value(0.5);

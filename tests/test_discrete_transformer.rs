@@ -281,13 +281,13 @@ fn test_discrete_history_tracking() {
     // Encode first category
     dt.set_value(3);
     dt.execute(false).unwrap();
-    let acts1 = dt.output.borrow().get_bitarray(0).get_acts();
+    let acts1 = dt.output.borrow().get_bitfield(0).get_acts();
 
     // Encode second category
     dt.set_value(7);
     dt.execute(false).unwrap();
-    let acts2_curr = dt.output.borrow().get_bitarray(0).get_acts();
-    let acts2_prev = dt.output.borrow().get_bitarray(1).get_acts();
+    let acts2_curr = dt.output.borrow().get_bitfield(0).get_acts();
+    let acts2_prev = dt.output.borrow().get_bitfield(1).get_acts();
 
     // Current should be different from previous
     assert_ne!(acts2_curr, acts2_prev);

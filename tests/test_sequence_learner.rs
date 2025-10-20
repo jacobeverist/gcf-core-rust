@@ -1,24 +1,25 @@
 //! Tests for SequenceLearner block
 
+#![allow(unused_imports)]
 use gnomics::blocks::{DiscreteTransformer, SequenceLearner};
-use gnomics::{Block};
+use gnomics::{Block, ScalarTransformer};
 use std::cell::RefCell;
 use std::rc::Rc;
 
 #[test]
 fn test_sequence_learner_new() {
     let learner = SequenceLearner::new(
-        512, // num_c
-        4,   // num_spc
-        8,   // num_dps
-        32,  // num_rpd
-        20,  // d_thresh
-        20,  // perm_thr
-        2,   // perm_inc
-        1,   // perm_dec
-        2,   // num_t
+        512,   // num_c
+        4,     // num_spc
+        8,     // num_dps
+        32,    // num_rpd
+        20,    // d_thresh
+        20,    // perm_thr
+        2,     // perm_inc
+        1,     // perm_dec
+        2,     // num_t
         false, // always_update
-        0,   // seed
+        0,     // seed
     );
 
     assert_eq!(learner.num_c(), 512);
@@ -36,14 +37,12 @@ fn test_sequence_learner_self_feedback() {
 
 #[test]
 fn test_sequence_learner_init() {
-    let mut encoder = DiscreteTransformer::new(10, 512, 2, 0);
+    let encoder = DiscreteTransformer::new(10, 512, 2, 0);
 
     let mut learner = SequenceLearner::new(512, 4, 8, 32, 20, 20, 2, 1, 2, false, 0);
 
     // Connect input
-    learner
-        .input
-        .add_child(encoder.output(), 0);
+    learner.input.add_child(encoder.get_output(), 0);
 
     // Initialize
     let result = learner.init();
@@ -69,9 +68,7 @@ fn test_sequence_learner_first_pattern_high_anomaly() {
     let mut learner = SequenceLearner::new(10, 2, 4, 16, 8, 20, 2, 1, 2, false, 42);
 
     // Connect
-    learner
-        .input
-        .add_child(encoder.output(), 0);
+    learner.input.add_child(encoder.get_output(), 0);
     learner.init().unwrap();
 
     // First pattern should have high anomaly
@@ -80,19 +77,34 @@ fn test_sequence_learner_first_pattern_high_anomaly() {
     learner.execute(true).unwrap();
 
     let anomaly = learner.get_anomaly_score();
-    assert!(anomaly > 0.9, "First pattern should have high anomaly, got {}", anomaly);
+    assert!(
+        anomaly > 0.9,
+        "First pattern should have high anomaly, got {}",
+        anomaly
+    );
 }
 
 #[test]
 fn test_sequence_learner_repeated_sequence_reduces_anomaly() {
-    let mut encoder = DiscreteTransformer::new(5, 5, 2, 0);
-
-    let mut learner = SequenceLearner::new(5, 2, 8, 32, 20, 20, 2, 1, 2, false, 42);
+    let num_v = 5;
+    let num_s = num_v*8;
+    let mut encoder = DiscreteTransformer::new(num_v, num_s, 2, 42);
+    let mut learner = SequenceLearner::new(
+        num_s,    // num_c: 64 columns (matches transformer output)
+        10,    // num_spc: 10 statelets per column
+        10,    // num_dps: 10 dendrites per statelet
+        12,    // num_rpd: 12 receptors per dendrite
+        6,     // d_thresh: dendrite threshold (activations needed)
+        20,    // perm_thr: receptor permanence threshold
+        2,     // perm_inc: receptor permanence increment
+        1,     // perm_dec: receptor permanence decrement
+        3,     // num_t: history depth
+        false, // always_update: only update on changes
+        42,    // seed: RNG seed for reproducibility
+    );
 
     // Connect
-    learner
-        .input
-        .add_child(encoder.output(), 0);
+    learner.input.add_child(encoder.get_output(), 0);
     learner.init().unwrap();
 
     // Learn sequence: 0 → 1 → 2 → 0 → 1 → 2
@@ -113,21 +125,35 @@ fn test_sequence_learner_repeated_sequence_reduces_anomaly() {
     let early_avg: f64 = anomalies.iter().take(3).sum::<f64>() / 3.0;
     let late_avg: f64 = anomalies.iter().skip(27).take(3).sum::<f64>() / 3.0;
 
-    assert!(late_avg < early_avg,
+    assert!(
+        late_avg < early_avg,
         "Average anomaly should decrease with learning: early={:.3}, late={:.3}",
-        early_avg, late_avg);
+        early_avg,
+        late_avg
+    );
 }
 
 #[test]
 fn test_sequence_learner_broken_sequence_high_anomaly() {
-    let mut encoder = DiscreteTransformer::new(5, 5, 2, 0);
-
-    let mut learner = SequenceLearner::new(5, 2, 8, 32, 20, 20, 2, 1, 2, false, 42);
+    let num_v = 4;
+    let num_s = num_v*8;
+    let mut encoder = DiscreteTransformer::new(num_v, num_s, 2, 42);
+    let mut learner = SequenceLearner::new(
+        num_s,    // num_c: 64 columns (matches transformer output)
+        10,    // num_spc: 10 statelets per column
+        10,    // num_dps: 10 dendrites per statelet
+        12,    // num_rpd: 12 receptors per dendrite
+        6,     // d_thresh: dendrite threshold (activations needed)
+        20,    // perm_thr: receptor permanence threshold
+        2,     // perm_inc: receptor permanence increment
+        1,     // perm_dec: receptor permanence decrement
+        3,     // num_t: history depth
+        false, // always_update: only update on changes
+        42,    // seed: RNG seed for reproducibility
+    );
 
     // Connect
-    learner
-        .input
-        .add_child(encoder.output(), 0);
+    learner.input.add_child(encoder.get_output(), 0);
     learner.init().unwrap();
 
     // Learn sequence: 0 → 1 → 2
@@ -160,9 +186,12 @@ fn test_sequence_learner_broken_sequence_high_anomaly() {
     learner.execute(false).unwrap();
     let broken_anomaly = learner.get_anomaly_score();
 
-    assert!(broken_anomaly > learned_anomaly,
+    assert!(
+        broken_anomaly > learned_anomaly,
         "Broken sequence should have higher anomaly: learned={:.3}, broken={:.3}",
-        learned_anomaly, broken_anomaly);
+        learned_anomaly,
+        broken_anomaly
+    );
 }
 
 #[test]
@@ -172,9 +201,7 @@ fn test_sequence_learner_historical_count_grows() {
     let mut learner = SequenceLearner::new(5, 2, 4, 16, 8, 20, 2, 1, 2, false, 42);
 
     // Connect
-    learner
-        .input
-        .add_child(encoder.output(), 0);
+    learner.input.add_child(encoder.get_output(), 0);
     learner.init().unwrap();
 
     assert_eq!(learner.get_historical_count(), 0);
@@ -192,14 +219,25 @@ fn test_sequence_learner_historical_count_grows() {
 
 #[test]
 fn test_sequence_learner_complex_sequence() {
-    let mut encoder = DiscreteTransformer::new(10, 10, 2, 0);
-
-    let mut learner = SequenceLearner::new(10, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
+    let num_v = 10;
+    let num_s = num_v*8;
+    let mut encoder = DiscreteTransformer::new(num_v, num_s, 2, 42);
+    let mut learner = SequenceLearner::new(
+        num_s,    // num_c: 64 columns (matches transformer output)
+        10,    // num_spc: 10 statelets per column
+        10,    // num_dps: 10 dendrites per statelet
+        12,    // num_rpd: 12 receptors per dendrite
+        6,     // d_thresh: dendrite threshold (activations needed)
+        20,    // perm_thr: receptor permanence threshold
+        2,     // perm_inc: receptor permanence increment
+        1,     // perm_dec: receptor permanence decrement
+        3,     // num_t: history depth
+        false, // always_update: only update on changes
+        42,    // seed: RNG seed for reproducibility
+    );
 
     // Connect
-    learner
-        .input
-        .add_child(encoder.output(), 0);
+    learner.input.add_child(encoder.get_output(), 0);
     learner.init().unwrap();
 
     // Learn a longer sequence
@@ -223,9 +261,13 @@ fn test_sequence_learner_complex_sequence() {
         test_anomalies.push(learner.get_anomaly_score());
     }
 
-    let avg_anomaly: f64 = test_anomalies.iter().skip(1).sum::<f64>() / (test_anomalies.len() - 1) as f64;
-    assert!(avg_anomaly < 0.3,
-        "Learned sequence should have low average anomaly, got {:.3}", avg_anomaly);
+    let avg_anomaly: f64 =
+        test_anomalies.iter().skip(1).sum::<f64>() / (test_anomalies.len() - 1) as f64;
+    assert!(
+        avg_anomaly < 0.3,
+        "Learned sequence should have low average anomaly, got {:.3}",
+        avg_anomaly
+    );
 }
 
 #[test]
@@ -235,9 +277,7 @@ fn test_sequence_learner_clear() {
     let mut learner = SequenceLearner::new(5, 2, 4, 16, 8, 20, 2, 1, 2, false, 42);
 
     // Connect
-    learner
-        .input
-        .add_child(encoder.output(), 0);
+    learner.input.add_child(encoder.get_output(), 0);
     learner.init().unwrap();
 
     // Process some data
@@ -257,7 +297,10 @@ fn test_sequence_learner_memory_usage() {
     let learner = SequenceLearner::new(512, 4, 8, 32, 20, 20, 2, 1, 2, false, 0);
     let usage = learner.memory_usage();
     assert!(usage > 0, "Memory usage should be non-zero");
-    assert!(usage < 10_000_000, "Memory usage should be reasonable (<10MB)");
+    assert!(
+        usage < 10_000_000,
+        "Memory usage should be reasonable (<10MB)"
+    );
 }
 
 #[test]
@@ -267,9 +310,7 @@ fn test_sequence_learner_output_sparse() {
     let mut learner = SequenceLearner::new(10, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
 
     // Connect
-    learner
-        .input
-        .add_child(encoder.output(), 0);
+    learner.input.add_child(encoder.get_output(), 0);
     learner.init().unwrap();
 
     // Process
@@ -286,14 +327,25 @@ fn test_sequence_learner_output_sparse() {
 
 #[test]
 fn test_sequence_learner_alternating_patterns() {
-    let mut encoder = DiscreteTransformer::new(4, 4, 2, 0);
-
-    let mut learner = SequenceLearner::new(4, 2, 8, 32, 20, 20, 2, 1, 2, false, 42);
+    let num_v = 4;
+    let num_s = num_v*8;
+    let mut encoder = DiscreteTransformer::new(num_v, num_s, 2, 42);
+    let mut learner = SequenceLearner::new(
+        num_s,    // num_c: 64 columns (matches transformer output)
+        10,    // num_spc: 10 statelets per column
+        10,    // num_dps: 10 dendrites per statelet
+        12,    // num_rpd: 12 receptors per dendrite
+        6,     // d_thresh: dendrite threshold (activations needed)
+        20,    // perm_thr: receptor permanence threshold
+        2,     // perm_inc: receptor permanence increment
+        1,     // perm_dec: receptor permanence decrement
+        3,     // num_t: history depth
+        false, // always_update: only update on changes
+        42,    // seed: RNG seed for reproducibility
+    );
 
     // Connect
-    learner
-        .input
-        .add_child(encoder.output(), 0);
+    learner.input.add_child(encoder.get_output(), 0);
     learner.init().unwrap();
 
     // Learn alternating pattern: 0 → 1 → 0 → 1
@@ -327,9 +379,12 @@ fn test_sequence_learner_alternating_patterns() {
     learner.execute(false).unwrap();
     let wrong_anomaly = learner.get_anomaly_score();
 
-    assert!(wrong_anomaly > pattern_anomaly,
+    assert!(
+        wrong_anomaly > pattern_anomaly,
         "Wrong pattern should have higher anomaly: correct={:.3}, wrong={:.3}",
-        pattern_anomaly, wrong_anomaly);
+        pattern_anomaly,
+        wrong_anomaly
+    );
 }
 
 #[test]

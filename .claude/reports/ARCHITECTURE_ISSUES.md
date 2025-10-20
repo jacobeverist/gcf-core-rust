@@ -142,7 +142,7 @@ pub struct ContextLearner {
    let output_clone = Rc::new(RefCell::new(encoder.output.clone()));
 
    // After:
-   let output_ref = encoder.output();  // Just get the shared reference
+   let output_ref = encoder.get_output();  // Just get the shared reference
    learner.input.add_child(output_ref, 0);
    ```
 
@@ -309,7 +309,7 @@ Tests use `#[ignore]` attribute. This is a **pre-existing bug** not introduced b
 - **2025-10-06:** Issue 1 Resolution
   - All 8 blocks migrated to `Rc<RefCell<BlockOutput>>` pattern
   - Updated Block trait with `output()` method
-  - Fixed all test files to use new API (`block.output()` instead of cloning)
+  - Fixed all test files to use new API (`block.get_output()` instead of cloning)
   - Results: 19/21 previously-ignored tests now passing
   - Remaining: 2 tests (`test_context_learner_learning_reduces_anomaly` and `test_context_learner_different_context_causes_anomaly`) fail with learning issue (anomaly stays at 1.0)
   - Overall test status: 244/246 tests passing (99.2%)

@@ -7,14 +7,14 @@ fn main() {
     let mut context_encoder = DiscreteTransformer::new(8, 64, 2, 0);
     let mut learner = ContextLearner::new(64, 2, 8, 32, 20, 20, 2, 1, 2, false, 42);
     
-    learner.input.add_child(input_encoder.output(), 0);
-    learner.context.add_child(context_encoder.output(), 0);
+    learner.input.add_child(input_encoder.get_output(), 0);
+    learner.context.add_child(context_encoder.get_output(), 0);
     learner.init().unwrap();
     
     input_encoder.set_value(0);
     context_encoder.set_value(0);
     
-    let context_active = context_encoder.output().borrow().state.num_set();
+    let context_active = context_encoder.get_output().borrow().state.num_set();
     println!("Context active bits: {}", context_active);
     println!("Dendrite threshold: 20");
     println!("Receptors per dendrite: 32");

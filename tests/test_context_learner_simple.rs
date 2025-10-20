@@ -1,4 +1,5 @@
 //! Simple direct tests for ContextLearner (without transformer dependencies)
+#![allow(unused_imports)]
 
 use gnomics::blocks::ContextLearner;
 use gnomics::{Block, BlockOutput, DiscreteTransformer};

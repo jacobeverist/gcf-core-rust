@@ -71,7 +71,7 @@
 //! );
 //!
 //! // Connect input
-//! learner.input.add_child(encoder.output(), 0);
+//! learner.input.add_child(encoder.get_output(), 0);
 //! learner.init().unwrap();
 //!
 //! // Learn sequence: 0 → 1 → 2 → 0 → 1 → 2 ...
@@ -85,7 +85,7 @@
 //! }
 //! ```
 
-use crate::bitarray::BitArray;
+use crate::bitfield::BitField;
 use crate::utils;
 use crate::{Block, BlockBase, BlockInput, BlockMemory, BlockOutput, Result};
 use std::cell::RefCell;
@@ -137,7 +137,7 @@ pub struct SequenceLearner {
 
     // State
     next_sd: Vec<usize>, // Next available dendrite per statelet
-    d_used: BitArray,    // Dendrite usage mask (1=used, 0=available)
+    d_used: BitField,    // Dendrite usage mask (1=used, 0=available)
     anomaly_score: f64,  // Current anomaly score (0.0-1.0)
     always_update: bool, // Update even if inputs unchanged
 
@@ -242,7 +242,7 @@ impl SequenceLearner {
             perm_inc,
             perm_dec,
             next_sd: vec![0; num_s],
-            d_used: BitArray::new(num_d),
+            d_used: BitField::new(num_d),
             anomaly_score: 0.0,
             always_update,
             input_acts: Vec::new(),
@@ -308,7 +308,6 @@ impl SequenceLearner {
     pub fn d_thresh(&self) -> u32 {
         self.d_thresh
     }
-
     /// Recognition phase: check if any dendrite predicts the column.
     ///
     /// For the given column, checks all its dendrites against the previous output.
@@ -497,8 +496,9 @@ impl Block for SequenceLearner {
         bytes
     }
 
-    fn output(&self) -> Rc<RefCell<BlockOutput>> {
-        Rc::clone(&self.output)
+    fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
+        // Rc::clone(&self.output)
+        self.output.clone()
     }
 }
 

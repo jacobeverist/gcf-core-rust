@@ -32,14 +32,14 @@ Gnomics is a Rust framework for building scalable Machine Learning applications 
 
 ### Core Components
 
-#### 1. BitArray - High-Performance Bit Manipulation
+#### 1. BitField - High-Performance Bit Manipulation
 
 32-bit word-based bit storage with hardware-optimized operations:
 
 ```rust
-use gnomics::BitArray;
+use gnomics::BitField;
 
-let mut ba = BitArray::new(1024);
+let mut ba = BitField::new(1024);
 ba.set_bit(10);
 ba.set_bit(20);
 ba.set_bit(30);
@@ -48,7 +48,7 @@ assert_eq!(ba.num_set(), 3);
 assert_eq!(ba.get_acts(), vec![10, 20, 30]);
 
 // Bitwise operations
-let mut ba2 = BitArray::new(1024);
+let mut ba2 = BitField::new(1024);
 ba2.set_bit(20);
 ba2.set_bit(40);
 
@@ -456,7 +456,7 @@ cargo test --lib
 cargo test
 
 # Run specific test
-cargo test --test test_bitarray
+cargo test --test test_bitfield
 
 # Generate documentation
 cargo doc --open
@@ -515,8 +515,8 @@ Measured on typical hardware (Apple M1, 3.2GHz):
 
 | Operation | Size | Time | Throughput |
 |-----------|------|------|------------|
-| BitArray set_bit | 1024 bits | 2.5ns | 400M ops/sec |
-| BitArray num_set | 1024 bits | 45ns | 22M ops/sec |
+| BitField set_bit | 1024 bits | 2.5ns | 400M ops/sec |
+| BitField num_set | 1024 bits | 45ns | 22M ops/sec |
 | Word copy | 1024 bits | 55ns | 18M copies/sec |
 | ScalarTransformer encode | 2048/256 | 500ns | 2M encodes/sec |
 | PatternPooler encode | 1024/40 | 20µs | 50K encodes/sec |
@@ -527,7 +527,7 @@ Measured on typical hardware (Apple M1, 3.2GHz):
 
 | Component | Configuration | Memory |
 |-----------|---------------|--------|
-| BitArray | 1024 bits | 128 bytes |
+| BitField | 1024 bits | 128 bytes |
 | BlockOutput | 1024 bits, 2 time steps | 512 bytes |
 | PatternPooler | 1024 dendrites, 128 receptors | ~200KB |
 | PatternClassifier | 1024 dendrites, 128 receptors | ~200KB |
@@ -558,7 +558,7 @@ Measured on typical hardware (Apple M1, 3.2GHz):
 cargo test
 
 # Specific phase
-cargo test --test test_bitarray
+cargo test --test test_bitfield
 cargo test --test test_block_integration
 cargo test --test test_pattern_pooler
 cargo test --test test_context_learner
@@ -567,7 +567,7 @@ cargo test --test test_context_learner
 cargo test -- --nocapture
 
 # Specific test
-cargo test test_bitarray_set_bit
+cargo test test_bitfield_set_bit
 ```
 
 ### Benchmarks
@@ -577,7 +577,7 @@ cargo test test_bitarray_set_bit
 cargo bench
 
 # Specific benchmark
-cargo bench --bench bitarray_bench
+cargo bench --bench bitfield_bench
 ```
 
 ---
@@ -589,7 +589,7 @@ gnomics/
 ├── src/
 │   ├──                       # Rust implementation (primary)
 │   │   ├── lib.rs                 # Library entry point
-│   │   ├── bitarray.rs            # Bit manipulation
+│   │   ├── bitfield.rs            # Bit manipulation
 │   │   ├── block.rs               # Block trait
 │   │   ├── block_base.rs          # Block base implementation
 │   │   ├── block_input.rs         # Input management
@@ -609,7 +609,7 @@ gnomics/
 │
 ├── tests/
 │   └──                       # Integration tests
-│       ├── test_bitarray.rs
+│       ├── test_bitfield.rs
 │       ├── test_block_integration.rs
 │       ├── test_scalar_transformer.rs
 │       ├── test_discrete_transformer.rs
@@ -622,7 +622,7 @@ gnomics/
 │       └── test_temporal_integration.rs
 │
 ├── benches/                       # Performance benchmarks
-│   ├── bitarray_bench.rs
+│   ├── bitfield_bench.rs
 │   ├── utils_bench.rs
 │   └── block_bench.rs
 │
@@ -679,9 +679,9 @@ let mut output = BlockOutput::new();
 output.setup(3, 1024); // 3 time steps, 1024 bits
 
 // Access current and previous
-let current = output.get_bitarray(CURR); // t=0
-let previous = output.get_bitarray(PREV); // t=1
-let two_ago = output.get_bitarray(2);     // t=2
+let current = output.get_bitfield(CURR); // t=0
+let previous = output.get_bitfield(PREV); // t=1
+let two_ago = output.get_bitfield(2);     // t=2
 ```
 
 ### 3. Lazy Initialization
@@ -768,7 +768,7 @@ cargo doc --open
 
 Detailed implementation documentation:
 
-- [Phase 1: Foundation](PHASE_1_SUMMARY.md) - BitArray, utilities, error handling
+- [Phase 1: Foundation](PHASE_1_SUMMARY.md) - BitField, utilities, error handling
 - [Phase 2: Block Infrastructure](PHASE_2_SUMMARY.md) - Block trait, lazy copying, change tracking
 - [Phase 3: Transformers](PHASE_3_SUMMARY.md) - Scalar, Discrete, Persistence encoders
 - [Phase 4: Learning Blocks](PHASE_4_SUMMARY.md) - PatternPooler, PatternClassifier

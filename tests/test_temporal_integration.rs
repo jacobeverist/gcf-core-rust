@@ -5,12 +5,26 @@ use gnomics::Block;
 
 #[test]
 fn test_sequence_learner_multistep_prediction() {
-    let mut encoder = DiscreteTransformer::new(5, 5, 2, 0);
-    let mut learner = SequenceLearner::new(5, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
+    let num_v = 5;
+    let num_s = num_v*8;
+    let mut encoder = DiscreteTransformer::new(num_v, num_s, 2, 42);
+    let mut learner = SequenceLearner::new(
+        num_s,    // num_c: 64 columns (matches transformer output)
+        10,    // num_spc: 10 statelets per column
+        10,    // num_dps: 10 dendrites per statelet
+        12,    // num_rpd: 12 receptors per dendrite
+        6,     // d_thresh: dendrite threshold (activations needed)
+        20,    // perm_thr: receptor permanence threshold
+        2,     // perm_inc: receptor permanence increment
+        1,     // perm_dec: receptor permanence decrement
+        3,     // num_t: history depth
+        false, // always_update: only update on changes
+        42,    // seed: RNG seed for reproducibility
+    );
 
     learner
         .input
-        .add_child(encoder.output(), 0);
+        .add_child(encoder.get_output(), 0);
     learner.init().unwrap();
 
     // Learn sequence: 0 → 1 → 2 → 3 → 4
@@ -69,10 +83,10 @@ fn test_context_learner_with_multiple_contexts() {
 
     learner
         .input
-        .add_child(input_encoder.output(), 0);
+        .add_child(input_encoder.get_output(), 0);
     learner
         .context
-        .add_child(context_encoder.output(), 0);
+        .add_child(context_encoder.get_output(), 0);
     learner.init().unwrap();
 
     // Learn multiple context-dependent patterns
@@ -138,12 +152,26 @@ fn test_context_learner_with_multiple_contexts() {
 
 #[test]
 fn test_sequence_learner_cyclic_pattern() {
-    let mut encoder = DiscreteTransformer::new(4, 4, 2, 0);
-    let mut learner = SequenceLearner::new(4, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
+    let num_v = 4;
+    let num_s = num_v*8;
+    let mut encoder = DiscreteTransformer::new(num_v, num_s, 2, 42);
+    let mut learner = SequenceLearner::new(
+        num_s,    // num_c: 64 columns (matches transformer output)
+        10,    // num_spc: 10 statelets per column
+        10,    // num_dps: 10 dendrites per statelet
+        12,    // num_rpd: 12 receptors per dendrite
+        6,     // d_thresh: dendrite threshold (activations needed)
+        20,    // perm_thr: receptor permanence threshold
+        2,     // perm_inc: receptor permanence increment
+        1,     // perm_dec: receptor permanence decrement
+        3,     // num_t: history depth
+        false, // always_update: only update on changes
+        42,    // seed: RNG seed for reproducibility
+    );
 
     learner
         .input
-        .add_child(encoder.output(), 0);
+        .add_child(encoder.get_output(), 0);
     learner.init().unwrap();
 
     // Learn cyclic pattern: 0 → 1 → 2 → 3 → 0 → 1 → ...
@@ -187,10 +215,10 @@ fn test_context_learner_disambiguation() {
 
     learner
         .input
-        .add_child(input_encoder.output(), 0);
+        .add_child(input_encoder.get_output(), 0);
     learner
         .context
-        .add_child(context_encoder.output(), 0);
+        .add_child(context_encoder.get_output(), 0);
     learner.init().unwrap();
 
     // Same input (0) appears in two different contexts (0 and 1)
@@ -252,12 +280,26 @@ fn test_context_learner_disambiguation() {
 
 #[test]
 fn test_sequence_learner_branching_sequences() {
-    let mut encoder = DiscreteTransformer::new(8, 8, 2, 0);
-    let mut learner = SequenceLearner::new(8, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
+    let num_v = 8;
+    let num_s = num_v*8;
+    let mut encoder = DiscreteTransformer::new(num_v, num_s, 2, 42);
+    let mut learner = SequenceLearner::new(
+        num_s,    // num_c: 64 columns (matches transformer output)
+        10,    // num_spc: 10 statelets per column
+        10,    // num_dps: 10 dendrites per statelet
+        12,    // num_rpd: 12 receptors per dendrite
+        6,     // d_thresh: dendrite threshold (activations needed)
+        20,    // perm_thr: receptor permanence threshold
+        2,     // perm_inc: receptor permanence increment
+        1,     // perm_dec: receptor permanence decrement
+        3,     // num_t: history depth
+        false, // always_update: only update on changes
+        42,    // seed: RNG seed for reproducibility
+    );
 
     learner
         .input
-        .add_child(encoder.output(), 0);
+        .add_child(encoder.get_output(), 0);
     learner.init().unwrap();
 
     // Learn two branching sequences from same start:

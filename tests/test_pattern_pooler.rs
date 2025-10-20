@@ -7,6 +7,7 @@
 //! - Integration with encoders
 //! - Sparse representation properties
 
+#![allow(unused_imports)]
 use gnomics::{Block, PatternPooler, ScalarTransformer};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -36,7 +37,7 @@ fn test_pooler_activation_count() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
     let mut pooler = PatternPooler::new(1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0);
 
-    pooler.input.add_child(encoder.output(), 0);
+    pooler.input.add_child(encoder.get_output(), 0);
     pooler.init().unwrap();
 
     // Test at various input values
@@ -59,7 +60,7 @@ fn test_pooler_winner_take_all() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
     let mut pooler = PatternPooler::new(512, 20, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0);
 
-    pooler.input.add_child(encoder.output(), 0);
+    pooler.input.add_child(encoder.get_output(), 0);
     pooler.init().unwrap();
 
     encoder.set_value(0.5);
@@ -86,7 +87,7 @@ fn test_pooler_learning_stability() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
     let mut pooler = PatternPooler::new(512, 30, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 42);
 
-    pooler.input.add_child(encoder.output(), 0);
+    pooler.input.add_child(encoder.get_output(), 0);
     pooler.init().unwrap();
 
     // Present same value repeatedly
@@ -125,7 +126,7 @@ fn test_pooler_different_inputs() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
     let mut pooler = PatternPooler::new(512, 25, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0);
 
-    pooler.input.add_child(encoder.output(), 0);
+    pooler.input.add_child(encoder.get_output(), 0);
     pooler.init().unwrap();
 
     // Encode two different values
@@ -151,7 +152,7 @@ fn test_pooler_always_update() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
     let mut pooler = PatternPooler::new(512, 25, 20, 2, 1, 0.8, 0.5, 0.3, true, 2, 0);
 
-    pooler.input.add_child(encoder.output(), 0);
+    pooler.input.add_child(encoder.get_output(), 0);
     pooler.init().unwrap();
 
     encoder.set_value(0.5);
@@ -176,7 +177,7 @@ fn test_pooler_clear() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
     let mut pooler = PatternPooler::new(512, 30, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0);
 
-    pooler.input.add_child(encoder.output(), 0);
+    pooler.input.add_child(encoder.get_output(), 0);
     pooler.init().unwrap();
 
     encoder.set_value(0.5);
@@ -203,7 +204,7 @@ fn test_pooler_sparse_representation() {
     let mut encoder = ScalarTransformer::new(0.0, 1.0, 2048, 256, 2, 0);
     let mut pooler = PatternPooler::new(2048, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0);
 
-    pooler.input.add_child(encoder.output(), 0);
+    pooler.input.add_child(encoder.get_output(), 0);
     pooler.init().unwrap();
 
     encoder.set_value(0.5);

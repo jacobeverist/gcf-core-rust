@@ -51,14 +51,14 @@ The Rust implementation removed the feedback/push/decode methods during architec
 
 ### Core Components
 
-#### 1. BitArray - High-Performance Bit Manipulation
+#### 1. BitField - High-Performance Bit Manipulation
 
 32-bit word-based bit storage with hardware-optimized operations:
 
 ```rust
-use gnomics::BitArray;
+use gnomics::BitField;
 
-let mut ba = BitArray::new(1024);
+let mut ba = BitField::new(1024);
 ba.set_bit(10);
 ba.set_bit(20);
 
@@ -159,7 +159,7 @@ encoder.set_value(42.5);
 encoder.execute(false)?;
 
 // Similar values produce overlapping patterns
-assert_eq!(encoder.output().borrow().state.num_set(), 256);
+assert_eq!(encoder.get_output().borrow().state.num_set(), 256);
 ```
 
 **Use Cases**: Temperature, position, speed, any continuous variable
@@ -237,7 +237,7 @@ let mut pooler = PatternPooler::new(
 );
 
 // Connect blocks
-pooler.input.add_child(encoder.output());
+pooler.input.add_child(encoder.get_output());
 pooler.init()?;
 
 // Training
@@ -278,7 +278,7 @@ let mut classifier = PatternClassifier::new(
 );
 
 // Connect blocks
-classifier.input.add_child(encoder.output());
+classifier.input.add_child(encoder.get_output());
 classifier.init()?;
 
 // Training
@@ -334,8 +334,8 @@ let mut learner = ContextLearner::new(
 );
 
 // Connect inputs
-learner.input.add_child(input_encoder.output());
-learner.context.add_child(context_encoder.output());
+learner.input.add_child(input_encoder.get_output());
+learner.context.add_child(context_encoder.get_output());
 learner.init()?;
 
 // Training
@@ -384,7 +384,7 @@ let mut learner = SequenceLearner::new(
 );
 
 // Connect input (context auto-connected to own output[PREV])
-learner.input.add_child(encoder.output());
+learner.input.add_child(encoder.get_output());
 learner.init()?;
 
 // Learn sequence: 0 → 1 → 2 → 3
@@ -459,7 +459,7 @@ cargo test --lib
 cargo test
 
 # Run specific test
-cargo test --test test_bitarray
+cargo test --test test_bitfield
 
 # Generate documentation
 cargo doc --open
@@ -482,7 +482,7 @@ fn main() -> gnomics::Result<()> {
 
         println!("Value {}: {} active bits",
                  value,
-                 encoder.output().borrow().state.num_set());
+                 encoder.get_output().borrow().state.num_set());
     }
 
     Ok(())
@@ -499,8 +499,8 @@ Measured on typical hardware (Apple M1, 3.2GHz):
 
 | Operation | Size | Time | Throughput |
 |-----------|------|------|------------|
-| BitArray set_bit | 1024 bits | 2.5ns | 400M ops/sec |
-| BitArray num_set | 1024 bits | 45ns | 22M ops/sec |
+| BitField set_bit | 1024 bits | 2.5ns | 400M ops/sec |
+| BitField num_set | 1024 bits | 45ns | 22M ops/sec |
 | Word copy | 1024 bits | 55ns | 18M copies/sec |
 | ScalarTransformer encode | 2048/256 | 500ns | 2M encodes/sec |
 | PatternPooler encode | 1024/40 | 20µs | 50K encodes/sec |
@@ -511,7 +511,7 @@ Measured on typical hardware (Apple M1, 3.2GHz):
 
 | Component | Configuration | Memory |
 |-----------|---------------|--------|
-| BitArray | 1024 bits | 128 bytes |
+| BitField | 1024 bits | 128 bytes |
 | BlockOutput | 1024 bits, 2 time steps | 512 bytes |
 | PatternPooler | 1024 dendrites, 128 receptors | ~200KB |
 | PatternClassifier | 1024 dendrites, 128 receptors | ~200KB |
@@ -525,7 +525,7 @@ Measured on typical hardware (Apple M1, 3.2GHz):
 gcs-core-
 ├── src/                      # Rust implementation (primary)
 │   ├── lib.rs                     # Library entry point
-│   ├── bitarray.rs                # Bit manipulation
+│   ├── bitfield.rs                # Bit manipulation
 │   ├── block.rs                   # Block trait
 │   ├── block_base.rs              # Block base implementation
 │   ├── block_input.rs             # Input management
@@ -544,7 +544,7 @@ gcs-core-
 │       └── sequence_learner.rs
 │
 ├── tests/                    # Integration tests
-│   ├── test_bitarray.rs
+│   ├── test_bitfield.rs
 │   ├── test_block_integration.rs
 │   ├── test_scalar_transformer.rs
 │   ├── test_discrete_transformer.rs
@@ -557,7 +557,7 @@ gcs-core-
 │   └── test_temporal_integration.rs
 │
 ├── benches/                       # Performance benchmarks
-│   ├── bitarray_bench.rs
+│   ├── bitfield_bench.rs
 │   ├── utils_bench.rs
 │   └── block_bench.rs
 │
@@ -583,7 +583,7 @@ gcs-core-
 This Rust implementation was converted from C++ in 5 phases (2025):
 
 ### Phase 1: Foundation
-- BitArray with complete word-level operations
+- BitField with complete word-level operations
 - Utility functions (shuffle, random)
 - Error handling system
 - **Result**: Solid foundation with 95%+ test coverage
@@ -627,7 +627,7 @@ See `.claude/reports/` for detailed phase documentation.
 **Issue 1: BlockOutput Cloning** ✅ **RESOLVED**
 - **Status**: Fixed - all blocks migrated to `Rc<RefCell<BlockOutput>>` pattern
 - **Impact**: 19/21 tests now passing, 2 tests need investigation for unrelated learning issue
-- **Result**: Clean block connection API with `block.input.add_child(encoder.output())`
+- **Result**: Clean block connection API with `block.input.add_child(encoder.get_output())`
 - **Test Status**: 244/246 tests passing (99.2%)
 
 **Issue 2: ScalarTransformer Precision** (3 ignored tests)
@@ -700,7 +700,7 @@ Gnomics implements concepts from neuroscience and HTM:
 ### Performance Equivalence
 
 The Rust implementation **meets or exceeds** C++ performance:
-- Word-level BitArray operations compile to identical assembly
+- Word-level BitField operations compile to identical assembly
 - Lazy copying optimization preserved with minimal overhead
 - Change tracking enables same 5-100× speedups
 - Zero-cost abstractions ensure no runtime penalty
@@ -788,7 +788,7 @@ cargo doc --open
 Detailed phase-by-phase conversion reports:
 
 - [Rust Conversion Plan](.claude/reports/RUST_CONVERSION_PLAN.md) - Overall strategy
-- [Phase 1 Summary](.claude/reports/PHASE_1_SUMMARY.md) - BitArray, utilities
+- [Phase 1 Summary](.claude/reports/PHASE_1_SUMMARY.md) - BitField, utilities
 - [Phase 2 Summary](.claude/reports/PHASE_2_SUMMARY.md) - Block infrastructure
 - [Phase 3 Summary](.claude/reports/PHASE_3_SUMMARY.md) - Transformers
 - [Phase 4 Summary](.claude/reports/PHASE_4_SUMMARY.md) - Learning blocks
@@ -829,7 +829,7 @@ This Rust port is based on the C++ implementation:
 **Recent Improvements** (2025-10-06):
 - ✅ Fixed Architecture Issue #1: All blocks now use shared output references
 - ✅ Improved test passing rate from 95% to 99%
-- ✅ Cleaner API: `block.input.add_child(encoder.output())`
+- ✅ Cleaner API: `block.input.add_child(encoder.get_output())`
 
 ---
 
