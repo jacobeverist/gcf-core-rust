@@ -22,7 +22,7 @@
 //!
 //! ```
 //! use gnomics::blocks::{ScalarTransformer, PatternPooler};
-//! use gnomics::Block;
+//! use gnomics::{Block, InputAccess, OutputAccess};
 //! use std::rc::Rc;
 //! use std::cell::RefCell;
 //!
@@ -43,7 +43,7 @@
 //! assert_eq!(pooler.output().borrow().state.num_set(), 40);
 //! ```
 
-use crate::{Block, BlockBase, BlockBaseAccess, BlockInput, BlockMemory, BlockOutput, Result};
+use crate::{Block, BlockBase, BlockBaseAccess, BlockInput, InputAccess, BlockMemory, MemoryAccess, BlockOutput, OutputAccess, Result};
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
@@ -178,28 +178,6 @@ impl PatternPooler {
     pub fn perm_thr(&self) -> u8 {
         self.perm_thr
     }
-
-    /// Get reference to input.
-    pub fn input(&self) -> &BlockInput {
-        &self.input
-    }
-
-    /// Get mutable reference to input.
-    ///
-    /// Allows connecting child blocks to this block's input.
-    pub fn input_mut(&mut self) -> &mut BlockInput {
-        &mut self.input
-    }
-
-    /// Get reference to memory.
-    pub fn memory(&self) -> &BlockMemory {
-        &self.memory
-    }
-
-    /// Get mutable reference to memory.
-    pub fn memory_mut(&mut self) -> &mut BlockMemory {
-        &mut self.memory
-    }
 }
 
 impl Block for PatternPooler {
@@ -306,10 +284,6 @@ impl Block for PatternPooler {
 
         base_size + overlaps_size + input_size + output_size + memory_size
     }
-
-    fn output(&self) -> Rc<RefCell<BlockOutput>> {
-        Rc::clone(&self.output)
-    }
 }
 
 impl BlockBaseAccess for PatternPooler {
@@ -323,3 +297,29 @@ impl BlockBaseAccess for PatternPooler {
 }
 
 // Tests are in tests/test_pattern_pooler.rs
+
+impl InputAccess for PatternPooler {
+    fn input(&self) -> &BlockInput {
+        &self.input
+    }
+
+    fn input_mut(&mut self) -> &mut BlockInput {
+        &mut self.input
+    }
+}
+
+impl MemoryAccess for PatternPooler {
+    fn memory(&self) -> &BlockMemory {
+        &self.memory
+    }
+
+    fn memory_mut(&mut self) -> &mut BlockMemory {
+        &mut self.memory
+    }
+}
+
+impl OutputAccess for PatternPooler {
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        Rc::clone(&self.output)
+    }
+}

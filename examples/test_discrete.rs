@@ -1,5 +1,5 @@
 use gnomics::blocks::DiscreteTransformer;
-use gnomics::Block;
+use gnomics::{Block, OutputAccess};
 
 fn main() {
     let mut encoder = DiscreteTransformer::new(8, 64, 2, 0);

@@ -6,7 +6,7 @@
 //! - Edge cases (boundary categories)
 //! - Categorical distinctness verification
 
-use gnomics::{Block, DiscreteTransformer};
+use gnomics::{Block, DiscreteTransformer, OutputAccess};
 
 #[test]
 fn test_discrete_basic_construction() {

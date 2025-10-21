@@ -550,6 +550,19 @@ impl BlockMemory {
     }
 }
 
+/// Trait for blocks that contain a BlockMemory
+///
+/// Provides convenient access to common BlockMemory functionality through
+/// default trait implementations, eliminating boilerplate delegation code.
+///
+pub trait MemoryAccess {
+    /// Get immutable reference to BlockMemory.
+    fn memory(&self) -> &BlockMemory;
+
+    /// Get mutable reference to BlockMemory.
+    fn memory_mut(&mut self) -> &mut BlockMemory;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

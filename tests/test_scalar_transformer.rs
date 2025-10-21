@@ -6,7 +6,7 @@
 //! - Edge cases (boundaries, clamping)
 //! - Performance characteristics
 
-use gnomics::{Block, ScalarTransformer};
+use gnomics::{Block, OutputAccess, ScalarTransformer};
 
 #[test]
 fn test_scalar_basic_construction() {

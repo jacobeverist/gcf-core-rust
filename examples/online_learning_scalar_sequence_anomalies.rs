@@ -9,7 +9,7 @@
 //! and detects when an unexpected value appears in the pattern.
 #![allow(unused_imports)]
 
-use gnomics::{Block, ScalarTransformer, SequenceLearner};
+use gnomics::{Block, InputAccess, OutputAccess, ScalarTransformer, SequenceLearner};
 use itertools::Itertools;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

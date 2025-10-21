@@ -3,7 +3,7 @@
 //! These tests validate that blocks can be connected together and data flows
 //! correctly through the hierarchy with lazy copying and change tracking.
 
-use gnomics::{Block, BlockInput, BlockOutput, CURR, PREV};
+use gnomics::{Block, BlockInput, BlockOutput, OutputAccess, CURR, PREV};
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
@@ -71,9 +71,11 @@ impl Block for MockEncoder {
     }
 
     fn memory_usage(&self) -> usize {
-        self.output().borrow().memory_usage()
+        self.output.borrow().memory_usage()
     }
+}
 
+impl OutputAccess for MockEncoder {
     fn output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }
@@ -166,9 +168,11 @@ impl Block for MockProcessor {
     }
 
     fn memory_usage(&self) -> usize {
-        self.input.memory_usage() + self.output().borrow().memory_usage()
+        self.input.memory_usage() + self.output.borrow().memory_usage()
     }
+}
 
+impl OutputAccess for MockProcessor {
     fn output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }

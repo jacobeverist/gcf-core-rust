@@ -319,6 +319,36 @@ impl Default for BlockInput {
     }
 }
 
+/// Trait for blocks that contain a BlockInput
+///
+/// Provides convenient access to common BlockInput functionality through
+/// default trait implementations, eliminating boilerplate delegation code.
+///
+pub trait InputAccess {
+    /// Get immutable reference to BlockInput.
+    fn input(&self) -> &BlockInput;
+
+    /// Get mutable reference to BlockInput.
+    ///
+    /// Allows connecting child blocks to this block's input.
+    fn input_mut(&mut self) -> &mut BlockInput;
+}
+
+/// Trait for blocks that contain a context BlockInput
+///
+/// Provides convenient access to context input functionality through
+/// default trait implementations, eliminating boilerplate delegation code.
+///
+pub trait ContextAccess {
+    /// Get immutable reference to context BlockInput.
+    fn context(&self) -> &BlockInput;
+
+    /// Get mutable reference to context BlockInput.
+    ///
+    /// Allows connecting child blocks to this block's context input.
+    fn context_mut(&mut self) -> &mut BlockInput;
+}
+
 /// Fast word-level copy between BitFields (equivalent to C++ bitfield_copy).
 ///
 /// **CRITICAL**: This compiles to a single memcpy call, matching C++ performance.

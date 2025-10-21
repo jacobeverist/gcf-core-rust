@@ -8,7 +8,7 @@
 //! - Integration with encoders
 
 #![allow(unused_imports)]
-use gnomics::{Block, PatternClassifier, ScalarTransformer};
+use gnomics::{Block, InputAccess, OutputAccess, PatternClassifier, ScalarTransformer};
 use std::cell::RefCell;
 use std::rc::Rc;
 

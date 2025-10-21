@@ -10,7 +10,16 @@
       "Bash(done)",
       "Bash(awk:*)",
       "Bash(git add:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(for file in src/blocks/discrete_transformer.rs src/blocks/persistence_transformer.rs)",
+      "Bash(for file in pattern_pooler.rs pattern_classifier.rs context_learner.rs sequence_learner.rs)",
+      "Bash(for file in src/blocks/pattern_pooler.rs src/blocks/pattern_classifier.rs src/blocks/context_learner.rs src/blocks/sequence_learner.rs)",
+      "Bash(perl:*)",
+      "Bash(for file in scalar_transformer.rs discrete_transformer.rs persistence_transformer.rs)",
+      "Bash(for file in context_learner.rs sequence_learner.rs)",
+      "Bash(for:*)",
+      "Bash(head:*)",
+      "Bash(do echo \"=== $file ===\")"
     ],
     "deny": [],
     "ask": []

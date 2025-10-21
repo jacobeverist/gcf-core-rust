@@ -30,7 +30,7 @@
 //!
 //! ```
 //! use gnomics::blocks::ScalarTransformer;
-//! use gnomics::Block;
+//! use gnomics::{Block, OutputAccess};
 //!
 //! let mut st = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
 //! st.set_value(0.5);

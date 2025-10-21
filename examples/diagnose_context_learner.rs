@@ -1,5 +1,5 @@
 use gnomics::blocks::{DiscreteTransformer, ContextLearner};
-use gnomics::Block;
+use gnomics::{Block, ContextAccess, InputAccess, OutputAccess};
 
 fn main() {
     // Same configuration as the failing test

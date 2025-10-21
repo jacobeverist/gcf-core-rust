@@ -2,7 +2,7 @@
 //!
 //! Tests interaction between transformers and validates real-world usage patterns.
 
-use gnomics::{Block, DiscreteTransformer, PersistenceTransformer, ScalarTransformer};
+use gnomics::{Block, DiscreteTransformer, OutputAccess, PersistenceTransformer, ScalarTransformer};
 
 #[test]
 fn test_scalar_vs_discrete_comparison() {

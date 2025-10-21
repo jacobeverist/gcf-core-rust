@@ -9,6 +9,7 @@
 
 #![allow(unused_imports)]
 use gnomics::{Block, PatternPooler, ScalarTransformer};
+use gnomics::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 

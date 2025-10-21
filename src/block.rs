@@ -43,10 +43,7 @@
 #![allow(dead_code)]
 
 use crate::error::Result;
-use crate::{BitField, BlockOutput};
-use std::cell::RefCell;
 use std::path::Path;
-use std::rc::Rc;
 
 /// Core trait for all Gnomics computational blocks.
 ///
@@ -112,36 +109,6 @@ pub trait Block {
     /// all internal structures.
     fn memory_usage(&self) -> usize;
 
-    /// Get a reference to the block's output.
-    ///
-    /// Returns a shared reference to the BlockOutput wrapped in Rc<RefCell<>>.
-    /// This allows multiple blocks to share the same output without cloning.
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// // Connect blocks
-    /// let encoder_out = encoder.output();
-    /// learner.input.add_child(encoder_out, 0);
-    /// ```
-    fn output(&self) -> Rc<RefCell<BlockOutput>>;
-
-    /// Get a copy of the output BitField
-    ///
-    /// Returns a copy of the underlying BitField of the output buffer
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// // Get the output state
-    /// let encoder_output = encoder.get_output_state();
-    /// ```
-    fn get_output_state(&self) -> BitField {
-        self.output().borrow().state.clone()
-    }
-
-
-
     /// Execute the block's computation pipeline.
     ///
     /// Executes the full forward computation pipeline:
@@ -180,7 +147,9 @@ pub trait Block {
 mod tests {
     use super::*;
 
-    use crate::BlockOutput;
+    use crate::{BlockOutput, OutputAccess};
+    use std::cell::RefCell;
+    use std::rc::Rc;
 
     // Mock block for testing
     struct MockBlock {
@@ -247,7 +216,9 @@ mod tests {
         fn memory_usage(&self) -> usize {
             0
         }
+    }
 
+    impl OutputAccess for MockBlock {
         fn output(&self) -> Rc<RefCell<BlockOutput>> {
             Rc::clone(&self.output)
         }

@@ -44,6 +44,8 @@
 //! ```
 
 use crate::bitfield::BitField;
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 /// Time constant for current time step (t=0)
@@ -344,6 +346,45 @@ impl BlockOutput {
 impl Default for BlockOutput {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Trait for blocks that have an output field.
+///
+/// Provides standardized access to a block's output for connecting blocks together.
+/// Separated from the Block trait to allow blocks without outputs (e.g., sink blocks).
+pub trait OutputAccess {
+    /// Get a reference to the block's output.
+    ///
+    /// Returns a shared reference to the BlockOutput wrapped in Rc<RefCell<>>.
+    /// This allows multiple blocks to share the same output without cloning.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use gnomics::OutputAccess;
+    ///
+    /// // Connect blocks
+    /// let encoder_out = encoder.output();
+    /// learner.input_mut().add_child(encoder_out, 0);
+    /// ```
+    fn output(&self) -> Rc<RefCell<BlockOutput>>;
+
+    /// Get a copy of the output BitField.
+    ///
+    /// Returns a copy of the underlying BitField of the output buffer.
+    /// Convenience method that calls output().borrow().state.clone().
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use gnomics::OutputAccess;
+    ///
+    /// // Get the output state
+    /// let encoder_output = encoder.get_output_state();
+    /// ```
+    fn get_output_state(&self) -> BitField {
+        self.output().borrow().state.clone()
     }
 }
 

@@ -23,7 +23,7 @@
 //!
 //! ```
 //! use gnomics::blocks::{ScalarTransformer, PatternClassifier};
-//! use gnomics::Block;
+//! use gnomics::{Block, InputAccess, OutputAccess};
 //! use std::rc::Rc;
 //! use std::cell::RefCell;
 //!
@@ -50,6 +50,7 @@
 //! ```
 
 use crate::{Block, BlockBase, BlockBaseAccess, BlockInput, BlockMemory, BlockOutput, Result};
+use crate::{InputAccess, MemoryAccess, OutputAccess};
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
@@ -233,7 +234,7 @@ impl PatternClassifier {
     ///
     /// ```
     /// # use gnomics::blocks::{ScalarTransformer, PatternClassifier};
-    /// # use gnomics::Block;
+    /// # use gnomics::{Block, InputAccess, OutputAccess};
     /// # use std::rc::Rc;
     /// # use std::cell::RefCell;
     /// #
@@ -324,28 +325,6 @@ impl PatternClassifier {
     /// Get statelets per label.
     pub fn num_spl(&self) -> usize {
         self.num_spl
-    }
-
-    /// Get reference to input.
-    pub fn input(&self) -> &BlockInput {
-        &self.input
-    }
-
-    /// Get mutable reference to input.
-    ///
-    /// Allows connecting child blocks to this block's input.
-    pub fn input_mut(&mut self) -> &mut BlockInput {
-        &mut self.input
-    }
-
-    /// Get reference to memory.
-    pub fn memory(&self) -> &BlockMemory {
-        &self.memory
-    }
-
-    /// Get mutable reference to memory.
-    pub fn memory_mut(&mut self) -> &mut BlockMemory {
-        &mut self.memory
     }
 }
 
@@ -472,10 +451,6 @@ impl Block for PatternClassifier {
 
         base_size + overlaps_size + statelet_labels_size + input_size + output_size + memory_size
     }
-
-    fn output(&self) -> Rc<RefCell<BlockOutput>> {
-        Rc::clone(&self.output)
-    }
 }
 
 impl BlockBaseAccess for PatternClassifier {
@@ -485,6 +460,32 @@ impl BlockBaseAccess for PatternClassifier {
 
     fn base_mut(&mut self) -> &mut BlockBase {
         &mut self.base
+    }
+}
+
+impl InputAccess for PatternClassifier {
+    fn input(&self) -> &BlockInput {
+        &self.input
+    }
+
+    fn input_mut(&mut self) -> &mut BlockInput {
+        &mut self.input
+    }
+}
+
+impl MemoryAccess for PatternClassifier {
+    fn memory(&self) -> &BlockMemory {
+        &self.memory
+    }
+
+    fn memory_mut(&mut self) -> &mut BlockMemory {
+        &mut self.memory
+    }
+}
+
+impl OutputAccess for PatternClassifier {
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        Rc::clone(&self.output)
     }
 }
 

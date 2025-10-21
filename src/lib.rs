@@ -116,9 +116,9 @@ pub use error::{GnomicsError, Result};
 // Phase 2 re-exports
 pub use block::Block;
 pub use block_base::{BlockBase, BlockBaseAccess};
-pub use block_input::BlockInput;
-pub use block_output::{BlockOutput, CURR, PREV};
-pub use block_memory::{BlockMemory, PERM_MAX, PERM_MIN};
+pub use block_input::{BlockInput, ContextAccess, InputAccess};
+pub use block_output::{BlockOutput, OutputAccess, CURR, PREV};
+pub use block_memory::{BlockMemory, MemoryAccess, PERM_MAX, PERM_MIN};
 
 // Phase 3+4+5 re-exports
 pub use blocks::{

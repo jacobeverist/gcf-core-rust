@@ -48,7 +48,7 @@
 //!
 //! ```
 //! use gnomics::blocks::{DiscreteTransformer, SequenceLearner};
-//! use gnomics::Block;
+//! use gnomics::*;
 //! use std::rc::Rc;
 //! use std::cell::RefCell;
 //!
@@ -87,7 +87,10 @@
 
 use crate::bitfield::BitField;
 use crate::utils;
-use crate::{Block, BlockBase, BlockBaseAccess, BlockInput, BlockMemory, BlockOutput, Result};
+use crate::{
+    Block, BlockBase, BlockBaseAccess, BlockInput, BlockMemory, BlockOutput, ContextAccess,
+    InputAccess, MemoryAccess, OutputAccess, Result,
+};
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
@@ -309,44 +312,6 @@ impl SequenceLearner {
         self.d_thresh
     }
 
-    /// Get reference to input.
-    pub fn input(&self) -> &BlockInput {
-        &self.input
-    }
-
-    /// Get mutable reference to input.
-    ///
-    /// Allows connecting child blocks to this block's input.
-    pub fn input_mut(&mut self) -> &mut BlockInput {
-        &mut self.input
-    }
-
-    /// Get reference to context.
-    ///
-    /// Note: For SequenceLearner, context is automatically connected to output[PREV]
-    /// during initialization.
-    pub fn context(&self) -> &BlockInput {
-        &self.context
-    }
-
-    /// Get mutable reference to context.
-    ///
-    /// Note: For SequenceLearner, context is automatically connected to output[PREV]
-    /// during initialization. This accessor is provided for advanced use cases.
-    pub fn context_mut(&mut self) -> &mut BlockInput {
-        &mut self.context
-    }
-
-    /// Get reference to memory.
-    pub fn memory(&self) -> &BlockMemory {
-        &self.memory
-    }
-
-    /// Get mutable reference to memory.
-    pub fn memory_mut(&mut self) -> &mut BlockMemory {
-        &mut self.memory
-    }
-
     /// Recognition phase: check if any dendrite predicts the column.
     ///
     /// For the given column, checks all its dendrites against the previous output.
@@ -534,11 +499,6 @@ impl Block for SequenceLearner {
         bytes += self.d_acts.capacity() * std::mem::size_of::<usize>();
         bytes
     }
-
-    fn output(&self) -> Rc<RefCell<BlockOutput>> {
-        // Rc::clone(&self.output)
-        self.output.clone()
-    }
 }
 
 impl BlockBaseAccess for SequenceLearner {
@@ -548,6 +508,42 @@ impl BlockBaseAccess for SequenceLearner {
 
     fn base_mut(&mut self) -> &mut BlockBase {
         &mut self.base
+    }
+}
+
+impl InputAccess for SequenceLearner {
+    fn input(&self) -> &BlockInput {
+        &self.input
+    }
+
+    fn input_mut(&mut self) -> &mut BlockInput {
+        &mut self.input
+    }
+}
+
+impl ContextAccess for SequenceLearner {
+    fn context(&self) -> &BlockInput {
+        &self.context
+    }
+
+    fn context_mut(&mut self) -> &mut BlockInput {
+        &mut self.context
+    }
+}
+
+impl MemoryAccess for SequenceLearner {
+    fn memory(&self) -> &BlockMemory {
+        &self.memory
+    }
+
+    fn memory_mut(&mut self) -> &mut BlockMemory {
+        &mut self.memory
+    }
+}
+
+impl OutputAccess for SequenceLearner {
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        Rc::clone(&self.output)
     }
 }
 

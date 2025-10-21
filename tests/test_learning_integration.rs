@@ -7,6 +7,7 @@
 //! - Multi-stage learning convergence
 
 use gnomics::{Block, PatternClassifier, PatternPooler, ScalarTransformer};
+use gnomics::*;
 
 #[test]
 fn test_encoder_to_pooler_pipeline() {

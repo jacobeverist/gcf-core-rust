@@ -14,7 +14,7 @@
 //!
 //! ```
 //! use gnomics::blocks::PersistenceTransformer;
-//! use gnomics::Block;
+//! use gnomics::{Block, OutputAccess};
 //!
 //! // Track persistence up to 100 steps
 //! let mut pt = PersistenceTransformer::new(0.0, 1.0, 1024, 128, 100, 2, 0);
@@ -27,7 +27,7 @@
 //! assert_eq!(pt.output().borrow().state.num_set(), 128);
 //! ```
 
-use crate::{Block, BlockBase, BlockBaseAccess, BlockOutput, Result};
+use crate::{Block, BlockBase, BlockBaseAccess, BlockOutput, OutputAccess, Result};
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
@@ -285,12 +285,14 @@ impl Block for PersistenceTransformer {
         self.output.borrow_mut().store();
     }
 
-    fn output(&self) -> Rc<RefCell<BlockOutput>> {
-        Rc::clone(&self.output)
-    }
-
     fn memory_usage(&self) -> usize {
         std::mem::size_of::<Self>() + self.output.borrow().memory_usage()
+    }
+}
+
+impl OutputAccess for PersistenceTransformer {
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        Rc::clone(&self.output)
     }
 }
 

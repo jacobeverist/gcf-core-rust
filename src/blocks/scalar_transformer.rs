@@ -14,7 +14,7 @@
 //!
 //! ```
 //! use gnomics::blocks::ScalarTransformer;
-//! use gnomics::Block;
+//! use gnomics::{Block, OutputAccess};
 //!
 //! // Create transformer for range [0.0, 1.0]
 //! let mut st = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
@@ -36,7 +36,7 @@
 //! assert!(overlap > 100);  // Significant overlap
 //! ```
 
-use crate::{Block, BlockBase, BlockBaseAccess, BlockOutput, Result};
+use crate::{Block, BlockBase, BlockBaseAccess, BlockOutput, OutputAccess, Result};
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
@@ -255,7 +255,9 @@ impl Block for ScalarTransformer {
     fn memory_usage(&self) -> usize {
         std::mem::size_of::<Self>() + self.output.borrow().memory_usage()
     }
+}
 
+impl OutputAccess for ScalarTransformer {
     fn output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }

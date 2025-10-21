@@ -1,4 +1,4 @@
-use gnomics::{Block, BlockOutput, blocks::ContextLearner};
+use gnomics::{Block, BlockOutput, ContextAccess, InputAccess, OutputAccess, blocks::ContextLearner};
 use std::cell::RefCell;
 use std::rc::Rc;
 

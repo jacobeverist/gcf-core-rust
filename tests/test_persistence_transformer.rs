@@ -6,7 +6,7 @@
 //! - Stable value tracking
 //! - Temporal encoding properties
 
-use gnomics::{Block, PersistenceTransformer};
+use gnomics::{Block, OutputAccess, PersistenceTransformer};
 
 #[test]
 fn test_persistence_basic_construction() {

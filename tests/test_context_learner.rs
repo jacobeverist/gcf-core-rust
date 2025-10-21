@@ -3,7 +3,7 @@
 #![allow(unused_imports)]
 
 use gnomics::blocks::{ContextLearner, DiscreteTransformer};
-use gnomics::Block;
+use gnomics::{Block, ContextAccess, InputAccess, OutputAccess};
 use std::cell::RefCell;
 use std::rc::Rc;
 

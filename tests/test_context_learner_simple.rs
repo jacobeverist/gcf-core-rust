@@ -2,7 +2,7 @@
 #![allow(unused_imports)]
 
 use gnomics::blocks::ContextLearner;
-use gnomics::{Block, BlockOutput, DiscreteTransformer};
+use gnomics::{Block, BlockOutput, ContextAccess, DiscreteTransformer, InputAccess, OutputAccess};
 use std::cell::RefCell;
 use std::rc::Rc;
 use itertools::Itertools;

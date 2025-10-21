@@ -1,7 +1,7 @@
 //! Integration tests for temporal blocks (ContextLearner and SequenceLearner)
 
 use gnomics::blocks::{ContextLearner, DiscreteTransformer, SequenceLearner};
-use gnomics::Block;
+use gnomics::{Block, ContextAccess, InputAccess, OutputAccess};
 
 #[test]
 fn test_sequence_learner_multistep_prediction() {

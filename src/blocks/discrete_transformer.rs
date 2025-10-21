@@ -14,7 +14,7 @@
 //!
 //! ```
 //! use gnomics::blocks::DiscreteTransformer;
-//! use gnomics::Block;
+//! use gnomics::{Block, OutputAccess};
 //!
 //! // Create transformer for 4 categories
 //! let mut dt = DiscreteTransformer::new(4, 1024, 2, 0);
@@ -35,7 +35,7 @@
 //! assert_eq!(overlap, 0);  // No overlap
 //! ```
 
-use crate::{Block, BlockBase, BlockBaseAccess, BlockOutput, Result};
+use crate::{Block, BlockBase, BlockBaseAccess, BlockOutput, OutputAccess, Result};
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
@@ -240,12 +240,14 @@ impl Block for DiscreteTransformer {
         self.output.borrow_mut().store();
     }
 
-    fn output(&self) -> Rc<RefCell<BlockOutput>> {
-        Rc::clone(&self.output)
-    }
-
     fn memory_usage(&self) -> usize {
         std::mem::size_of::<Self>() + self.output.borrow().memory_usage()
+    }
+}
+
+impl OutputAccess for DiscreteTransformer {
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        Rc::clone(&self.output)
     }
 }
 

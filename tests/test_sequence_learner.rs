@@ -2,7 +2,7 @@
 
 #![allow(unused_imports)]
 use gnomics::blocks::{DiscreteTransformer, SequenceLearner};
-use gnomics::{Block, ScalarTransformer};
+use gnomics::{Block, ContextAccess, InputAccess, OutputAccess, ScalarTransformer};
 use std::cell::RefCell;
 use std::rc::Rc;
 

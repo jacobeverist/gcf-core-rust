@@ -1,5 +1,5 @@
 use gnomics::blocks::{DiscreteTransformer, ContextLearner};
-use gnomics::Block;
+use gnomics::{Block, ContextAccess, InputAccess, OutputAccess};
 
 fn main() {
     let mut input_encoder = DiscreteTransformer::new(8, 64, 2, 0);
