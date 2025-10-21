@@ -36,7 +36,7 @@
 //! assert!(overlap > 100);  // Significant overlap
 //! ```
 
-use crate::{Block, BlockBase, BlockOutput, Result};
+use crate::{Block, BlockBase, BlockBaseAccess, BlockOutput, Result};
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
@@ -258,6 +258,16 @@ impl Block for ScalarTransformer {
 
     fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
+    }
+}
+
+impl BlockBaseAccess for ScalarTransformer {
+    fn base(&self) -> &BlockBase {
+        &self.base
+    }
+
+    fn base_mut(&mut self) -> &mut BlockBase {
+        &mut self.base
     }
 }
 

@@ -35,7 +35,7 @@
 //! assert_eq!(overlap, 0);  // No overlap
 //! ```
 
-use crate::{Block, BlockBase, BlockOutput, Result};
+use crate::{Block, BlockBase, BlockBaseAccess, BlockOutput, Result};
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
@@ -246,6 +246,16 @@ impl Block for DiscreteTransformer {
 
     fn memory_usage(&self) -> usize {
         std::mem::size_of::<Self>() + self.output.borrow().memory_usage()
+    }
+}
+
+impl BlockBaseAccess for DiscreteTransformer {
+    fn base(&self) -> &BlockBase {
+        &self.base
+    }
+
+    fn base_mut(&mut self) -> &mut BlockBase {
+        &mut self.base
     }
 }
 

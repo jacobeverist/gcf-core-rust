@@ -27,7 +27,7 @@
 //! assert_eq!(pt.output.borrow().state.num_set(), 128);
 //! ```
 
-use crate::{Block, BlockBase, BlockOutput, Result};
+use crate::{Block, BlockBase, BlockBaseAccess, BlockOutput, Result};
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
@@ -291,6 +291,16 @@ impl Block for PersistenceTransformer {
 
     fn memory_usage(&self) -> usize {
         std::mem::size_of::<Self>() + self.output.borrow().memory_usage()
+    }
+}
+
+impl BlockBaseAccess for PersistenceTransformer {
+    fn base(&self) -> &BlockBase {
+        &self.base
+    }
+
+    fn base_mut(&mut self) -> &mut BlockBase {
+        &mut self.base
     }
 }
 

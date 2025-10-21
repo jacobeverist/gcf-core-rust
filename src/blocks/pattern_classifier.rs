@@ -49,7 +49,7 @@
 //! assert_eq!(probs.len(), 4);
 //! ```
 
-use crate::{Block, BlockBase, BlockInput, BlockMemory, BlockOutput, Result};
+use crate::{Block, BlockBase, BlockBaseAccess, BlockInput, BlockMemory, BlockOutput, Result};
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
@@ -453,6 +453,16 @@ impl Block for PatternClassifier {
 
     fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
+    }
+}
+
+impl BlockBaseAccess for PatternClassifier {
+    fn base(&self) -> &BlockBase {
+        &self.base
+    }
+
+    fn base_mut(&mut self) -> &mut BlockBase {
+        &mut self.base
     }
 }
 

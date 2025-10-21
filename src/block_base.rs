@@ -92,6 +92,76 @@ impl BlockBase {
     }
 }
 
+/// Trait for blocks that contain a BlockBase.
+///
+/// Provides convenient access to common BlockBase functionality through
+/// default trait implementations, eliminating boilerplate delegation code.
+///
+/// # Examples
+///
+/// ```
+/// use gnomics::{BlockBase, BlockBaseAccess};
+///
+/// struct MyBlock {
+///     base: BlockBase,
+///     // ... other fields
+/// }
+///
+/// impl BlockBaseAccess for MyBlock {
+///     fn base(&self) -> &BlockBase {
+///         &self.base
+///     }
+///
+///     fn base_mut(&mut self) -> &mut BlockBase {
+///         &mut self.base
+///     }
+/// }
+///
+/// let mut block = MyBlock { base: BlockBase::new(42) };
+/// let id = block.block_id(); // Access via trait method
+/// block.set_initialized(true);
+/// assert!(block.is_initialized());
+/// ```
+pub trait BlockBaseAccess {
+    /// Get immutable reference to BlockBase.
+    fn base(&self) -> &BlockBase;
+
+    /// Get mutable reference to BlockBase.
+    fn base_mut(&mut self) -> &mut BlockBase;
+
+    /// Get the unique block ID.
+    ///
+    /// Convenience method that delegates to BlockBase.
+    #[inline]
+    fn block_id(&self) -> u32 {
+        self.base().id()
+    }
+
+    /// Check if block has been initialized.
+    ///
+    /// Convenience method that delegates to BlockBase.
+    #[inline]
+    fn is_initialized(&self) -> bool {
+        self.base().is_initialized()
+    }
+
+    /// Set initialization flag.
+    ///
+    /// Convenience method that delegates to BlockBase.
+    #[inline]
+    fn set_initialized(&mut self, flag: bool) {
+        self.base_mut().set_initialized(flag);
+    }
+
+    /// Get mutable reference to the RNG.
+    ///
+    /// Convenience method that delegates to BlockBase.
+    #[inline]
+    fn block_rng(&mut self) -> &mut StdRng {
+        self.base_mut().rng()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
