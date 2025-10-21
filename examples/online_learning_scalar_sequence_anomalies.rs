@@ -44,7 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Connect encoder to learner
     // The learner's input reads from the transformer's output
-    learner.input.add_child(transformer.output.clone(), 0);
+    learner.input_mut().add_child(transformer.output(), 0);
     learner.init()?;
 
     // Define the repeating sequence with an anomaly at the end
@@ -77,14 +77,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         transformer.execute(false)?;
 
         // Get encoder output pattern (for debugging if needed)
-        let _encoder_pattern = transformer.output.borrow().state.clone();
+        let _encoder_pattern = transformer.output().borrow().state.clone();
 
         // Execute the sequence learner (with learning enabled)
         learner.execute(true)?;
 
         // Get learner output pattern
-        // let learner_pattern = learner.output.borrow().state.clone();
-        // let learner_pattern = learner.output.borrow().get_state();
+        // let learner_pattern = learner.output().borrow().state.clone();
+        // let learner_pattern = learner.output().borrow().get_state();
         let learner_pattern = learner.get_output_state();
 
         // Print learner state at beginning of each sequence (when value = 0.0)

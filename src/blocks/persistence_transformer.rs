@@ -24,7 +24,7 @@
 //! pt.execute(false).unwrap();
 //!
 //! // Output encodes persistence duration
-//! assert_eq!(pt.output.borrow().state.num_set(), 128);
+//! assert_eq!(pt.output().borrow().state.num_set(), 128);
 //! ```
 
 use crate::{Block, BlockBase, BlockBaseAccess, BlockOutput, Result};
@@ -56,7 +56,7 @@ pub struct PersistenceTransformer {
     base: BlockBase,
 
     /// Block output with history
-    pub output: Rc<RefCell<BlockOutput>>,
+    output: Rc<RefCell<BlockOutput>>,
 
     // Parameters
     min_val: f64,
@@ -285,7 +285,7 @@ impl Block for PersistenceTransformer {
         self.output.borrow_mut().store();
     }
 
-    fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }
 

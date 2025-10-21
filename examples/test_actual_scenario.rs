@@ -6,8 +6,8 @@ fn main() {
     let mut context_encoder = DiscreteTransformer::new(8, 64, 2, 0);
     let mut learner = ContextLearner::new(64, 2, 8, 32, 20, 20, 2, 1, 2, false, 42);
     
-    learner.input.add_child(input_encoder.get_output(), 0);
-    learner.context.add_child(context_encoder.get_output(), 0);
+    learner.input_mut().add_child(input_encoder.output(), 0);
+    learner.context_mut().add_child(context_encoder.output(), 0);
     learner.init().unwrap();
     
     // SAME AS FAILING TEST: set_value ONCE before loop
@@ -19,8 +19,8 @@ fn main() {
         input_encoder.execute(false).unwrap();
         context_encoder.execute(false).unwrap();
         
-        let input_changed = input_encoder.get_output().borrow().has_changed();
-        let context_changed = context_encoder.get_output().borrow().has_changed();
+        let input_changed = input_encoder.output().borrow().has_changed();
+        let context_changed = context_encoder.output().borrow().has_changed();
         
         learner.execute(true).unwrap();
         let anomaly = learner.get_anomaly_score();

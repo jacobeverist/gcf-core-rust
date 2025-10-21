@@ -32,7 +32,7 @@
 //! let mut classifier = PatternClassifier::new(4, 1024, 8, 20, 2, 1, 0.8, 0.5, 0.3, 2, 0);
 //!
 //! // Connect and initialize
-//! classifier.input.add_child(encoder.get_output(), 0);
+//! classifier.input_mut().add_child(encoder.output(), 0);
 //! classifier.init().unwrap();
 //!
 //! // Train on label 0
@@ -70,13 +70,13 @@ pub struct PatternClassifier {
     base: BlockBase,
 
     /// Block input connection point
-    pub input: BlockInput,
+    input: BlockInput,
 
     /// Block output with history
-    pub output: Rc<RefCell<BlockOutput>>,
+    output: Rc<RefCell<BlockOutput>>,
 
     /// Block memory with synaptic learning
-    pub memory: BlockMemory,
+    memory: BlockMemory,
 
     // Parameters
     num_l: usize,   // Number of labels
@@ -239,7 +239,7 @@ impl PatternClassifier {
     /// #
     /// # let mut encoder = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
     /// # let mut classifier = PatternClassifier::new(4, 1024, 8, 20, 2, 1, 0.8, 0.5, 0.3, 2, 0);
-    /// # classifier.input.add_child(encoder.get_output(), 0);
+    /// # classifier.input_mut().add_child(encoder.output(), 0);
     /// # classifier.init().unwrap();
     /// # encoder.set_value(0.5);
     /// # encoder.execute(false).unwrap();
@@ -324,6 +324,28 @@ impl PatternClassifier {
     /// Get statelets per label.
     pub fn num_spl(&self) -> usize {
         self.num_spl
+    }
+
+    /// Get reference to input.
+    pub fn input(&self) -> &BlockInput {
+        &self.input
+    }
+
+    /// Get mutable reference to input.
+    ///
+    /// Allows connecting child blocks to this block's input.
+    pub fn input_mut(&mut self) -> &mut BlockInput {
+        &mut self.input
+    }
+
+    /// Get reference to memory.
+    pub fn memory(&self) -> &BlockMemory {
+        &self.memory
+    }
+
+    /// Get mutable reference to memory.
+    pub fn memory_mut(&mut self) -> &mut BlockMemory {
+        &mut self.memory
     }
 }
 
@@ -451,7 +473,7 @@ impl Block for PatternClassifier {
         base_size + overlaps_size + statelet_labels_size + input_size + output_size + memory_size
     }
 
-    fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }
 }

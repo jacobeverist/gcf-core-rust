@@ -24,14 +24,14 @@
 //! dt.execute(false).unwrap();
 //!
 //! // Each category gets 256 bits (1024 / 4)
-//! assert_eq!(dt.output.borrow().state.num_set(), 256);
+//! assert_eq!(dt.output().borrow().state.num_set(), 256);
 //!
 //! // Different categories have zero overlap
 //! let mut dt2 = DiscreteTransformer::new(4, 1024, 2, 0);
 //! dt2.set_value(1);
 //! dt2.execute(false).unwrap();
 //!
-//! let overlap = dt.output.borrow().state.num_similar(&dt2.output.borrow().state);
+//! let overlap = dt.output().borrow().state.num_similar(&dt2.output().borrow().state);
 //! assert_eq!(overlap, 0);  // No overlap
 //! ```
 
@@ -62,7 +62,7 @@ pub struct DiscreteTransformer {
     base: BlockBase,
 
     /// Block output with history
-    pub output: Rc<RefCell<BlockOutput>>,
+    output: Rc<RefCell<BlockOutput>>,
 
     // Parameters
     num_v: usize,  // Number of discrete values
@@ -240,7 +240,7 @@ impl Block for DiscreteTransformer {
         self.output.borrow_mut().store();
     }
 
-    fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }
 

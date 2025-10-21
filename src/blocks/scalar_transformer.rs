@@ -24,7 +24,7 @@
 //! st.execute(false).unwrap();
 //!
 //! // Output has exactly 128 active bits
-//! assert_eq!(st.get_output().borrow().state.num_set(), 128);
+//! assert_eq!(st.output().borrow().state.num_set(), 128);
 //!
 //! // Test semantic similarity
 //! let mut st2 = ScalarTransformer::new(0.0, 1.0, 1024, 128, 2, 0);
@@ -32,7 +32,7 @@
 //! st2.execute(false).unwrap();
 //!
 //! // Similar values have high overlap
-//! let overlap = st.get_output().borrow().state.num_similar(&st2.get_output().borrow().state);
+//! let overlap = st.output().borrow().state.num_similar(&st2.output().borrow().state);
 //! assert!(overlap > 100);  // Significant overlap
 //! ```
 
@@ -64,7 +64,7 @@ pub struct ScalarTransformer {
     base: BlockBase,
 
     /// Block output with history
-    pub output: Rc<RefCell<BlockOutput>>,
+    output: Rc<RefCell<BlockOutput>>,
 
     // Parameters
     min_val: f64,
@@ -256,7 +256,7 @@ impl Block for ScalarTransformer {
         std::mem::size_of::<Self>() + self.output.borrow().memory_usage()
     }
 
-    fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }
 }
@@ -328,7 +328,7 @@ mod tests {
         st.compute();
 
         // Should have exactly num_as active bits
-        assert_eq!(st.output.borrow().state.num_set(), 128);
+        assert_eq!(st.output().borrow().state.num_set(), 128);
     }
 
     #[test]
@@ -338,15 +338,15 @@ mod tests {
         // Minimum value
         st.set_value(0.0);
         st.compute();
-        assert_eq!(st.output.borrow().state.num_set(), 128);
-        let acts_min = st.output.borrow().state.get_acts();
+        assert_eq!(st.output().borrow().state.num_set(), 128);
+        let acts_min = st.output().borrow().state.get_acts();
         assert_eq!(acts_min[0], 0); // Should start at bit 0
 
         // Maximum value
         st.set_value(1.0);
         st.compute();
-        assert_eq!(st.output.borrow().state.num_set(), 128);
-        let acts_max = st.output.borrow().state.get_acts();
+        assert_eq!(st.output().borrow().state.num_set(), 128);
+        let acts_max = st.output().borrow().state.get_acts();
         assert_eq!(acts_max[acts_max.len() - 1], 1023); // Should end at last bit
     }
 
@@ -356,11 +356,11 @@ mod tests {
 
         st.set_value(0.5);
         st.compute();
-        let acts1 = st.output.borrow().state.get_acts();
+        let acts1 = st.output().borrow().state.get_acts();
 
         // Encode again without changing value
         st.compute();
-        let acts2 = st.output.borrow().state.get_acts();
+        let acts2 = st.output().borrow().state.get_acts();
 
         // Should be identical (optimization check)
         assert_eq!(acts1, acts2);
@@ -373,7 +373,7 @@ mod tests {
         st.set_value(0.5);
         st.execute(false).unwrap();
 
-        assert_eq!(st.output.borrow().state.num_set(), 128);
+        assert_eq!(st.output().borrow().state.num_set(), 128);
     }
 
     #[test]
@@ -385,7 +385,7 @@ mod tests {
 
         st.clear();
 
-        assert_eq!(st.output.borrow().state.num_set(), 0);
+        assert_eq!(st.output().borrow().state.num_set(), 0);
         assert_eq!(st.get_value(), st.min_val());
     }
 

@@ -71,7 +71,7 @@
 //! );
 //!
 //! // Connect input
-//! learner.input.add_child(encoder.get_output(), 0);
+//! learner.input_mut().add_child(encoder.output(), 0);
 //! learner.init().unwrap();
 //!
 //! // Learn sequence: 0 → 1 → 2 → 0 → 1 → 2 ...
@@ -108,16 +108,16 @@ pub struct SequenceLearner {
     base: BlockBase,
 
     /// Block input for column activations
-    pub input: BlockInput,
+    input: BlockInput,
 
     /// Block input for contextual pattern (connected to output[PREV])
-    pub context: BlockInput,
+    context: BlockInput,
 
     /// Block output with history (also feeds back to context)
-    pub output: Rc<RefCell<BlockOutput>>,
+    output: Rc<RefCell<BlockOutput>>,
 
     /// Block memory with synaptic learning
-    pub memory: BlockMemory,
+    memory: BlockMemory,
 
     // Architecture parameters
     num_c: usize,   // Number of columns
@@ -308,6 +308,45 @@ impl SequenceLearner {
     pub fn d_thresh(&self) -> u32 {
         self.d_thresh
     }
+
+    /// Get reference to input.
+    pub fn input(&self) -> &BlockInput {
+        &self.input
+    }
+
+    /// Get mutable reference to input.
+    ///
+    /// Allows connecting child blocks to this block's input.
+    pub fn input_mut(&mut self) -> &mut BlockInput {
+        &mut self.input
+    }
+
+    /// Get reference to context.
+    ///
+    /// Note: For SequenceLearner, context is automatically connected to output[PREV]
+    /// during initialization.
+    pub fn context(&self) -> &BlockInput {
+        &self.context
+    }
+
+    /// Get mutable reference to context.
+    ///
+    /// Note: For SequenceLearner, context is automatically connected to output[PREV]
+    /// during initialization. This accessor is provided for advanced use cases.
+    pub fn context_mut(&mut self) -> &mut BlockInput {
+        &mut self.context
+    }
+
+    /// Get reference to memory.
+    pub fn memory(&self) -> &BlockMemory {
+        &self.memory
+    }
+
+    /// Get mutable reference to memory.
+    pub fn memory_mut(&mut self) -> &mut BlockMemory {
+        &mut self.memory
+    }
+
     /// Recognition phase: check if any dendrite predicts the column.
     ///
     /// For the given column, checks all its dendrites against the previous output.
@@ -496,7 +535,7 @@ impl Block for SequenceLearner {
         bytes
     }
 
-    fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
         // Rc::clone(&self.output)
         self.output.clone()
     }

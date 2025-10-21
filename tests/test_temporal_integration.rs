@@ -23,8 +23,8 @@ fn test_sequence_learner_multistep_prediction() {
     );
 
     learner
-        .input
-        .add_child(encoder.get_output(), 0);
+        .input_mut()
+        .add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn sequence: 0 → 1 → 2 → 3 → 4
@@ -82,11 +82,11 @@ fn test_context_learner_with_multiple_contexts() {
     let mut learner = ContextLearner::new(10, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
 
     learner
-        .input
-        .add_child(input_encoder.get_output(), 0);
+        .input_mut()
+        .add_child(input_encoder.output(), 0);
     learner
-        .context
-        .add_child(context_encoder.get_output(), 0);
+        .context_mut()
+        .add_child(context_encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn multiple context-dependent patterns
@@ -170,8 +170,8 @@ fn test_sequence_learner_cyclic_pattern() {
     );
 
     learner
-        .input
-        .add_child(encoder.get_output(), 0);
+        .input_mut()
+        .add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn cyclic pattern: 0 → 1 → 2 → 3 → 0 → 1 → ...
@@ -214,11 +214,11 @@ fn test_context_learner_disambiguation() {
     let mut learner = ContextLearner::new(5, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
 
     learner
-        .input
-        .add_child(input_encoder.get_output(), 0);
+        .input_mut()
+        .add_child(input_encoder.output(), 0);
     learner
-        .context
-        .add_child(context_encoder.get_output(), 0);
+        .context_mut()
+        .add_child(context_encoder.output(), 0);
     learner.init().unwrap();
 
     // Same input (0) appears in two different contexts (0 and 1)
@@ -298,8 +298,8 @@ fn test_sequence_learner_branching_sequences() {
     );
 
     learner
-        .input
-        .add_child(encoder.get_output(), 0);
+        .input_mut()
+        .add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn two branching sequences from same start:

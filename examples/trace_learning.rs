@@ -11,8 +11,8 @@ fn main() {
     input_out.borrow_mut().setup(2, 10);
     context_out.borrow_mut().setup(2, 40);
     
-    learner.input.add_child(input_out.clone(), 0);
-    learner.context.add_child(context_out.clone(), 0);
+    learner.input_mut().add_child(input_out.clone(), 0);
+    learner.context_mut().add_child(context_out.clone(), 0);
     learner.init().unwrap();
     
     // Set pattern
@@ -28,7 +28,7 @@ fn main() {
     learner.execute(true).unwrap();
     println!("Anomaly: {:.3}", learner.get_anomaly_score());
     println!("Historical count: {}", learner.get_historical_count());
-    println!("Output: {}", learner.output.borrow().state.num_set());
+    println!("Output: {}", learner.output().borrow().state.num_set());
     
     println!("\n=== Manual loop ===");
     for i in 1..=5 {
@@ -37,14 +37,14 @@ fn main() {
         println!("After step - output changed flag: {}", input_out.borrow().has_changed());
         
         learner.pull();  // Pull from children
-        println!("After pull - input bits: {:?}", learner.input.state.get_acts());
-        println!("After pull - children_changed: {}", learner.input.children_changed());
+        println!("After pull - input bits: {:?}", learner.input().state.get_acts());
+        println!("After pull - children_changed: {}", learner.input().children_changed());
         
         learner.compute();
         println!("After compute - anomaly: {:.3}", learner.get_anomaly_score());
         
         learner.store();
-        println!("After store - output bits: {:?}", learner.output.borrow().state.get_acts());
+        println!("After store - output bits: {:?}", learner.output().borrow().state.get_acts());
         
         learner.learn();
         println!("After learn - historical count: {}", learner.get_historical_count());

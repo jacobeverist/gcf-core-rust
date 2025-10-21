@@ -20,8 +20,8 @@ fn test_context_learner_direct_activation() {
     context_out.borrow_mut().setup(2, 128);
 
     // Now connect them
-    learner.input.add_child(input_out.clone(), 0);
-    learner.context.add_child(context_out.clone(), 0);
+    learner.input_mut().add_child(input_out.clone(), 0);
+    learner.context_mut().add_child(context_out.clone(), 0);
 
     learner.init().unwrap();
 
@@ -42,7 +42,7 @@ fn test_context_learner_direct_activation() {
     assert!(anomaly > 0.9, "First exposure should have high anomaly, got {}", anomaly);
 
     // Should have some output activity
-    let num_active = learner.output.borrow().state.num_set();
+    let num_active = learner.output().borrow().state.num_set();
     assert!(num_active > 0, "Should have output activity");
 }
 
@@ -63,8 +63,8 @@ fn test_context_learner_learning_works() {
     // let mut learner = ContextLearner::new(10, 2, 8, 32, 20, 20, 2, 1, 2, true, 42);
 
     // Connect after setup
-    learner.input.add_child(input_out.clone(), 0);
-    learner.context.add_child(context_out.clone(), 0);
+    learner.input_mut().add_child(input_out.clone(), 0);
+    learner.context_mut().add_child(context_out.clone(), 0);
     learner.init().unwrap();
 
     // Set pattern
@@ -85,7 +85,7 @@ fn test_context_learner_learning_works() {
     learner.execute(true).unwrap();
     let first_anomaly = learner.get_anomaly_score();
     let first_count = learner.get_historical_count();
-    // println!("{:?}", learner.output.borrow().state.clone().get_bits().iter().format(""));
+    // println!("{:?}", learner.output().borrow().state.clone().get_bits().iter().format(""));
 
     // Repeat same pattern multiple times
     for _ in 0..10 {
@@ -94,7 +94,7 @@ fn test_context_learner_learning_works() {
         learner.compute();
         learner.store();
         learner.learn();
-        // println!("{:?}", learner.output.borrow().state.clone().get_bits().iter().format(""));
+        // println!("{:?}", learner.output().borrow().state.clone().get_bits().iter().format(""));
     }
 
     let last_anomaly = learner.get_anomaly_score();

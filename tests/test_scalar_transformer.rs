@@ -78,7 +78,7 @@ fn test_scalar_encoding_num_active() {
         st.set_value(*val);
         st.execute(false).unwrap();
         assert_eq!(
-            st.get_output().borrow().state.num_set(),
+            st.output().borrow().state.num_set(),
             128,
             "Value {} should have 128 active bits",
             val
@@ -93,10 +93,10 @@ fn test_scalar_encoding_minimum_value() {
     st.set_value(0.0);
     st.execute(false).unwrap();
 
-    assert_eq!(st.get_output().borrow().state.num_set(), 128);
+    assert_eq!(st.output().borrow().state.num_set(), 128);
 
     // Should start at bit 0
-    let acts = st.get_output().borrow().state.get_acts();
+    let acts = st.output().borrow().state.get_acts();
     assert_eq!(acts[0], 0, "Minimum value should start at bit 0");
     assert_eq!(acts[127], 127, "Should activate first 128 bits");
 }
@@ -108,10 +108,10 @@ fn test_scalar_encoding_maximum_value() {
     st.set_value(1.0);
     st.execute(false).unwrap();
 
-    assert_eq!(st.get_output().borrow().state.num_set(), 128);
+    assert_eq!(st.output().borrow().state.num_set(), 128);
 
     // Should end at bit 1023
-    let acts = st.get_output().borrow().state.get_acts();
+    let acts = st.output().borrow().state.get_acts();
     assert_eq!(acts[0], 896, "Maximum value should start at bit 896");
     assert_eq!(
         acts[acts.len() - 1],
@@ -127,9 +127,9 @@ fn test_scalar_encoding_midpoint() {
     st.set_value(0.5);
     st.execute(false).unwrap();
 
-    assert_eq!(st.get_output().borrow().state.num_set(), 128);
+    assert_eq!(st.output().borrow().state.num_set(), 128);
 
-    let acts = st.get_output().borrow().state.get_acts();
+    let acts = st.output().borrow().state.get_acts();
     // Midpoint should activate bits around position 448 ((1024-128)/2)
     assert!(
         acts[0] >= 400 && acts[0] <= 500,
@@ -151,7 +151,7 @@ fn test_scalar_semantic_similarity_close_values() {
     st2.execute(false).unwrap();
 
     // Should have high overlap
-    let overlap = st1.get_output().borrow().state.num_similar(&st2.get_output().borrow().state);
+    let overlap = st1.output().borrow().state.num_similar(&st2.output().borrow().state);
     assert!(
         overlap > 100,
         "Similar values (0.50 vs 0.51) should have >100 overlapping bits, got {}",
@@ -180,7 +180,7 @@ fn test_scalar_semantic_similarity_distant_values() {
     st2.execute(false).unwrap();
 
     // Should have minimal overlap
-    let overlap = st1.get_output().borrow().state.num_similar(&st2.get_output().borrow().state);
+    let overlap = st1.output().borrow().state.num_similar(&st2.output().borrow().state);
     assert!(
         overlap < 20,
         "Distant values (0.0 vs 1.0) should have <20 overlapping bits, got {}",
@@ -204,7 +204,7 @@ fn test_scalar_semantic_similarity_gradient() {
         st.set_value(val);
         st.execute(false).unwrap();
 
-        let overlap = st_base.get_output().borrow().state.num_similar(&st.get_output().borrow().state);
+        let overlap = st_base.output().borrow().state.num_similar(&st.output().borrow().state);
         overlaps.push(overlap);
     }
 
@@ -230,11 +230,11 @@ fn test_scalar_encoding_change_detection() {
 
     st.set_value(0.5);
     st.execute(false).unwrap();
-    let acts1 = st.get_output().borrow().state.get_acts();
+    let acts1 = st.output().borrow().state.get_acts();
 
     // Feedforward again without changing value
     st.execute(false).unwrap();
-    let acts2 = st.get_output().borrow().state.get_acts();
+    let acts2 = st.output().borrow().state.get_acts();
 
     // Should be identical (optimization check)
     assert_eq!(acts1, acts2, "Repeated encoding should be identical");
@@ -246,19 +246,19 @@ fn test_scalar_different_ranges() {
     let mut temp = ScalarTransformer::new(0.0, 100.0, 1024, 128, 2, 0);
     temp.set_value(50.0);
     temp.execute(false).unwrap();
-    assert_eq!(temp.get_output().borrow().state.num_set(), 128);
+    assert_eq!(temp.output().borrow().state.num_set(), 128);
 
     // Test negative range
     let mut neg = ScalarTransformer::new(-10.0, 10.0, 1024, 128, 2, 0);
     neg.set_value(0.0);
     neg.execute(false).unwrap();
-    assert_eq!(neg.get_output().borrow().state.num_set(), 128);
+    assert_eq!(neg.output().borrow().state.num_set(), 128);
 
     // Test very small range
     let mut small = ScalarTransformer::new(0.0, 0.1, 1024, 128, 2, 0);
     small.set_value(0.05);
     small.execute(false).unwrap();
-    assert_eq!(small.get_output().borrow().state.num_set(), 128);
+    assert_eq!(small.output().borrow().state.num_set(), 128);
 }
 
 #[test]
@@ -267,11 +267,11 @@ fn test_scalar_clear() {
 
     st.set_value(0.75);
     st.execute(false).unwrap();
-    assert_eq!(st.get_output().borrow().state.num_set(), 128);
+    assert_eq!(st.output().borrow().state.num_set(), 128);
 
     st.clear();
 
-    assert_eq!(st.get_output().borrow().state.num_set(), 0, "Output should be cleared");
+    assert_eq!(st.output().borrow().state.num_set(), 0, "Output should be cleared");
     assert_eq!(st.get_value(), st.min_val(), "Value should reset to minimum");
 }
 
@@ -283,7 +283,7 @@ fn test_scalar_history_tracking() {
     st.set_value(0.3);
     st.execute(false).unwrap();
     let acts1 = {
-        let output = st.get_output();
+        let output = st.output();
         let output_borrow = output.borrow();
         output_borrow.get_bitfield(0).get_acts()
     };
@@ -292,7 +292,7 @@ fn test_scalar_history_tracking() {
     st.set_value(0.7);
     st.execute(false).unwrap();
     let (acts2_curr, acts2_prev) = {
-        let output = st.get_output();
+        let output = st.output();
         let output_borrow = output.borrow();
         (output_borrow.get_bitfield(0).get_acts(), output_borrow.get_bitfield(1).get_acts())
     };
@@ -326,7 +326,7 @@ fn test_scalar_multiple_encodings() {
         st.set_value(val);
         st.execute(false).unwrap();
         assert_eq!(
-            st.get_output().borrow().state.num_set(),
+            st.output().borrow().state.num_set(),
             128,
             "Each encoding should have 128 active bits"
         );
@@ -346,7 +346,7 @@ fn test_scalar_same_value_identical_encoding() {
 
     // Identical values should produce identical encodings
     assert_eq!(
-        st1.get_output().borrow().state, st2.get_output().borrow().state,
+        st1.output().borrow().state, st2.output().borrow().state,
         "Same value should produce identical encoding"
     );
 }
@@ -365,7 +365,7 @@ fn test_scalar_precision() {
     st2.execute(false).unwrap();
 
     // Should still have very high overlap
-    let overlap = st1.get_output().borrow().state.num_similar(&st2.get_output().borrow().state);
+    let overlap = st1.output().borrow().state.num_similar(&st2.output().borrow().state);
     assert!(
         overlap > 120,
         "Tiny differences should still have very high overlap"
@@ -379,7 +379,7 @@ fn test_scalar_large_statelet_count() {
     st.set_value(0.5);
     st.execute(false).unwrap();
 
-    assert_eq!(st.get_output().borrow().state.num_set(), 512);
+    assert_eq!(st.output().borrow().state.num_set(), 512);
 }
 
 #[test]
@@ -390,5 +390,5 @@ fn test_scalar_small_active_percentage() {
     st.set_value(0.5);
     st.execute(false).unwrap();
 
-    assert_eq!(st.get_output().borrow().state.num_set(), 100);
+    assert_eq!(st.output().borrow().state.num_set(), 100);
 }

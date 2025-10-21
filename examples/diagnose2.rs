@@ -6,8 +6,8 @@ fn main() {
     let mut context_encoder = DiscreteTransformer::new(8, 64, 2, 0);
     let mut learner = ContextLearner::new(64, 2, 8, 32, 20, 20, 2, 1, 2, false, 42);
     
-    learner.input.add_child(input_encoder.get_output(), 0);
-    learner.context.add_child(context_encoder.get_output(), 0);
+    learner.input_mut().add_child(input_encoder.output(), 0);
+    learner.context_mut().add_child(context_encoder.output(), 0);
     learner.init().unwrap();
     
     // Execute encoders first
@@ -16,8 +16,8 @@ fn main() {
     input_encoder.execute(false).unwrap();
     context_encoder.execute(false).unwrap();
     
-    let input_active = input_encoder.get_output().borrow().state.num_set();
-    let context_active = context_encoder.get_output().borrow().state.num_set();
+    let input_active = input_encoder.output().borrow().state.num_set();
+    let context_active = context_encoder.output().borrow().state.num_set();
     
     println!("=== Configuration ===");
     println!("Input active bits: {}", input_active);

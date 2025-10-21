@@ -11,8 +11,8 @@ fn main() {
     input_out.borrow_mut().setup(2, 10);
     context_out.borrow_mut().setup(2, 40);
     
-    learner.input.add_child(input_out.clone(), 0);
-    learner.context.add_child(context_out.clone(), 0);
+    learner.input_mut().add_child(input_out.clone(), 0);
+    learner.context_mut().add_child(context_out.clone(), 0);
     learner.init().unwrap();
     
     // Set pattern
@@ -36,7 +36,7 @@ fn main() {
     learner.pull();
     learner.compute();
     println!("Anomaly: {:.3}", learner.get_anomaly_score());
-    println!("Output statelets: {:?}", learner.output.borrow().state.get_acts());
+    println!("Output statelets: {:?}", learner.output().borrow().state.get_acts());
     learner.store();
     learner.learn();
     println!("Historical count: {}", learner.get_historical_count());
@@ -51,11 +51,11 @@ fn main() {
     
     learner.pull();
     println!("After pull - input: {:?}, context bits: {}", 
-             learner.input.state.get_acts(), learner.context.state.num_set());
+             learner.input().state.get_acts(), learner.context().state.num_set());
     
     learner.compute();
     println!("Anomaly: {:.3}", learner.get_anomaly_score());
-    println!("Output statelets: {:?}", learner.output.borrow().state.get_acts());
+    println!("Output statelets: {:?}", learner.output().borrow().state.get_acts());
     learner.store();
     learner.learn();
     println!("Historical count: {}", learner.get_historical_count());

@@ -37,7 +37,7 @@
 //! st.execute(false).unwrap();
 //!
 //! // Output has 128 active bits representing 0.5
-//! assert_eq!(st.output.borrow().state.num_set(), 128);
+//! assert_eq!(st.output().borrow().state.num_set(), 128);
 //! ```
 
 pub mod scalar_transformer;

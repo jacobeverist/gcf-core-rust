@@ -13,8 +13,8 @@ fn main() {
         input_out.borrow_mut().setup(2, 10);
         context_out.borrow_mut().setup(2, 40);
         
-        learner.input.add_child(input_out.clone(), 0);
-        learner.context.add_child(context_out.clone(), 0);
+        learner.input_mut().add_child(input_out.clone(), 0);
+        learner.context_mut().add_child(context_out.clone(), 0);
         learner.init().unwrap();
         
         // Set pattern ONCE
@@ -58,8 +58,8 @@ fn main() {
         input_out.borrow_mut().setup(2, 10);
         context_out.borrow_mut().setup(2, 40);
         
-        learner.input.add_child(input_out.clone(), 0);
-        learner.context.add_child(context_out.clone(), 0);
+        learner.input_mut().add_child(input_out.clone(), 0);
+        learner.context_mut().add_child(context_out.clone(), 0);
         learner.init().unwrap();
         
         // Set pattern ONCE

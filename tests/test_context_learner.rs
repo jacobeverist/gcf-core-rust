@@ -38,11 +38,11 @@ fn test_context_learner_init() {
 
     // Connect inputs
     learner
-        .input
-        .add_child(input_encoder.get_output(), 0);
+        .input_mut()
+        .add_child(input_encoder.output(), 0);
     learner
-        .context
-        .add_child(context_encoder.get_output(), 0);
+        .context_mut()
+        .add_child(context_encoder.output(), 0);
 
     // Initialize
     let result = learner.init();
@@ -69,8 +69,8 @@ fn test_context_learner_first_exposure_high_anomaly() {
     let mut learner = ContextLearner::new(10, 2, 4, 16, 8, 20, 2, 1, 2, false, 42);
 
     // Connect
-    learner.input.add_child(input_encoder.get_output(), 0);
-    learner.context.add_child(context_encoder.get_output(), 0);
+    learner.input_mut().add_child(input_encoder.output(), 0);
+    learner.context_mut().add_child(context_encoder.output(), 0);
     learner.init().unwrap();
 
     // First exposure should have high anomaly
@@ -93,11 +93,11 @@ fn test_context_learner_learning_reduces_anomaly() {
 
     // Connect
     learner
-        .input
-        .add_child(input_encoder.get_output().clone(), 0);
+        .input_mut()
+        .add_child(input_encoder.output().clone(), 0);
     learner
-        .context
-        .add_child(context_encoder.get_output().clone(), 0);
+        .context_mut()
+        .add_child(context_encoder.output().clone(), 0);
     learner.init().unwrap();
 
     // Learn association multiple times
@@ -129,11 +129,11 @@ fn test_context_learner_different_context_causes_anomaly() {
 
     // Connect
     learner
-        .input
-        .add_child(input_encoder.get_output().clone(), 0);
+        .input_mut()
+        .add_child(input_encoder.output().clone(), 0);
     learner
-        .context
-        .add_child(context_encoder.get_output().clone(), 0);
+        .context_mut()
+        .add_child(context_encoder.output().clone(), 0);
     learner.init().unwrap();
 
     // Learn association: input=0 with context=0
@@ -161,18 +161,18 @@ fn test_context_learner_different_context_causes_anomaly() {
 #[test]
 fn test_context_learner_historical_count_grows() {
     let mut input_encoder = DiscreteTransformer::new(5, 5, 2, 0);
-    let input_out = input_encoder.get_output();
+    let input_out = input_encoder.output();
     let mut context_encoder = DiscreteTransformer::new(3, 64, 2, 0);
-    let context_out = context_encoder.get_output();
+    let context_out = context_encoder.output();
 
     let mut learner = ContextLearner::new(5, 2, 4, 16, 8, 20, 2, 1, 2, false, 42);
 
     // Connect
     learner
-        .input
+        .input_mut()
         .add_child(input_out.clone(), 0);
     learner
-        .context
+        .context_mut()
         .add_child(context_out.clone(), 0);
     learner.init().unwrap();
 
@@ -202,18 +202,18 @@ fn test_context_learner_historical_count_grows() {
 #[test]
 fn test_context_learner_multiple_associations() {
     let mut input_encoder = DiscreteTransformer::new(10, 10, 2, 0);
-    let input_out = input_encoder.get_output();
+    let input_out = input_encoder.output();
     let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
-    let context_out = context_encoder.get_output();
+    let context_out = context_encoder.output();
 
     let mut learner = ContextLearner::new(10, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
 
     // Connect
     learner
-        .input
+        .input_mut()
         .add_child(input_out.clone(), 0);
     learner
-        .context
+        .context_mut()
         .add_child(context_out.clone(), 0);
     learner.init().unwrap();
 
@@ -248,18 +248,18 @@ fn test_context_learner_multiple_associations() {
 #[test]
 fn test_context_learner_clear() {
     let mut input_encoder = DiscreteTransformer::new(5, 5, 2, 0);
-    let input_out = input_encoder.get_output();
+    let input_out = input_encoder.output();
     let mut context_encoder = DiscreteTransformer::new(3, 64, 2, 0);
-    let context_out = context_encoder.get_output();
+    let context_out = context_encoder.output();
 
     let mut learner = ContextLearner::new(5, 2, 4, 16, 8, 20, 2, 1, 2, false, 42);
 
     // Connect
     learner
-        .input
+        .input_mut()
         .add_child(input_out.clone(), 0);
     learner
-        .context
+        .context_mut()
         .add_child(context_out.clone(), 0);
     learner.init().unwrap();
 
@@ -288,18 +288,18 @@ fn test_context_learner_memory_usage() {
 #[test]
 fn test_context_learner_output_sparse() {
     let mut input_encoder = DiscreteTransformer::new(10, 10, 2, 0);
-    let input_out = input_encoder.get_output();
+    let input_out = input_encoder.output();
     let mut context_encoder = DiscreteTransformer::new(5, 128, 2, 0);
-    let context_out = context_encoder.get_output();
+    let context_out = context_encoder.output();
 
     let mut learner = ContextLearner::new(10, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
 
     // Connect
     learner
-        .input
+        .input_mut()
         .add_child(input_out.clone(), 0);
     learner
-        .context
+        .context_mut()
         .add_child(context_out.clone(), 0);
     learner.init().unwrap();
 
@@ -311,7 +311,7 @@ fn test_context_learner_output_sparse() {
     learner.execute(true).unwrap();
 
     // Output should be sparse (some statelets active)
-    let num_active = learner.output.borrow().state.num_set();
+    let num_active = learner.output().borrow().state.num_set();
     let total_statelets = 10 * 4; // num_c * num_spc
     assert!(num_active > 0, "Output should have some active statelets");
     assert!(num_active < total_statelets, "Output should be sparse");

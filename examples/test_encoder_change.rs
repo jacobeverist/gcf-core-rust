@@ -9,13 +9,13 @@ fn main() {
     println!("=== Testing encoder change detection ===");
     for i in 1..=5 {
         encoder.execute(false).unwrap();
-        let changed = encoder.get_output().borrow().has_changed();
+        let changed = encoder.output().borrow().has_changed();
         println!("Execution {}: has_changed = {}", i, changed);
     }
     
     println!("\n=== Now change the value ===");
     encoder.set_value(1);
     encoder.execute(false).unwrap();
-    let changed = encoder.get_output().borrow().has_changed();
+    let changed = encoder.output().borrow().has_changed();
     println!("After set_value(1): has_changed = {}", changed);
 }

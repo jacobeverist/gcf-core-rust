@@ -32,7 +32,7 @@ fn test_sequence_learner_new() {
 fn test_sequence_learner_self_feedback() {
     let learner = SequenceLearner::new(10, 2, 4, 16, 8, 20, 2, 1, 2, false, 0);
     // Context should have one child (self-feedback to output)
-    assert_eq!(learner.context.num_children(), 1);
+    assert_eq!(learner.context().num_children(), 1);
 }
 
 #[test]
@@ -42,7 +42,7 @@ fn test_sequence_learner_init() {
     let mut learner = SequenceLearner::new(512, 4, 8, 32, 20, 20, 2, 1, 2, false, 0);
 
     // Connect input
-    learner.input.add_child(encoder.get_output(), 0);
+    learner.input_mut().add_child(encoder.output(), 0);
 
     // Initialize
     let result = learner.init();
@@ -68,7 +68,7 @@ fn test_sequence_learner_first_pattern_high_anomaly() {
     let mut learner = SequenceLearner::new(10, 2, 4, 16, 8, 20, 2, 1, 2, false, 42);
 
     // Connect
-    learner.input.add_child(encoder.get_output(), 0);
+    learner.input_mut().add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // First pattern should have high anomaly
@@ -104,7 +104,7 @@ fn test_sequence_learner_repeated_sequence_reduces_anomaly() {
     );
 
     // Connect
-    learner.input.add_child(encoder.get_output(), 0);
+    learner.input_mut().add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn sequence: 0 → 1 → 2 → 0 → 1 → 2
@@ -153,7 +153,7 @@ fn test_sequence_learner_broken_sequence_high_anomaly() {
     );
 
     // Connect
-    learner.input.add_child(encoder.get_output(), 0);
+    learner.input_mut().add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn sequence: 0 → 1 → 2
@@ -201,7 +201,7 @@ fn test_sequence_learner_historical_count_grows() {
     let mut learner = SequenceLearner::new(5, 2, 4, 16, 8, 20, 2, 1, 2, false, 42);
 
     // Connect
-    learner.input.add_child(encoder.get_output(), 0);
+    learner.input_mut().add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     assert_eq!(learner.get_historical_count(), 0);
@@ -237,7 +237,7 @@ fn test_sequence_learner_complex_sequence() {
     );
 
     // Connect
-    learner.input.add_child(encoder.get_output(), 0);
+    learner.input_mut().add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn a longer sequence
@@ -277,7 +277,7 @@ fn test_sequence_learner_clear() {
     let mut learner = SequenceLearner::new(5, 2, 4, 16, 8, 20, 2, 1, 2, false, 42);
 
     // Connect
-    learner.input.add_child(encoder.get_output(), 0);
+    learner.input_mut().add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Process some data
@@ -310,7 +310,7 @@ fn test_sequence_learner_output_sparse() {
     let mut learner = SequenceLearner::new(10, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
 
     // Connect
-    learner.input.add_child(encoder.get_output(), 0);
+    learner.input_mut().add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Process
@@ -319,7 +319,7 @@ fn test_sequence_learner_output_sparse() {
     learner.execute(true).unwrap();
 
     // Output should be sparse
-    let num_active = learner.output.borrow().state.num_set();
+    let num_active = learner.output().borrow().state.num_set();
     let total_statelets = 10 * 4; // num_c * num_spc
     assert!(num_active > 0, "Output should have some active statelets");
     assert!(num_active < total_statelets, "Output should be sparse");
@@ -345,7 +345,7 @@ fn test_sequence_learner_alternating_patterns() {
     );
 
     // Connect
-    learner.input.add_child(encoder.get_output(), 0);
+    learner.input_mut().add_child(encoder.output(), 0);
     learner.init().unwrap();
 
     // Learn alternating pattern: 0 → 1 → 0 → 1

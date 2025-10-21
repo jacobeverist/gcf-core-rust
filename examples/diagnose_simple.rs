@@ -11,8 +11,8 @@ fn main() {
     input_out.borrow_mut().setup(2, 10);
     context_out.borrow_mut().setup(2, 40);
     
-    learner.input.add_child(input_out.clone(), 0);
-    learner.context.add_child(context_out.clone(), 0);
+    learner.input_mut().add_child(input_out.clone(), 0);
+    learner.context_mut().add_child(context_out.clone(), 0);
     learner.init().unwrap();
     
     // Set pattern ONCE
@@ -26,8 +26,8 @@ fn main() {
     println!("=== Iteration 1 ===");
     learner.execute(true).unwrap();
     println!("Anomaly: {:.3}", learner.get_anomaly_score());
-    println!("Input state after pull: {:?}", learner.input.state.get_acts());
-    println!("Context state after pull: {:?}", learner.context.state.get_acts());
+    println!("Input state after pull: {:?}", learner.input().state.get_acts());
+    println!("Context state after pull: {:?}", learner.context().state.get_acts());
     
     println!("\n=== Manual loop (like the test) ===");
     for i in 2..=5 {
@@ -35,16 +35,16 @@ fn main() {
         learner.step();
         
         // Check what's in the inputs before pull
-        println!("Before pull - input state: {:?}", learner.input.state.get_acts());
-        println!("Before pull - context state: {:?}", learner.context.state.get_acts());
+        println!("Before pull - input state: {:?}", learner.input().state.get_acts());
+        println!("Before pull - context state: {:?}", learner.context().state.get_acts());
         
         learner.pull();
         
         // Check what's in the inputs after pull
-        println!("After pull - input state: {:?}", learner.input.state.get_acts());
-        println!("After pull - context state: {:?}", learner.context.state.get_acts());
-        println!("Input children_changed: {}", learner.input.children_changed());
-        println!("Context children_changed: {}", learner.context.children_changed());
+        println!("After pull - input state: {:?}", learner.input().state.get_acts());
+        println!("After pull - context state: {:?}", learner.context().state.get_acts());
+        println!("Input children_changed: {}", learner.input().children_changed());
+        println!("Context children_changed: {}", learner.context().children_changed());
         
         learner.compute();
         println!("Anomaly: {:.3}", learner.get_anomaly_score());

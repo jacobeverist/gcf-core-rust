@@ -64,7 +64,7 @@ fn test_discrete_encoding_num_active() {
         dt.set_value(cat);
         dt.execute(false).unwrap();
         assert_eq!(
-            dt.output.borrow().state.num_set(),
+            dt.output().borrow().state.num_set(),
             256,
             "Category {} should have 256 active bits",
             cat
@@ -90,7 +90,7 @@ fn test_discrete_categories_no_overlap() {
             dt2.set_value(cat2);
             dt2.execute(false).unwrap();
 
-            let overlap = dt1.output.borrow().state.num_similar(&dt2.output.borrow().state);
+            let overlap = dt1.output().borrow().state.num_similar(&dt2.output().borrow().state);
             assert_eq!(
                 overlap, 0,
                 "Categories {} and {} should have zero overlap",
@@ -113,7 +113,7 @@ fn test_discrete_same_category_identical() {
         dt2.execute(false).unwrap();
 
         assert_eq!(
-            dt1.output.borrow().state, dt2.output.borrow().state,
+            dt1.output().borrow().state, dt2.output().borrow().state,
             "Category {} should encode identically",
             cat
         );
@@ -137,10 +137,10 @@ fn test_discrete_all_categories_distinct() {
     for i in 0..num_v {
         for j in (i + 1)..num_v {
             let overlap = transformers[i]
-                .output
+                .output()
                 .borrow()
                 .state
-                .num_similar(&transformers[j].output.borrow().state);
+                .num_similar(&transformers[j].output().borrow().state);
             assert_eq!(
                 overlap, 0,
                 "Categories {} and {} should have no overlap",
@@ -157,9 +157,9 @@ fn test_discrete_category_zero() {
     dt.set_value(0);
     dt.execute(false).unwrap();
 
-    assert_eq!(dt.output.borrow().state.num_set(), 102);
+    assert_eq!(dt.output().borrow().state.num_set(), 102);
 
-    let acts = dt.output.borrow().state.get_acts();
+    let acts = dt.output().borrow().state.get_acts();
     // Category 0 should start at or near bit 0
     assert!(
         acts[0] < 10,
@@ -176,9 +176,9 @@ fn test_discrete_last_category() {
     dt.set_value(num_v - 1);
     dt.execute(false).unwrap();
 
-    assert_eq!(dt.output.borrow().state.num_set(), 102);
+    assert_eq!(dt.output().borrow().state.num_set(), 102);
 
-    let acts = dt.output.borrow().state.get_acts();
+    let acts = dt.output().borrow().state.get_acts();
     // Last category should end at or near bit 1023
     assert!(
         acts[acts.len() - 1] > 1000,
@@ -193,11 +193,11 @@ fn test_discrete_encoding_change_detection() {
 
     dt.set_value(5);
     dt.execute(false).unwrap();
-    let acts1 = dt.output.borrow().state.get_acts();
+    let acts1 = dt.output().borrow().state.get_acts();
 
     // Feedforward again without changing value
     dt.execute(false).unwrap();
-    let acts2 = dt.output.borrow().state.get_acts();
+    let acts2 = dt.output().borrow().state.get_acts();
 
     // Should be identical (optimization check)
     assert_eq!(acts1, acts2, "Repeated encoding should be identical");
@@ -210,14 +210,14 @@ fn test_discrete_binary_choice() {
     // Category 0
     dt.set_value(0);
     dt.execute(false).unwrap();
-    let acts0 = dt.output.borrow().state.get_acts();
-    assert_eq!(dt.output.borrow().state.num_set(), 512);
+    let acts0 = dt.output().borrow().state.get_acts();
+    assert_eq!(dt.output().borrow().state.num_set(), 512);
 
     // Category 1
     dt.set_value(1);
     dt.execute(false).unwrap();
-    let acts1 = dt.output.borrow().state.get_acts();
-    assert_eq!(dt.output.borrow().state.num_set(), 512);
+    let acts1 = dt.output().borrow().state.get_acts();
+    assert_eq!(dt.output().borrow().state.num_set(), 512);
 
     // Verify no overlap
     let overlap = acts0.iter().filter(|&&a| acts1.contains(&a)).count();
@@ -234,7 +234,7 @@ fn test_discrete_many_categories() {
         dt.set_value(*cat);
         dt.execute(false).unwrap();
         assert_eq!(
-            dt.output.borrow().state.num_set(),
+            dt.output().borrow().state.num_set(),
             100,
             "Category {} should have 100 active bits",
             cat
@@ -249,15 +249,15 @@ fn test_discrete_few_categories() {
     // 3 categories: each gets 341 bits (1024 / 3)
     dt.set_value(0);
     dt.execute(false).unwrap();
-    assert_eq!(dt.output.borrow().state.num_set(), 341);
+    assert_eq!(dt.output().borrow().state.num_set(), 341);
 
     dt.set_value(1);
     dt.execute(false).unwrap();
-    assert_eq!(dt.output.borrow().state.num_set(), 341);
+    assert_eq!(dt.output().borrow().state.num_set(), 341);
 
     dt.set_value(2);
     dt.execute(false).unwrap();
-    assert_eq!(dt.output.borrow().state.num_set(), 341);
+    assert_eq!(dt.output().borrow().state.num_set(), 341);
 }
 
 #[test]
@@ -266,11 +266,11 @@ fn test_discrete_clear() {
 
     dt.set_value(7);
     dt.execute(false).unwrap();
-    assert_eq!(dt.output.borrow().state.num_set(), 102);
+    assert_eq!(dt.output().borrow().state.num_set(), 102);
 
     dt.clear();
 
-    assert_eq!(dt.output.borrow().state.num_set(), 0, "Output should be cleared");
+    assert_eq!(dt.output().borrow().state.num_set(), 0, "Output should be cleared");
     assert_eq!(dt.get_value(), 0, "Value should reset to 0");
 }
 
@@ -281,13 +281,13 @@ fn test_discrete_history_tracking() {
     // Encode first category
     dt.set_value(3);
     dt.execute(false).unwrap();
-    let acts1 = dt.output.borrow().get_bitfield(0).get_acts();
+    let acts1 = dt.output().borrow().get_bitfield(0).get_acts();
 
     // Encode second category
     dt.set_value(7);
     dt.execute(false).unwrap();
-    let acts2_curr = dt.output.borrow().get_bitfield(0).get_acts();
-    let acts2_prev = dt.output.borrow().get_bitfield(1).get_acts();
+    let acts2_curr = dt.output().borrow().get_bitfield(0).get_acts();
+    let acts2_prev = dt.output().borrow().get_bitfield(1).get_acts();
 
     // Current should be different from previous
     assert_ne!(acts2_curr, acts2_prev);
@@ -319,7 +319,7 @@ fn test_discrete_sequential_encodings() {
         dt.set_value(cat);
         dt.execute(false).unwrap();
         assert_eq!(
-            dt.output.borrow().state.num_set(),
+            dt.output().borrow().state.num_set(),
             204, // 1024 / 5
             "Each encoding should have correct active count"
         );
@@ -340,7 +340,7 @@ fn test_discrete_coverage_complete() {
         dt.set_value(cat);
         dt.execute(false).unwrap();
 
-        let acts = dt.output.borrow().state.get_acts();
+        let acts = dt.output().borrow().state.get_acts();
         for &bit in acts.iter() {
             all_bits[bit] = true;
         }
@@ -367,7 +367,7 @@ fn test_discrete_single_category() {
     dt.execute(false).unwrap();
 
     // All bits should be active
-    assert_eq!(dt.output.borrow().state.num_set(), 1024);
+    assert_eq!(dt.output().borrow().state.num_set(), 1024);
 }
 
 #[test]
@@ -384,7 +384,7 @@ fn test_discrete_category_spacing() {
         dt.set_value(i);
         dt.execute(false).unwrap();
 
-        let acts = dt.output.borrow().state.get_acts();
+        let acts = dt.output().borrow().state.get_acts();
         starts.push(acts[0]);
     }
 
@@ -410,7 +410,7 @@ fn test_discrete_deterministic() {
     for _ in 0..5 {
         dt.set_value(5);
         dt.execute(false).unwrap();
-        encodings.push(dt.output.borrow().state.get_acts());
+        encodings.push(dt.output().borrow().state.get_acts());
     }
 
     // All encodings should be identical
@@ -434,7 +434,7 @@ fn test_discrete_day_of_week_example() {
         dow.execute(false).unwrap();
 
         assert_eq!(
-            dow.output.borrow().state.num_set(),
+            dow.output().borrow().state.num_set(),
             292, // 2048 / 7
             "Day {} should have 292 active bits",
             day
@@ -444,11 +444,11 @@ fn test_discrete_day_of_week_example() {
     // Verify Mon and Sun have no overlap
     dow.set_value(0);
     dow.execute(false).unwrap();
-    let mon = dow.output.borrow().state.clone();
+    let mon = dow.output().borrow().state.clone();
 
     dow.set_value(6);
     dow.execute(false).unwrap();
-    let sun = dow.output.borrow().state.clone();
+    let sun = dow.output().borrow().state.clone();
 
     assert_eq!(
         mon.num_similar(&sun),

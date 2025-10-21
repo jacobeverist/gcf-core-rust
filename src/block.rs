@@ -121,10 +121,10 @@ pub trait Block {
     ///
     /// ```ignore
     /// // Connect blocks
-    /// let encoder_out = encoder.get_output();
+    /// let encoder_out = encoder.output();
     /// learner.input.add_child(encoder_out, 0);
     /// ```
-    fn get_output(&self) -> Rc<RefCell<BlockOutput>>;
+    fn output(&self) -> Rc<RefCell<BlockOutput>>;
 
     /// Get a copy of the output BitField
     ///
@@ -137,7 +137,7 @@ pub trait Block {
     /// let encoder_output = encoder.get_output_state();
     /// ```
     fn get_output_state(&self) -> BitField {
-        self.get_output().borrow().state.clone()
+        self.output().borrow().state.clone()
     }
 
 
@@ -248,11 +248,7 @@ mod tests {
             0
         }
 
-        // fn get_output_state(&self) -> BitField {
-        //     self.output.borrow().state.clone()
-        // }
-
-        fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
+        fn output(&self) -> Rc<RefCell<BlockOutput>> {
             Rc::clone(&self.output)
         }
     }

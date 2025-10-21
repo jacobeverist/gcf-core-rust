@@ -61,8 +61,8 @@
 //! );
 //!
 //! // Connect input and context
-//! learner.input.add_child(input_encoder.get_output(), 0);
-//! learner.context.add_child(context_encoder.get_output(), 0);
+//! learner.input_mut().add_child(input_encoder.output(), 0);
+//! learner.context_mut().add_child(context_encoder.output(), 0);
 //! learner.init().unwrap();
 //!
 //! // Process patterns
@@ -103,16 +103,16 @@ pub struct ContextLearner {
     base: BlockBase,
 
     /// Block input for column activations
-    pub input: BlockInput,
+    input: BlockInput,
 
     /// Block input for contextual pattern
-    pub context: BlockInput,
+    context: BlockInput,
 
     /// Block output with history (wrapped for sharing)
-    pub output: Rc<RefCell<BlockOutput>>,
+    output: Rc<RefCell<BlockOutput>>,
 
     /// Block memory with synaptic learning (one BlockMemory for all dendrites)
-    pub memory: BlockMemory,
+    memory: BlockMemory,
 
     // Architecture parameters
     num_c: usize,   // Number of columns
@@ -291,6 +291,40 @@ impl ContextLearner {
     /// Get dendrite activation threshold.
     pub fn d_thresh(&self) -> u32 {
         self.d_thresh
+    }
+
+    /// Get reference to input.
+    pub fn input(&self) -> &BlockInput {
+        &self.input
+    }
+
+    /// Get mutable reference to input.
+    ///
+    /// Allows connecting child blocks to this block's input.
+    pub fn input_mut(&mut self) -> &mut BlockInput {
+        &mut self.input
+    }
+
+    /// Get reference to context.
+    pub fn context(&self) -> &BlockInput {
+        &self.context
+    }
+
+    /// Get mutable reference to context.
+    ///
+    /// Allows connecting child blocks to this block's context.
+    pub fn context_mut(&mut self) -> &mut BlockInput {
+        &mut self.context
+    }
+
+    /// Get reference to memory.
+    pub fn memory(&self) -> &BlockMemory {
+        &self.memory
+    }
+
+    /// Get mutable reference to memory.
+    pub fn memory_mut(&mut self) -> &mut BlockMemory {
+        &mut self.memory
     }
 
     /// Recognition phase: check if any dendrite predicts the column.
@@ -482,7 +516,7 @@ impl Block for ContextLearner {
         bytes
     }
 
-    fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }
 }

@@ -31,7 +31,7 @@
 //! let mut pooler = PatternPooler::new(1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0);
 //!
 //! // Connect encoder to pooler
-//! pooler.input.add_child(encoder.get_output(), 0);
+//! pooler.input_mut().add_child(encoder.output(), 0);
 //! pooler.init().unwrap();
 //!
 //! // Encode and learn sparse representation
@@ -40,7 +40,7 @@
 //! pooler.execute(true).unwrap();  // Learn=true
 //!
 //! // Verify sparse output
-//! assert_eq!(pooler.get_output().borrow().state.num_set(), 40);
+//! assert_eq!(pooler.output().borrow().state.num_set(), 40);
 //! ```
 
 use crate::{Block, BlockBase, BlockBaseAccess, BlockInput, BlockMemory, BlockOutput, Result};
@@ -64,13 +64,13 @@ pub struct PatternPooler {
     base: BlockBase,
 
     /// Block input connection point
-    pub input: BlockInput,
+    input: BlockInput,
 
     /// Block output with history
-    pub output: Rc<RefCell<BlockOutput>>,
+    output: Rc<RefCell<BlockOutput>>,
 
     /// Block memory with synaptic learning
-    pub memory: BlockMemory,
+    memory: BlockMemory,
 
     // Parameters
     num_s: usize,        // Number of statelets (dendrites)
@@ -177,6 +177,28 @@ impl PatternPooler {
     /// Get permanence threshold.
     pub fn perm_thr(&self) -> u8 {
         self.perm_thr
+    }
+
+    /// Get reference to input.
+    pub fn input(&self) -> &BlockInput {
+        &self.input
+    }
+
+    /// Get mutable reference to input.
+    ///
+    /// Allows connecting child blocks to this block's input.
+    pub fn input_mut(&mut self) -> &mut BlockInput {
+        &mut self.input
+    }
+
+    /// Get reference to memory.
+    pub fn memory(&self) -> &BlockMemory {
+        &self.memory
+    }
+
+    /// Get mutable reference to memory.
+    pub fn memory_mut(&mut self) -> &mut BlockMemory {
+        &mut self.memory
     }
 }
 
@@ -285,7 +307,7 @@ impl Block for PatternPooler {
         base_size + overlaps_size + input_size + output_size + memory_size
     }
 
-    fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }
 }

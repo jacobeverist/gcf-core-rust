@@ -71,10 +71,10 @@ impl Block for MockEncoder {
     }
 
     fn memory_usage(&self) -> usize {
-        self.output.borrow().memory_usage()
+        self.output().borrow().memory_usage()
     }
 
-    fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }
 }
@@ -105,6 +105,14 @@ impl MockProcessor {
     fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }
+
+    fn input(&self) -> &BlockInput {
+        &self.input
+    }
+
+    fn input_mut(&mut self) -> &mut BlockInput {
+        &mut self.input
+    }
 }
 
 impl Block for MockProcessor {
@@ -132,7 +140,7 @@ impl Block for MockProcessor {
 
     fn compute(&mut self) {
         // CRITICAL: Skip processing if inputs haven't changed
-        if !self.input.children_changed() {
+        if !self.input().children_changed() {
             return;
         }
 
@@ -147,7 +155,7 @@ impl Block for MockProcessor {
         // Copy input to output (simple passthrough for testing)
         output.state.clear_all();
         for i in 0..self.input.num_bits() {
-            if self.input.state.get_bit(i) > 0 {
+            if self.input().state.get_bit(i) > 0 {
                 output.state.set_bit(i);
             }
         }
@@ -158,10 +166,10 @@ impl Block for MockProcessor {
     }
 
     fn memory_usage(&self) -> usize {
-        self.input.memory_usage() + self.output.borrow().memory_usage()
+        self.input.memory_usage() + self.output().borrow().memory_usage()
     }
 
-    fn get_output(&self) -> Rc<RefCell<BlockOutput>> {
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
         Rc::clone(&self.output)
     }
 }
@@ -173,7 +181,7 @@ fn test_basic_connection() {
     let mut processor = MockProcessor::new();
 
     // Connect processor to encoder
-    processor.input.add_child(encoder.get_output(), 0);
+    processor.input_mut().add_child(encoder.output(), 0);
 
     // Set pattern and process
     encoder.set_pattern(0);
@@ -182,7 +190,7 @@ fn test_basic_connection() {
     processor.execute(false).unwrap();
 
     // Verify data flowed
-    assert_eq!(processor.get_output().borrow().state.num_set(), 10);
+    assert_eq!(processor.output().borrow().state.num_set(), 10);
     assert_eq!(processor.get_process_count(), 1);
 }
 
@@ -191,7 +199,7 @@ fn test_lazy_copying_skips_unchanged() {
     let mut encoder = MockEncoder::new();
     let mut processor = MockProcessor::new();
 
-    processor.input.add_child(encoder.get_output(), 0);
+    processor.input_mut().add_child(encoder.output(), 0);
 
     // First feedforward - encoder produces output
     encoder.set_pattern(0);
@@ -213,7 +221,7 @@ fn test_change_tracking_detects_changes() {
     let mut encoder = MockEncoder::new();
     let mut processor = MockProcessor::new();
 
-    processor.input.add_child(encoder.get_output(), 0);
+    processor.input_mut().add_child(encoder.output(), 0);
 
     // First pattern
     encoder.set_pattern(0);
@@ -237,8 +245,8 @@ fn test_multiple_children_concatenation() {
     let mut encoder2 = MockEncoder::new();
     let mut processor = MockProcessor::new();
 
-    processor.input.add_child(encoder1.get_output(), 0);
-    processor.input.add_child(encoder2.get_output(), 0);
+    processor.input_mut().add_child(encoder1.output(), 0);
+    processor.input_mut().add_child(encoder2.output(), 0);
 
     // Generate different patterns
     encoder1.set_pattern(0);  // Bits 0-9
@@ -250,7 +258,7 @@ fn test_multiple_children_concatenation() {
     processor.execute(false).unwrap();
 
     // Should have bits from both encoders (concatenated)
-    let output = processor.get_output();
+    let output = processor.output();
     let output_borrow = output.borrow();
     assert_eq!(output_borrow.state.num_set(), 20);
 
@@ -269,8 +277,8 @@ fn test_partial_change_optimization() {
     let mut encoder2 = MockEncoder::new();
     let mut processor = MockProcessor::new();
 
-    processor.input.add_child(encoder1.get_output(), 0);
-    processor.input.add_child(encoder2.get_output(), 0);
+    processor.input_mut().add_child(encoder1.output(), 0);
+    processor.input_mut().add_child(encoder2.output(), 0);
 
     // First round
     encoder1.set_pattern(0);
@@ -304,7 +312,7 @@ fn test_temporal_access() {
     }
 
     // Access current and previous
-    let output = encoder.get_output();
+    let output = encoder.output();
     let output_borrow = output.borrow();
     let curr = output_borrow.get_bitfield(CURR);
     let prev = output_borrow.get_bitfield(PREV);
@@ -324,7 +332,7 @@ fn test_memory_usage() {
     let mut encoder = MockEncoder::new();
     let mut processor = MockProcessor::new();
 
-    processor.input.add_child(encoder.get_output(), 0);
+    processor.input_mut().add_child(encoder.output(), 0);
 
     let encoder_mem = encoder.memory_usage();
     let processor_mem = processor.memory_usage();

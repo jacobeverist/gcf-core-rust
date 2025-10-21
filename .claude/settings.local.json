@@ -9,7 +9,8 @@
       "Bash(do)",
       "Bash(done)",
       "Bash(awk:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
