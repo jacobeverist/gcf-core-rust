@@ -49,7 +49,7 @@ fn main() -> Result<()> {
 
 
     // Connect blocks
-    net.connect(encoder, learner)?;
+    // net.connect(encoder, learner)?;
 
     // Connect outputs to inputs manually
     {
