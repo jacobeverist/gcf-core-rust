@@ -131,7 +131,7 @@ pub use blocks::{
 };
 
 // Network re-exports
-pub use network::{BlockId, Network};
+pub use network::{BlockId, ConnectionBuilder, Network};
 pub use network_config::{
     BlockConfig, BlockConfigurable, BlockInfo, BlockState, BlockStateful, ConnectionConfig,
     InputType, NetworkConfig,

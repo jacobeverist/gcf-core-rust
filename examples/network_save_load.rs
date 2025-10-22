@@ -33,20 +33,9 @@ fn main() -> Result<()> {
         3, 1023, 20, 20, 2, 1, 0.8, 0.5, 0.3, 2, 456,
     ));
 
-    // Connect blocks
-    {
-        let enc_out = original_net.get::<ScalarTransformer>(encoder)?.output();
-        original_net
-            .get_mut::<PatternPooler>(pooler)?
-            .input_mut()
-            .add_child(enc_out, 0);
-
-        let pool_out = original_net.get::<PatternPooler>(pooler)?.output();
-        original_net
-            .get_mut::<PatternClassifier>(classifier)?
-            .input_mut()
-            .add_child(pool_out, 0);
-    }
+    // Connect blocks using simplified API
+    original_net.connect_to_input(encoder, pooler)?;
+    original_net.connect_to_input(pooler, classifier)?;
 
     // Build network
     original_net.build()?;

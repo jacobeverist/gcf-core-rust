@@ -41,7 +41,7 @@
 //! # }
 //! ```
 
-use crate::{Block, GnomicsError, OutputAccess, Result};
+use crate::{Block, ContextAccess, GnomicsError, InputAccess, OutputAccess, Result};
 use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 
@@ -380,6 +380,289 @@ impl Network {
     /// multiple blocks by type.
     pub fn block_ids(&self) -> impl Iterator<Item = BlockId> + '_ {
         self.blocks.keys().copied()
+    }
+
+    /// Connect source block's output to target block's input.
+    ///
+    /// This is a simplified API that replaces the verbose pattern of getting
+    /// outputs and inputs manually. It automatically handles type checking and
+    /// provides clear error messages.
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - BlockId of the source block (must have output)
+    /// * `target` - BlockId of the target block (must have input)
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` if connection succeeded, `Err` if blocks not found or incompatible
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let encoder = net.add(ScalarTransformer::new(0.0, 100.0, 2048, 256, 2, 0));
+    /// let pooler = net.add(PatternPooler::new(1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0));
+    ///
+    /// // Old way (5 lines):
+    /// // {
+    /// //     let enc_out = net.get::<ScalarTransformer>(encoder)?.output();
+    /// //     net.get_mut::<PatternPooler>(pooler)?.input_mut().add_child(enc_out, 0);
+    /// // }
+    ///
+    /// // New way (1 line):
+    /// net.connect_to_input(encoder, pooler)?;
+    /// ```
+    pub fn connect_to_input(&mut self, source: BlockId, target: BlockId) -> Result<()> {
+        self.connect_to_input_with_offset(source, target, 0)
+    }
+
+    /// Connect source block's output to target block's context input.
+    ///
+    /// Only ContextLearner and SequenceLearner blocks have context inputs.
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - BlockId of the source block (must have output)
+    /// * `target` - BlockId of the target block (must have context input)
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let input_enc = net.add(DiscreteTransformer::new(10, 512, 2, 0));
+    /// let context_enc = net.add(DiscreteTransformer::new(5, 256, 2, 0));
+    /// let learner = net.add(ContextLearner::new(512, 4, 8, 32, 20, 20, 2, 1, 2, false, 0));
+    ///
+    /// net.connect_to_input(input_enc, learner)?;
+    /// net.connect_to_context(context_enc, learner)?;
+    /// ```
+    pub fn connect_to_context(&mut self, source: BlockId, target: BlockId) -> Result<()> {
+        self.connect_to_context_with_offset(source, target, 0)
+    }
+
+    /// Connect source block's output to target block's input with explicit offset.
+    ///
+    /// The offset parameter is used for advanced scenarios where you need to control
+    /// the bit offset in the input concatenation. Most users should use `connect_to_input()`
+    /// which defaults offset to 0.
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - BlockId of the source block (must have output)
+    /// * `target` - BlockId of the target block (must have input)
+    /// * `offset` - Bit offset for add_child (typically 0)
+    pub fn connect_to_input_with_offset(
+        &mut self,
+        source: BlockId,
+        target: BlockId,
+        offset: usize,
+    ) -> Result<()> {
+        // Step 1: Get source output
+        let source_wrapper = self.blocks.get(&source).ok_or_else(|| {
+            GnomicsError::Other(format!("Source block {} not found", source.as_usize()))
+        })?;
+
+        let source_output = {
+            let block_any = source_wrapper.as_any();
+
+            // Try each block type that has OutputAccess
+            if let Some(b) = block_any.downcast_ref::<crate::blocks::ScalarTransformer>() {
+                b.output()
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::DiscreteTransformer>()
+            {
+                b.output()
+            } else if let Some(b) =
+                block_any.downcast_ref::<crate::blocks::PersistenceTransformer>()
+            {
+                b.output()
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::PatternPooler>() {
+                b.output()
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::PatternClassifier>() {
+                b.output()
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::ContextLearner>() {
+                b.output()
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::SequenceLearner>() {
+                b.output()
+            } else {
+                return Err(GnomicsError::Other(format!(
+                    "Source block {} does not have output",
+                    source.as_usize()
+                )));
+            }
+        };
+
+        // Step 2: Get target and add connection
+        let target_wrapper = self.blocks.get_mut(&target).ok_or_else(|| {
+            GnomicsError::Other(format!("Target block {} not found", target.as_usize()))
+        })?;
+
+        let block_any_mut = target_wrapper.as_any_mut();
+
+        // Try each block type that has InputAccess
+        if let Some(b) = block_any_mut.downcast_mut::<crate::blocks::PatternPooler>() {
+            b.input_mut().add_child(source_output, offset);
+        } else if let Some(b) = block_any_mut.downcast_mut::<crate::blocks::PatternClassifier>() {
+            b.input_mut().add_child(source_output, offset);
+        } else if let Some(b) = block_any_mut.downcast_mut::<crate::blocks::ContextLearner>() {
+            b.input_mut().add_child(source_output, offset);
+        } else if let Some(b) = block_any_mut.downcast_mut::<crate::blocks::SequenceLearner>() {
+            b.input_mut().add_child(source_output, offset);
+        } else {
+            return Err(GnomicsError::Other(format!(
+                "Target block {} does not have input",
+                target.as_usize()
+            )));
+        }
+
+        Ok(())
+    }
+
+    /// Connect source block's output to target block's context input with explicit offset.
+    ///
+    /// Only ContextLearner and SequenceLearner blocks have context inputs.
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - BlockId of the source block (must have output)
+    /// * `target` - BlockId of the target block (must have context input)
+    /// * `offset` - Bit offset for add_child (typically 0)
+    pub fn connect_to_context_with_offset(
+        &mut self,
+        source: BlockId,
+        target: BlockId,
+        offset: usize,
+    ) -> Result<()> {
+        // Step 1: Get source output
+        let source_wrapper = self.blocks.get(&source).ok_or_else(|| {
+            GnomicsError::Other(format!("Source block {} not found", source.as_usize()))
+        })?;
+
+        let source_output = {
+            let block_any = source_wrapper.as_any();
+
+            // Try each block type that has OutputAccess
+            if let Some(b) = block_any.downcast_ref::<crate::blocks::ScalarTransformer>() {
+                b.output()
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::DiscreteTransformer>()
+            {
+                b.output()
+            } else if let Some(b) =
+                block_any.downcast_ref::<crate::blocks::PersistenceTransformer>()
+            {
+                b.output()
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::PatternPooler>() {
+                b.output()
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::PatternClassifier>() {
+                b.output()
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::ContextLearner>() {
+                b.output()
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::SequenceLearner>() {
+                b.output()
+            } else {
+                return Err(GnomicsError::Other(format!(
+                    "Source block {} does not have output",
+                    source.as_usize()
+                )));
+            }
+        };
+
+        // Step 2: Get target and add to CONTEXT (only ContextLearner and SequenceLearner)
+        let target_wrapper = self.blocks.get_mut(&target).ok_or_else(|| {
+            GnomicsError::Other(format!("Target block {} not found", target.as_usize()))
+        })?;
+
+        let block_any_mut = target_wrapper.as_any_mut();
+
+        // Only ContextLearner and SequenceLearner have context
+        if let Some(b) = block_any_mut.downcast_mut::<crate::blocks::ContextLearner>() {
+            b.context_mut().add_child(source_output, offset);
+        } else if let Some(b) = block_any_mut.downcast_mut::<crate::blocks::SequenceLearner>() {
+            b.context_mut().add_child(source_output, offset);
+        } else {
+            return Err(GnomicsError::Other(format!(
+                "Target block {} does not have context input",
+                target.as_usize()
+            )));
+        }
+
+        Ok(())
+    }
+
+    /// Connect multiple sources to a single target's input.
+    ///
+    /// Convenience method for connecting multiple encoder outputs to a single
+    /// downstream block. Equivalent to calling `connect_to_input()` for each source.
+    ///
+    /// # Arguments
+    ///
+    /// * `sources` - Array of source BlockIds (must all have output)
+    /// * `target` - Target BlockId (must have input)
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let enc1 = net.add(ScalarTransformer::new(0.0, 100.0, 1024, 128, 2, 0));
+    /// let enc2 = net.add(ScalarTransformer::new(0.0, 100.0, 1024, 128, 2, 1));
+    /// let pooler = net.add(PatternPooler::new(2048, 80, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0));
+    ///
+    /// // Instead of:
+    /// // net.connect_to_input(enc1, pooler)?;
+    /// // net.connect_to_input(enc2, pooler)?;
+    ///
+    /// // Use:
+    /// net.connect_many_to_input(&[enc1, enc2], pooler)?;
+    /// ```
+    pub fn connect_many_to_input(&mut self, sources: &[BlockId], target: BlockId) -> Result<()> {
+        for &source in sources {
+            self.connect_to_input(source, target)?;
+        }
+        Ok(())
+    }
+
+    /// Connect multiple sources to a single target's context input.
+    ///
+    /// Convenience method for connecting multiple encoder outputs to a single
+    /// ContextLearner or SequenceLearner context. Equivalent to calling
+    /// `connect_to_context()` for each source.
+    ///
+    /// # Arguments
+    ///
+    /// * `sources` - Array of source BlockIds (must all have output)
+    /// * `target` - Target BlockId (must have context input)
+    pub fn connect_many_to_context(
+        &mut self,
+        sources: &[BlockId],
+        target: BlockId,
+    ) -> Result<()> {
+        for &source in sources {
+            self.connect_to_context(source, target)?;
+        }
+        Ok(())
+    }
+
+    /// Start a fluent connection builder from a source block.
+    ///
+    /// Allows chaining multiple connections from a single source to multiple targets.
+    /// This is useful when you want to connect one encoder to multiple downstream blocks.
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - BlockId of the source block
+    ///
+    /// # Returns
+    ///
+    /// `ConnectionBuilder` that allows chaining `.to_input()` and `.to_context()` calls
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// // Connect encoder to multiple targets
+    /// net.connect_from(encoder)
+    ///     .to_input(pooler)?
+    ///     .to_input(classifier)?
+    ///     .to_context(learner)?;
+    /// ```
+    pub fn connect_from(&mut self, source: BlockId) -> ConnectionBuilder<'_> {
+        ConnectionBuilder::new(self, source)
     }
 
     /// Auto-discover dependencies from block inputs.
@@ -947,6 +1230,64 @@ impl Network {
 impl Default for Network {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Fluent builder for chaining multiple connections from a single source.
+///
+/// Created by `Network::connect_from()`. Allows connecting one source to multiple
+/// targets in a fluent/chainable style.
+///
+/// # Examples
+///
+/// ```ignore
+/// net.connect_from(encoder)
+///     .to_input(pooler)?
+///     .to_input(classifier)?
+///     .to_context(learner)?;
+/// ```
+pub struct ConnectionBuilder<'a> {
+    network: &'a mut Network,
+    source: BlockId,
+}
+
+impl<'a> ConnectionBuilder<'a> {
+    fn new(network: &'a mut Network, source: BlockId) -> Self {
+        Self { network, source }
+    }
+
+    /// Connect to target's input.
+    ///
+    /// Chainable - returns self to allow additional connections.
+    pub fn to_input(self, target: BlockId) -> Result<Self> {
+        self.network.connect_to_input(self.source, target)?;
+        Ok(self)
+    }
+
+    /// Connect to target's context.
+    ///
+    /// Chainable - returns self to allow additional connections.
+    pub fn to_context(self, target: BlockId) -> Result<Self> {
+        self.network.connect_to_context(self.source, target)?;
+        Ok(self)
+    }
+
+    /// Connect to target's input with explicit offset.
+    ///
+    /// Chainable - returns self to allow additional connections.
+    pub fn to_input_with_offset(self, target: BlockId, offset: usize) -> Result<Self> {
+        self.network
+            .connect_to_input_with_offset(self.source, target, offset)?;
+        Ok(self)
+    }
+
+    /// Connect to target's context with explicit offset.
+    ///
+    /// Chainable - returns self to allow additional connections.
+    pub fn to_context_with_offset(self, target: BlockId, offset: usize) -> Result<Self> {
+        self.network
+            .connect_to_context_with_offset(self.source, target, offset)?;
+        Ok(self)
     }
 }
 

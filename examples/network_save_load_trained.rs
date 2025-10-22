@@ -156,13 +156,8 @@ fn create_and_train_network() -> Result<Network> {
         42,     // seed
     ));
 
-    // Connect blocks
-    {
-        let enc_out = net.get::<DiscreteTransformer>(encoder)?.output();
-        net.get_mut::<PatternClassifier>(classifier)?
-            .input_mut()
-            .add_child(enc_out, 0);
-    }
+    // Connect blocks using simplified API
+    net.connect_to_input(encoder, classifier)?;
 
     // Build and initialize
     net.build()?;

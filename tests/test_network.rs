@@ -7,8 +7,11 @@
 //! - Type-safe access
 
 use gnomics::{
-    blocks::{DiscreteTransformer, PatternClassifier, PatternPooler, ScalarTransformer},
-    Block, InputAccess, Network, OutputAccess, Result,
+    blocks::{
+        self, DiscreteTransformer, PatternClassifier, PatternPooler,
+        ScalarTransformer,
+    },
+    Block, BlockId, ContextAccess, InputAccess, Network, OutputAccess, Result,
 };
 
 #[test]
@@ -492,6 +495,310 @@ fn test_network_state_binary_format() -> Result<()> {
             // JSON is the recommended format for large learned states
         }
     }
+
+    Ok(())
+}
+
+// ============================================================================
+// Connection API Tests
+// ============================================================================
+
+#[test]
+fn test_connect_to_input_simple() -> Result<()> {
+    let mut net = Network::new();
+    let encoder = net.add(blocks::ScalarTransformer::new(0.0, 100.0, 2048, 256, 2, 0));
+    let pooler = net.add(blocks::PatternPooler::new(
+        1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0,
+    ));
+
+    // New API
+    net.connect_to_input(encoder, pooler)?;
+
+    net.build()?;
+    net.get_mut::<blocks::PatternPooler>(pooler)?.init()?;
+
+    // Verify connection works by executing
+    net.get_mut::<blocks::ScalarTransformer>(encoder)?
+        .set_value(50.0);
+    net.execute(false)?;
+
+    // Output should have active bits
+    assert!(net.get::<blocks::PatternPooler>(pooler)?
+        .output()
+        .borrow()
+        .state
+        .num_set()
+        > 0);
+
+    Ok(())
+}
+
+#[test]
+fn test_connect_to_context() -> Result<()> {
+    let mut net = Network::new();
+    let input_enc = net.add(blocks::DiscreteTransformer::new(10, 512, 2, 0));
+    let context_enc = net.add(blocks::DiscreteTransformer::new(5, 256, 2, 0));
+    let learner = net.add(blocks::ContextLearner::new(
+        512, 4, 8, 32, 20, 20, 2, 1, 2, false, 0,
+    ));
+
+    // New API
+    net.connect_to_input(input_enc, learner)?;
+    net.connect_to_context(context_enc, learner)?;
+
+    net.get_mut::<blocks::ContextLearner>(learner)?.init()?;
+    net.build()?;
+
+    // Verify both connections work
+    net.get_mut::<blocks::DiscreteTransformer>(input_enc)?
+        .set_value(5);
+    net.get_mut::<blocks::DiscreteTransformer>(context_enc)?
+        .set_value(2);
+    net.execute(false)?;
+
+    Ok(())
+}
+
+#[test]
+fn test_connect_many_to_input() -> Result<()> {
+    let mut net = Network::new();
+    let enc1 = net.add(blocks::ScalarTransformer::new(0.0, 100.0, 1024, 128, 2, 0));
+    let enc2 = net.add(blocks::ScalarTransformer::new(0.0, 100.0, 1024, 128, 2, 1));
+    let pooler = net.add(blocks::PatternPooler::new(
+        2048, 80, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0,
+    ));
+
+    // New API
+    net.connect_many_to_input(&[enc1, enc2], pooler)?;
+
+    net.build()?;
+    net.get_mut::<blocks::PatternPooler>(pooler)?.init()?;
+
+    // Verify both inputs are connected
+    net.get_mut::<blocks::ScalarTransformer>(enc1)?
+        .set_value(25.0);
+    net.get_mut::<blocks::ScalarTransformer>(enc2)?
+        .set_value(75.0);
+    net.execute(false)?;
+
+    // Input should have bits from both encoders (concatenated)
+    let input_size = net.get::<blocks::PatternPooler>(pooler)?
+        .input()
+        .state
+        .num_bits();
+    assert_eq!(input_size, 2048); // 1024 * 2
+
+    Ok(())
+}
+
+#[test]
+fn test_connect_invalid_source() {
+    let mut net = Network::new();
+
+    // Create a temporary block to get a BlockId
+    let temp = net.add(blocks::ScalarTransformer::new(0.0, 100.0, 2048, 256, 2, 0));
+    let invalid_id = temp;
+
+    // Clear network, making the ID invalid
+    net.clear();
+
+    // Now add the target
+    let pooler = net.add(blocks::PatternPooler::new(
+        1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0,
+    ));
+
+    // Try to connect with invalid source ID
+    let result = net.connect_to_input(invalid_id, pooler);
+    assert!(result.is_err());
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("not found"));
+}
+
+#[test]
+fn test_connect_to_block_without_input() {
+    let mut net = Network::new();
+    let enc1 = net.add(blocks::ScalarTransformer::new(0.0, 100.0, 2048, 256, 2, 0));
+    let enc2 = net.add(blocks::ScalarTransformer::new(0.0, 100.0, 2048, 256, 2, 1));
+
+    // ScalarTransformer has no input
+    let result = net.connect_to_input(enc1, enc2);
+    assert!(result.is_err());
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("does not have input"));
+}
+
+#[test]
+fn test_connect_to_block_without_context() {
+    let mut net = Network::new();
+    let encoder = net.add(blocks::ScalarTransformer::new(0.0, 100.0, 2048, 256, 2, 0));
+    let pooler = net.add(blocks::PatternPooler::new(
+        1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0,
+    ));
+
+    // PatternPooler has no context input
+    let result = net.connect_to_context(encoder, pooler);
+    assert!(result.is_err());
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("does not have context"));
+}
+
+#[test]
+fn test_connect_with_offset() -> Result<()> {
+    let mut net = Network::new();
+    let encoder = net.add(blocks::ScalarTransformer::new(0.0, 100.0, 2048, 256, 2, 0));
+    let pooler = net.add(blocks::PatternPooler::new(
+        1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0,
+    ));
+
+    // Use non-zero offset (offset=1 is valid for num_t=2)
+    net.connect_to_input_with_offset(encoder, pooler, 1)?;
+
+    net.build()?;
+    net.get_mut::<blocks::PatternPooler>(pooler)?.init()?;
+
+    net.get_mut::<blocks::ScalarTransformer>(encoder)?
+        .set_value(50.0);
+    net.execute(false)?;
+
+    Ok(())
+}
+
+#[test]
+fn test_builder_pattern_multiple_targets() -> Result<()> {
+    let mut net = Network::new();
+    let encoder = net.add(blocks::ScalarTransformer::new(0.0, 100.0, 2048, 256, 2, 0));
+    let pooler1 = net.add(blocks::PatternPooler::new(
+        1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0,
+    ));
+    let pooler2 = net.add(blocks::PatternPooler::new(
+        1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 1,
+    ));
+
+    // Builder pattern
+    net.connect_from(encoder)
+        .to_input(pooler1)?
+        .to_input(pooler2)?;
+
+    net.build()?;
+    net.get_mut::<blocks::PatternPooler>(pooler1)?.init()?;
+    net.get_mut::<blocks::PatternPooler>(pooler2)?.init()?;
+
+    // Execute and verify both get data
+    net.get_mut::<blocks::ScalarTransformer>(encoder)?
+        .set_value(42.0);
+    net.execute(false)?;
+
+    assert!(net.get::<blocks::PatternPooler>(pooler1)?
+        .output()
+        .borrow()
+        .state
+        .num_set()
+        > 0);
+    assert!(net.get::<blocks::PatternPooler>(pooler2)?
+        .output()
+        .borrow()
+        .state
+        .num_set()
+        > 0);
+
+    Ok(())
+}
+
+#[test]
+fn test_new_api_equivalent_to_old() -> Result<()> {
+    // Network using old API
+    let mut net_old = Network::new();
+    let enc_old = net_old.add(blocks::ScalarTransformer::new(0.0, 100.0, 2048, 256, 2, 42));
+    let pool_old = net_old.add(blocks::PatternPooler::new(
+        1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 42,
+    ));
+    {
+        let enc_out = net_old
+            .get::<blocks::ScalarTransformer>(enc_old)?
+            .output();
+        net_old
+            .get_mut::<blocks::PatternPooler>(pool_old)?
+            .input_mut()
+            .add_child(enc_out, 0);
+    }
+    net_old.build()?;
+    net_old
+        .get_mut::<blocks::PatternPooler>(pool_old)?
+        .init()?;
+
+    // Network using new API
+    let mut net_new = Network::new();
+    let enc_new = net_new.add(blocks::ScalarTransformer::new(0.0, 100.0, 2048, 256, 2, 42));
+    let pool_new = net_new.add(blocks::PatternPooler::new(
+        1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 42,
+    ));
+    net_new.connect_to_input(enc_new, pool_new)?;
+    net_new.build()?;
+    net_new
+        .get_mut::<blocks::PatternPooler>(pool_new)?
+        .init()?;
+
+    // Execute both with same input
+    net_old
+        .get_mut::<blocks::ScalarTransformer>(enc_old)?
+        .set_value(42.0);
+    net_new
+        .get_mut::<blocks::ScalarTransformer>(enc_new)?
+        .set_value(42.0);
+
+    net_old.execute(false)?;
+    net_new.execute(false)?;
+
+    // Verify identical outputs
+    let out_old = net_old.get::<blocks::PatternPooler>(pool_old)?.output();
+    let out_new = net_new.get::<blocks::PatternPooler>(pool_new)?.output();
+
+    assert_eq!(
+        out_old.borrow().state.get_acts(),
+        out_new.borrow().state.get_acts()
+    );
+
+    Ok(())
+}
+
+#[test]
+fn test_connect_many_to_context() -> Result<()> {
+    let mut net = Network::new();
+    let ctx1 = net.add(blocks::DiscreteTransformer::new(5, 128, 2, 0));
+    let ctx2 = net.add(blocks::DiscreteTransformer::new(5, 128, 2, 1));
+    let input_enc = net.add(blocks::DiscreteTransformer::new(10, 512, 2, 2));
+    let learner = net.add(blocks::ContextLearner::new(
+        512, 4, 8, 32, 20, 20, 2, 1, 2, false, 0,
+    ));
+
+    // Connect input and multiple contexts
+    net.connect_to_input(input_enc, learner)?;
+    net.connect_many_to_context(&[ctx1, ctx2], learner)?;
+
+    net.get_mut::<blocks::ContextLearner>(learner)?.init()?;
+    net.build()?;
+
+    // Execute
+    net.get_mut::<blocks::DiscreteTransformer>(input_enc)?
+        .set_value(5);
+    net.get_mut::<blocks::DiscreteTransformer>(ctx1)?
+        .set_value(2);
+    net.get_mut::<blocks::DiscreteTransformer>(ctx2)?
+        .set_value(3);
+    net.execute(false)?;
+
+    // Context should have bits from both encoders (concatenated)
+    let context_size = net.get::<blocks::ContextLearner>(learner)?
+        .context()
+        .state
+        .num_bits();
+    assert_eq!(context_size, 256); // 128 * 2
 
     Ok(())
 }
