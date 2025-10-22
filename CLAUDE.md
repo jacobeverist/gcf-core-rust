@@ -91,6 +91,69 @@ pub trait Block {
 
 **Lifecycle**: `step() → pull() → compute() → store() → learn()`
 
+**Trait-Based Architecture**: Blocks expose their components through specialized traits:
+
+```rust
+// All blocks implement BlockBaseAccess for common functionality
+pub trait BlockBaseAccess {
+    fn base(&self) -> &BlockBase;
+    fn base_mut(&mut self) -> &mut BlockBase;
+    fn block_id(&self) -> u32;
+    fn is_initialized(&self) -> bool;
+    // ...
+}
+
+// Optional traits based on block capabilities
+pub trait OutputAccess {
+    fn output(&self) -> Rc<RefCell<BlockOutput>>;
+    fn get_output_state(&self) -> BitField;
+}
+
+pub trait InputAccess {
+    fn input(&self) -> &BlockInput;
+    fn input_mut(&mut self) -> &mut BlockInput;
+}
+
+pub trait MemoryAccess {
+    fn memory(&self) -> &BlockMemory;
+    fn memory_mut(&mut self) -> &mut BlockMemory;
+}
+
+pub trait ContextAccess {
+    fn context(&self) -> &BlockInput;
+    fn context_mut(&mut self) -> &mut BlockInput;
+}
+```
+
+**Benefits**:
+- **Encapsulation**: Internal fields are private, accessed through traits
+- **Type Safety**: Blocks only expose components they actually have
+- **No Boilerplate**: Trait delegation eliminates repetitive accessor code
+- **Clear API**: Compile-time guarantees for block capabilities
+
+**Trait Implementation by Block Type**:
+
+| Block Type | BlockBaseAccess | InputAccess | OutputAccess | MemoryAccess | ContextAccess |
+|------------|----------------|-------------|--------------|--------------|---------------|
+| ScalarTransformer | ✅ | ❌ | ✅ | ❌ | ❌ |
+| DiscreteTransformer | ✅ | ❌ | ✅ | ❌ | ❌ |
+| PersistenceTransformer | ✅ | ❌ | ✅ | ❌ | ❌ |
+| PatternPooler | ✅ | ✅ | ✅ | ✅ | ❌ |
+| PatternClassifier | ✅ | ✅ | ✅ | ✅ | ❌ |
+| ContextLearner | ✅ | ✅ | ✅ | ✅ | ✅ |
+| SequenceLearner | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+**Migration from Old API**:
+```rust
+// OLD (pre-Oct 2025) - Direct field access
+pooler.input.add_child(encoder.get_output());
+let state = &pooler.output.borrow().state;
+
+// NEW (current) - Trait-based accessors
+pooler.input_mut().add_child(encoder.output());
+let state = &pooler.output().borrow().state;
+```
+
 #### 3. BlockInput/BlockOutput - Lazy Data Transfer
 
 **Critical Optimization**: Only copy data from changed outputs (5-100× speedup)
@@ -159,7 +222,7 @@ encoder.set_value(42.5);
 encoder.execute(false)?;
 
 // Similar values produce overlapping patterns
-assert_eq!(encoder.get_output().borrow().state.num_set(), 256);
+assert_eq!(encoder.output().borrow().state.num_set(), 256);
 ```
 
 **Use Cases**: Temperature, position, speed, any continuous variable
@@ -237,7 +300,7 @@ let mut pooler = PatternPooler::new(
 );
 
 // Connect blocks
-pooler.input.add_child(encoder.get_output());
+pooler.input_mut().add_child(encoder.output());
 pooler.init()?;
 
 // Training
@@ -278,7 +341,7 @@ let mut classifier = PatternClassifier::new(
 );
 
 // Connect blocks
-classifier.input.add_child(encoder.get_output());
+classifier.input_mut().add_child(encoder.output());
 classifier.init()?;
 
 // Training
@@ -334,8 +397,8 @@ let mut learner = ContextLearner::new(
 );
 
 // Connect inputs
-learner.input.add_child(input_encoder.get_output());
-learner.context.add_child(context_encoder.get_output());
+learner.input_mut().add_child(input_encoder.output());
+learner.context_mut().add_child(context_encoder.output());
 learner.init()?;
 
 // Training
@@ -384,7 +447,7 @@ let mut learner = SequenceLearner::new(
 );
 
 // Connect input (context auto-connected to own output[PREV])
-learner.input.add_child(encoder.get_output());
+learner.input_mut().add_child(encoder.output());
 learner.init()?;
 
 // Learn sequence: 0 → 1 → 2 → 3
@@ -482,7 +545,7 @@ fn main() -> gnomics::Result<()> {
 
         println!("Value {}: {} active bits",
                  value,
-                 encoder.get_output().borrow().state.num_set());
+                 encoder.output().borrow().state.num_set());
     }
 
     Ok(())
@@ -616,6 +679,26 @@ This Rust implementation was converted from C++ in 5 phases (2025):
 - ✅ Production ready
 - ✅ Zero unsafe code
 
+### Post-Conversion Refinements (October 2025)
+
+After the initial 5-phase conversion, the architecture was further refined:
+
+**October 20, 2025** - API naming improvements and validation
+- Renamed `BitArray` → `BitField` for consistency
+- Updated all method names for better Rust idioms
+- Extensive validation of sequence learning functionality
+
+**October 21, 2025** - Trait-based architecture (3 commits)
+1. **BlockBaseAccess trait** - Eliminated boilerplate for `BlockBase` access
+2. **Private fields** - Made all `input`, `output`, `context`, `memory` fields private
+3. **Accessor traits** - Created `InputAccess`, `OutputAccess`, `MemoryAccess`, `ContextAccess`
+
+**Benefits**:
+- Type-safe component access
+- Compile-time guarantees for block capabilities
+- Cleaner API: `block.input_mut().add_child(encoder.output())`
+- Better encapsulation with zero performance overhead
+
 See `.claude/reports/` for detailed phase documentation.
 
 ---
@@ -624,11 +707,12 @@ See `.claude/reports/` for detailed phase documentation.
 
 ### Architecture Issues (Non-Critical)
 
-**Issue 1: BlockOutput Cloning** ✅ **RESOLVED**
-- **Status**: Fixed - all blocks migrated to `Rc<RefCell<BlockOutput>>` pattern
-- **Impact**: 19/21 tests now passing, 2 tests need investigation for unrelated learning issue
-- **Result**: Clean block connection API with `block.input.add_child(encoder.get_output())`
+**Issue 1: BlockOutput Cloning** ✅ **FULLY RESOLVED**
+- **Status**: Fixed - all blocks migrated to `Rc<RefCell<BlockOutput>>` pattern (Oct 2025)
+- **Further Improvement**: Added trait-based encapsulation for all block fields
+- **Result**: Clean, type-safe API with `block.input_mut().add_child(encoder.output())`
 - **Test Status**: 244/246 tests passing (99.2%)
+- **Architecture**: All block fields are now private, accessed through specialized traits
 
 **Issue 2: ScalarTransformer Precision** (3 ignored tests)
 - **Status**: Expected behavior by design
@@ -694,8 +778,14 @@ Gnomics implements concepts from neuroscience and HTM:
 1. **Memory Safety**: Rust's ownership system prevents use-after-free, double-free, and data races
 2. **Error Handling**: Result<T> with proper error types vs C++ assertions
 3. **Interior Mutability**: `Rc<RefCell<>>` for shared mutable state vs raw pointers
-4. **Testing**: Integrated test framework with `cargo test`
-5. **Documentation**: Built-in doc comments with examples
+4. **Trait-Based Encapsulation** (Oct 2025): Private fields with accessor traits
+   - All block fields (`input`, `output`, `memory`, `context`) are private
+   - Access through trait methods: `InputAccess`, `OutputAccess`, `MemoryAccess`, `ContextAccess`
+   - `BlockBaseAccess` trait eliminates boilerplate for common `BlockBase` operations
+   - Type-safe: Blocks only implement traits for components they actually have
+   - Example: `pooler.input_mut().add_child(encoder.output())`
+5. **Testing**: Integrated test framework with `cargo test`
+6. **Documentation**: Built-in doc comments with examples
 
 ### Performance Equivalence
 
@@ -730,9 +820,9 @@ use std::cell::RefCell;
 
 pub struct MyBlock {
     base: BlockBase,
-    pub input: BlockInput,
-    pub output: Rc<RefCell<BlockOutput>>,
-    // ... your fields
+    input: BlockInput,
+    output: Rc<RefCell<BlockOutput>>,
+    // ... your fields (all private)
 }
 
 impl MyBlock {
@@ -767,6 +857,33 @@ impl Block for MyBlock {
     fn memory_usage(&self) -> usize {
         // Estimate memory
         0
+    }
+}
+
+// Implement accessor traits
+impl BlockBaseAccess for MyBlock {
+    fn base(&self) -> &BlockBase {
+        &self.base
+    }
+
+    fn base_mut(&mut self) -> &mut BlockBase {
+        &mut self.base
+    }
+}
+
+impl InputAccess for MyBlock {
+    fn input(&self) -> &BlockInput {
+        &self.input
+    }
+
+    fn input_mut(&mut self) -> &mut BlockInput {
+        &mut self.input
+    }
+}
+
+impl OutputAccess for MyBlock {
+    fn output(&self) -> Rc<RefCell<BlockOutput>> {
+        Rc::clone(&self.output)
     }
 }
 ```
@@ -826,10 +943,15 @@ This Rust port is based on the C++ implementation:
 
 **Framework ready for real-world applications.**
 
-**Recent Improvements** (2025-10-06):
-- ✅ Fixed Architecture Issue #1: All blocks now use shared output references
+**Recent Improvements**:
+- ✅ **2025-10-22**: Trait-based encapsulation with private fields
+  - Created `BlockBaseAccess`, `InputAccess`, `OutputAccess`, `MemoryAccess`, `ContextAccess` traits
+  - All block fields (input, output, memory, context) are now private
+  - Access through clean accessor methods: `.input_mut()`, `.output()`, `.memory()`, etc.
+  - Eliminates boilerplate while maintaining type safety
+- ✅ **2025-10-06**: Fixed Architecture Issue #1: All blocks now use shared output references
 - ✅ Improved test passing rate from 95% to 99%
-- ✅ Cleaner API: `block.input.add_child(encoder.get_output())`
+- ✅ Cleaner API: `block.input_mut().add_child(encoder.output())`
 
 ---
 
