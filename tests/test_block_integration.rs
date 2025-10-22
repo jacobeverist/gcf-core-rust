@@ -73,6 +73,14 @@ impl Block for MockEncoder {
     fn memory_usage(&self) -> usize {
         self.output.borrow().memory_usage()
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 
 impl OutputAccess for MockEncoder {
@@ -169,6 +177,14 @@ impl Block for MockProcessor {
 
     fn memory_usage(&self) -> usize {
         self.input.memory_usage() + self.output.borrow().memory_usage()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
     }
 }
 

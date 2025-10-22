@@ -109,6 +109,9 @@ pub mod block_memory;
 // Phase 3: Transformer Blocks
 pub mod blocks;
 
+// Network Architecture (Post-Phase 5)
+pub mod network;
+
 // Re-exports for convenient access
 pub use bitfield::{bitfield_copy_words, BitField, Word, BITS_PER_WORD};
 pub use error::{GnomicsError, Result};
@@ -125,6 +128,9 @@ pub use blocks::{
     ContextLearner, DiscreteTransformer, PatternClassifier, PatternPooler,
     PersistenceTransformer, ScalarTransformer, SequenceLearner,
 };
+
+// Network re-exports
+pub use network::{BlockId, Network};
 
 /// Version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

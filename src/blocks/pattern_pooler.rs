@@ -284,6 +284,14 @@ impl Block for PatternPooler {
 
         base_size + overlaps_size + input_size + output_size + memory_size
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 
 impl BlockBaseAccess for PatternPooler {

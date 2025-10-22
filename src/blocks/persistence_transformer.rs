@@ -288,6 +288,14 @@ impl Block for PersistenceTransformer {
     fn memory_usage(&self) -> usize {
         std::mem::size_of::<Self>() + self.output.borrow().memory_usage()
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 
 impl OutputAccess for PersistenceTransformer {

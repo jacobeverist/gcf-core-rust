@@ -43,6 +43,7 @@
 #![allow(dead_code)]
 
 use crate::error::Result;
+use std::any::Any;
 use std::path::Path;
 
 /// Core trait for all Gnomics computational blocks.
@@ -108,6 +109,16 @@ pub trait Block {
     /// Returns approximate memory footprint of the block including
     /// all internal structures.
     fn memory_usage(&self) -> usize;
+
+    /// Get reference as Any for downcasting.
+    ///
+    /// This allows Network to downcast trait objects back to concrete types.
+    fn as_any(&self) -> &dyn Any;
+
+    /// Get mutable reference as Any for downcasting.
+    ///
+    /// This allows Network to downcast trait objects back to concrete types.
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 
     /// Execute the block's computation pipeline.
     ///
@@ -215,6 +226,14 @@ mod tests {
 
         fn memory_usage(&self) -> usize {
             0
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
         }
     }
 

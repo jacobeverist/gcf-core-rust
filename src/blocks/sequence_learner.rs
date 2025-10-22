@@ -499,6 +499,14 @@ impl Block for SequenceLearner {
         bytes += self.d_acts.capacity() * std::mem::size_of::<usize>();
         bytes
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 
 impl BlockBaseAccess for SequenceLearner {
