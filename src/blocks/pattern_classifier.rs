@@ -501,4 +501,44 @@ impl OutputAccess for PatternClassifier {
     }
 }
 
+impl crate::network_config::BlockConfigurable for PatternClassifier {
+    fn to_config(&self) -> crate::network_config::BlockConfig {
+        crate::network_config::BlockConfig::PatternClassifier {
+            num_l: self.num_l,
+            num_s: self.num_s,
+            num_as: self.num_as,
+            perm_thr: self.perm_thr,
+            perm_inc: self.perm_inc,
+            perm_dec: self.perm_dec,
+            pct_pool: self.pct_pool,
+            pct_conn: self.pct_conn,
+            pct_learn: self.pct_learn,
+            num_t: self.num_t,
+            seed: self.base().seed(),
+        }
+    }
+
+    fn block_type_name(&self) -> &'static str {
+        "PatternClassifier"
+    }
+}
+
+impl crate::network_config::BlockStateful for PatternClassifier {
+    fn to_state(&self) -> crate::Result<crate::network_config::BlockState> {
+        let permanences = self.memory.get_all_permanences();
+        Ok(crate::network_config::BlockState::PatternClassifier { permanences })
+    }
+
+    fn from_state(&mut self, state: &crate::network_config::BlockState) -> crate::Result<()> {
+        if let crate::network_config::BlockState::PatternClassifier { permanences } = state {
+            self.memory.set_all_permanences(permanences)?;
+            Ok(())
+        } else {
+            Err(crate::GnomicsError::Other(
+                "Wrong state type for PatternClassifier".into(),
+            ))
+        }
+    }
+}
+
 // Tests are in tests/test_pattern_classifier.rs

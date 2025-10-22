@@ -795,6 +795,43 @@ The Rust implementation **meets or exceeds** C++ performance:
 - Change tracking enables same 5-100× speedups
 - Zero-cost abstractions ensure no runtime penalty
 
+
+---
+
+## Planned Improvements
+
+### Simplify network connection API
+One of the main tasks for setting up a network of blocks is to connect them together
+via their inputs and outputs and setting up their execution dependencies.  
+
+In the current architecture:
+- execution dependency between blocks is not auto-discovered which is good
+- however, connecting outputs to inputs is messy as shown below
+
+```rust
+// Connect blocks
+{
+    let enc_out = net.get::<ScalarTransformer>(encoder)?.output();
+    net.get_mut::<SequenceLearner>(learner)?
+    .input_mut()
+    .add_child(enc_out, 0);
+}
+```
+
+Can this be simplified with something simple like:
+```rust
+{
+    net.connect_to_input(encoder, learner);
+    net.connect_to_context(encoder, learner);
+}
+```
+The method has two arguments, the source for BlockOutput, and the target for BlockInput.  
+
+Here the method name determines the InputType but perhaps the InputType can be specified some other way.
+
+
+
+
 ---
 
 ## Contributing

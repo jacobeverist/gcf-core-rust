@@ -281,6 +281,34 @@ impl BlockBaseAccess for ScalarTransformer {
     }
 }
 
+impl crate::network_config::BlockConfigurable for ScalarTransformer {
+    fn to_config(&self) -> crate::network_config::BlockConfig {
+        crate::network_config::BlockConfig::ScalarTransformer {
+            min_val: self.min_val,
+            max_val: self.max_val,
+            num_s: self.num_s,
+            num_as: self.num_as,
+            num_t: self.output.borrow().num_t(),
+            seed: self.base().seed(),
+        }
+    }
+
+    fn block_type_name(&self) -> &'static str {
+        "ScalarTransformer"
+    }
+}
+
+impl crate::network_config::BlockStateful for ScalarTransformer {
+    fn to_state(&self) -> crate::Result<crate::network_config::BlockState> {
+        Ok(crate::network_config::BlockState::NoState)
+    }
+
+    fn from_state(&mut self, _state: &crate::network_config::BlockState) -> crate::Result<()> {
+        // Transformers have no learned state
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

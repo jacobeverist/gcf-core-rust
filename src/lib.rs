@@ -111,6 +111,7 @@ pub mod blocks;
 
 // Network Architecture (Post-Phase 5)
 pub mod network;
+pub mod network_config;
 
 // Re-exports for convenient access
 pub use bitfield::{bitfield_copy_words, BitField, Word, BITS_PER_WORD};
@@ -131,6 +132,10 @@ pub use blocks::{
 
 // Network re-exports
 pub use network::{BlockId, Network};
+pub use network_config::{
+    BlockConfig, BlockConfigurable, BlockInfo, BlockState, BlockStateful, ConnectionConfig,
+    InputType, NetworkConfig,
+};
 
 /// Version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

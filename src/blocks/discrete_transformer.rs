@@ -269,6 +269,32 @@ impl BlockBaseAccess for DiscreteTransformer {
     }
 }
 
+impl crate::network_config::BlockConfigurable for DiscreteTransformer {
+    fn to_config(&self) -> crate::network_config::BlockConfig {
+        crate::network_config::BlockConfig::DiscreteTransformer {
+            num_v: self.num_v,
+            num_s: self.num_s,
+            num_t: self.output.borrow().num_t(),
+            seed: self.base().seed(),
+        }
+    }
+
+    fn block_type_name(&self) -> &'static str {
+        "DiscreteTransformer"
+    }
+}
+
+impl crate::network_config::BlockStateful for DiscreteTransformer {
+    fn to_state(&self) -> crate::Result<crate::network_config::BlockState> {
+        Ok(crate::network_config::BlockState::NoState)
+    }
+
+    fn from_state(&mut self, _state: &crate::network_config::BlockState) -> crate::Result<()> {
+        // Transformers have no learned state
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -530,6 +530,63 @@ impl BlockMemory {
         bytes
     }
 
+    /// Export all permanence values for serialization.
+    ///
+    /// Returns a 2D array of permanence values: `[dendrite][receptor]`.
+    /// Used for saving learned state.
+    pub fn get_all_permanences(&self) -> Vec<Vec<u8>> {
+        let mut permanences = Vec::with_capacity(self.num_d);
+
+        for d in 0..self.num_d {
+            let r_beg = d * self.num_rpd;
+            let r_end = r_beg + self.num_rpd;
+            let dendrite_perms = self.r_perms[r_beg..r_end].to_vec();
+            permanences.push(dendrite_perms);
+        }
+
+        permanences
+    }
+
+    /// Import all permanence values from serialization.
+    ///
+    /// Sets permanence values from a 2D array: `[dendrite][receptor]`.
+    /// Used for loading learned state.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if dimensions don't match expected size.
+    pub fn set_all_permanences(&mut self, permanences: &[Vec<u8>]) -> crate::Result<()> {
+        if permanences.len() != self.num_d {
+            return Err(crate::GnomicsError::Other(format!(
+                "Permanence array length mismatch: expected {} dendrites, got {}",
+                self.num_d,
+                permanences.len()
+            )));
+        }
+
+        for (d, dendrite_perms) in permanences.iter().enumerate() {
+            if dendrite_perms.len() != self.num_rpd {
+                return Err(crate::GnomicsError::Other(format!(
+                    "Permanence receptor count mismatch for dendrite {}: expected {}, got {}",
+                    d,
+                    self.num_rpd,
+                    dendrite_perms.len()
+                )));
+            }
+
+            let r_beg = d * self.num_rpd;
+            let r_end = r_beg + self.num_rpd;
+            self.r_perms[r_beg..r_end].copy_from_slice(dendrite_perms);
+
+            // Update connection BitField if enabled
+            if self.conns_flag {
+                self.update_conns(d);
+            }
+        }
+
+        Ok(())
+    }
+
     /// Update connection BitField for a dendrite.
     ///
     /// Sets bits for all connected receptors (permanence >= threshold).

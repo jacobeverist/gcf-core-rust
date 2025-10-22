@@ -373,6 +373,15 @@ impl Network {
         self.is_built
     }
 
+    /// Get an iterator over all block IDs in the network.
+    ///
+    /// Returns an iterator that yields BlockIds in arbitrary order.
+    /// Use this to iterate through all blocks when you need to access
+    /// multiple blocks by type.
+    pub fn block_ids(&self) -> impl Iterator<Item = BlockId> + '_ {
+        self.blocks.keys().copied()
+    }
+
     /// Auto-discover dependencies from block inputs.
     ///
     /// Calls get_dependencies() on each block to find which other blocks
@@ -473,6 +482,465 @@ impl Network {
         self.dependencies.clear();
         self.execution_order.clear();
         self.is_built = false;
+    }
+
+    /// Export network configuration (architecture only, no learned state).
+    ///
+    /// Extracts block configurations and topology to create a serializable
+    /// representation of the network architecture.
+    ///
+    /// # Returns
+    ///
+    /// NetworkConfig containing block parameters and connections.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use gnomics::{Network, blocks::ScalarTransformer, Block, InputAccess, OutputAccess};
+    /// # let mut net = Network::new();
+    /// # let encoder = net.add(ScalarTransformer::new(0.0, 100.0, 2048, 256, 2, 0));
+    /// # net.build().unwrap();
+    /// let config = net.to_config().unwrap();
+    /// let json = config.to_json().unwrap();
+    /// std::fs::write("network.json", json).unwrap();
+    /// ```
+    pub fn to_config(&self) -> Result<crate::network_config::NetworkConfig> {
+        use crate::network_config::{BlockConfigurable, ConnectionConfig, InputType, NetworkConfig};
+        use crate::{InputAccess, ContextAccess};
+
+        // Create ordered list of block IDs for consistent indexing
+        let mut block_ids: Vec<BlockId> = self.blocks.keys().copied().collect();
+        block_ids.sort_by_key(|id| id.0);
+
+        // Create BlockId -> index mapping
+        let id_to_index: HashMap<BlockId, usize> = block_ids
+            .iter()
+            .enumerate()
+            .map(|(idx, &id)| (id, idx))
+            .collect();
+
+        // Extract block configurations
+        let mut block_configs = Vec::new();
+        for &block_id in &block_ids {
+            let wrapper = self.blocks.get(&block_id).unwrap();
+            let block = wrapper.block();
+
+            // Downcast to BlockConfigurable
+            let config_any = block.as_any();
+
+            // Try each block type
+            let config = if let Some(b) = config_any.downcast_ref::<crate::blocks::ScalarTransformer>() {
+                b.to_config()
+            } else if let Some(b) = config_any.downcast_ref::<crate::blocks::DiscreteTransformer>() {
+                b.to_config()
+            } else if let Some(b) = config_any.downcast_ref::<crate::blocks::PersistenceTransformer>() {
+                b.to_config()
+            } else if let Some(b) = config_any.downcast_ref::<crate::blocks::PatternPooler>() {
+                b.to_config()
+            } else if let Some(b) = config_any.downcast_ref::<crate::blocks::PatternClassifier>() {
+                b.to_config()
+            } else if let Some(b) = config_any.downcast_ref::<crate::blocks::ContextLearner>() {
+                b.to_config()
+            } else if let Some(b) = config_any.downcast_ref::<crate::blocks::SequenceLearner>() {
+                b.to_config()
+            } else {
+                return Err(GnomicsError::Other("Unknown block type for serialization".into()));
+            };
+
+            block_configs.push(config);
+        }
+
+        // Extract connections by examining block inputs
+        let mut connections = Vec::new();
+        for (target_idx, &target_id) in block_ids.iter().enumerate() {
+            let wrapper = self.blocks.get(&target_id).unwrap();
+            let block_any = wrapper.as_any();
+
+            // Check if block has InputAccess trait
+            if let Some(b) = block_any.downcast_ref::<crate::blocks::PatternPooler>() {
+                let sources = b.input().get_source_blocks();
+                for source_id in sources {
+                    if let Some(&source_idx) = id_to_index.get(&source_id) {
+                        connections.push(ConnectionConfig {
+                            source_block: source_idx,
+                            target_block: target_idx,
+                            input_type: InputType::Input,
+                            offset: 0,
+                        });
+                    }
+                }
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::PatternClassifier>() {
+                let sources = b.input().get_source_blocks();
+                for source_id in sources {
+                    if let Some(&source_idx) = id_to_index.get(&source_id) {
+                        connections.push(ConnectionConfig {
+                            source_block: source_idx,
+                            target_block: target_idx,
+                            input_type: InputType::Input,
+                            offset: 0,
+                        });
+                    }
+                }
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::ContextLearner>() {
+                // Input connections
+                let sources = b.input().get_source_blocks();
+                for source_id in sources {
+                    if let Some(&source_idx) = id_to_index.get(&source_id) {
+                        connections.push(ConnectionConfig {
+                            source_block: source_idx,
+                            target_block: target_idx,
+                            input_type: InputType::Input,
+                            offset: 0,
+                        });
+                    }
+                }
+                // Context connections
+                let ctx_sources = b.context().get_source_blocks();
+                for source_id in ctx_sources {
+                    if let Some(&source_idx) = id_to_index.get(&source_id) {
+                        connections.push(ConnectionConfig {
+                            source_block: source_idx,
+                            target_block: target_idx,
+                            input_type: InputType::Context,
+                            offset: 0,
+                        });
+                    }
+                }
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::SequenceLearner>() {
+                // Input connections only (context is self-feedback, handled separately)
+                let sources = b.input().get_source_blocks();
+                for source_id in sources {
+                    if let Some(&source_idx) = id_to_index.get(&source_id) {
+                        connections.push(ConnectionConfig {
+                            source_block: source_idx,
+                            target_block: target_idx,
+                            input_type: InputType::Input,
+                            offset: 0,
+                        });
+                    }
+                }
+                // Note: SequenceLearner's context self-feedback is handled in from_config()
+            }
+        }
+
+        Ok(NetworkConfig::new(block_configs, connections))
+    }
+
+    /// Import network configuration to create a new network.
+    ///
+    /// Reconstructs a network from a NetworkConfig, creating all blocks
+    /// and restoring the topology.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - NetworkConfig previously exported with `to_config()`
+    ///
+    /// # Returns
+    ///
+    /// A new Network with the same architecture (blocks will have fresh, untrained state).
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use gnomics::{Network, NetworkConfig};
+    /// let json = std::fs::read_to_string("network.json").unwrap();
+    /// let config = NetworkConfig::from_json(&json).unwrap();
+    /// let mut net = Network::from_config(&config).unwrap();
+    /// net.build().unwrap();
+    /// ```
+    pub fn from_config(config: &crate::network_config::NetworkConfig) -> Result<Self> {
+        use crate::network_config::{BlockConfig, InputType};
+        use crate::{InputAccess, ContextAccess};
+
+        let mut net = Network::new();
+        let mut block_ids = Vec::new();
+
+        // Determine which field to use (block_info is new, blocks is deprecated)
+        let block_configs: Vec<&BlockConfig> = if !config.block_info.is_empty() {
+            config.block_info.iter().map(|info| &info.config).collect()
+        } else {
+            config.blocks.iter().collect()
+        };
+
+        // Create all blocks
+        for block_config in &block_configs {
+            let block_id = match block_config {
+                BlockConfig::ScalarTransformer { min_val, max_val, num_s, num_as, num_t, seed } => {
+                    net.add(crate::blocks::ScalarTransformer::new(*min_val, *max_val, *num_s, *num_as, *num_t, *seed))
+                }
+                BlockConfig::DiscreteTransformer { num_v, num_s, num_t, seed } => {
+                    net.add(crate::blocks::DiscreteTransformer::new(*num_v, *num_s, *num_t, *seed))
+                }
+                BlockConfig::PersistenceTransformer { min_val, max_val, num_s, num_as, max_step, num_t, seed } => {
+                    net.add(crate::blocks::PersistenceTransformer::new(*min_val, *max_val, *num_s, *num_as, *max_step, *num_t, *seed))
+                }
+                BlockConfig::PatternPooler { num_s, num_as, perm_thr, perm_inc, perm_dec, pct_pool, pct_conn, pct_learn, always_update, num_t, seed } => {
+                    net.add(crate::blocks::PatternPooler::new(*num_s, *num_as, *perm_thr, *perm_inc, *perm_dec, *pct_pool, *pct_conn, *pct_learn, *always_update, *num_t, *seed))
+                }
+                BlockConfig::PatternClassifier { num_l, num_s, num_as, perm_thr, perm_inc, perm_dec, pct_pool, pct_conn, pct_learn, num_t, seed } => {
+                    net.add(crate::blocks::PatternClassifier::new(*num_l, *num_s, *num_as, *perm_thr, *perm_inc, *perm_dec, *pct_pool, *pct_conn, *pct_learn, *num_t, *seed))
+                }
+                BlockConfig::ContextLearner { num_c, num_spc, num_dps, num_rpd, d_thresh, perm_thr, perm_inc, perm_dec, num_t, always_update, seed } => {
+                    net.add(crate::blocks::ContextLearner::new(*num_c, *num_spc, *num_dps, *num_rpd, *d_thresh, *perm_thr, *perm_inc, *perm_dec, *num_t, *always_update, *seed))
+                }
+                BlockConfig::SequenceLearner { num_c, num_spc, num_dps, num_rpd, d_thresh, perm_thr, perm_inc, perm_dec, num_t, always_update, seed } => {
+                    net.add(crate::blocks::SequenceLearner::new(*num_c, *num_spc, *num_dps, *num_rpd, *d_thresh, *perm_thr, *perm_inc, *perm_dec, *num_t, *always_update, *seed))
+                }
+            };
+            block_ids.push(block_id);
+        }
+
+        // Restore connections
+        for conn in &config.connections {
+            let source_id = block_ids[conn.source_block];
+            let target_id = block_ids[conn.target_block];
+
+            // Get output from source block (needs OutputAccess trait)
+            let output = {
+                let wrapper = net.blocks.get(&source_id).unwrap();
+                let block_any = wrapper.as_any();
+
+                // Try to get output from any block type that has OutputAccess
+                if let Some(b) = block_any.downcast_ref::<crate::blocks::ScalarTransformer>() {
+                    b.output()
+                } else if let Some(b) = block_any.downcast_ref::<crate::blocks::DiscreteTransformer>() {
+                    b.output()
+                } else if let Some(b) = block_any.downcast_ref::<crate::blocks::PersistenceTransformer>() {
+                    b.output()
+                } else if let Some(b) = block_any.downcast_ref::<crate::blocks::PatternPooler>() {
+                    b.output()
+                } else if let Some(b) = block_any.downcast_ref::<crate::blocks::PatternClassifier>() {
+                    b.output()
+                } else if let Some(b) = block_any.downcast_ref::<crate::blocks::ContextLearner>() {
+                    b.output()
+                } else if let Some(b) = block_any.downcast_ref::<crate::blocks::SequenceLearner>() {
+                    b.output()
+                } else {
+                    return Err(GnomicsError::Other("Unknown block type for output access".into()));
+                }
+            };
+
+            // Add child to target block's input
+            let wrapper = net.blocks.get_mut(&target_id).unwrap();
+            let block_any = wrapper.as_any_mut();
+
+            match conn.input_type {
+                InputType::Input => {
+                    if let Some(b) = block_any.downcast_mut::<crate::blocks::PatternPooler>() {
+                        b.input_mut().add_child(output, conn.offset);
+                    } else if let Some(b) = block_any.downcast_mut::<crate::blocks::PatternClassifier>() {
+                        b.input_mut().add_child(output, conn.offset);
+                    } else if let Some(b) = block_any.downcast_mut::<crate::blocks::ContextLearner>() {
+                        b.input_mut().add_child(output, conn.offset);
+                    } else if let Some(b) = block_any.downcast_mut::<crate::blocks::SequenceLearner>() {
+                        b.input_mut().add_child(output, conn.offset);
+                    }
+                }
+                InputType::Context => {
+                    if let Some(b) = block_any.downcast_mut::<crate::blocks::ContextLearner>() {
+                        b.context_mut().add_child(output, conn.offset);
+                    } else if let Some(b) = block_any.downcast_mut::<crate::blocks::SequenceLearner>() {
+                        b.context_mut().add_child(output, conn.offset);
+                    }
+                }
+            }
+        }
+
+        // Handle SequenceLearner self-feedback connections
+        for (idx, &block_config) in block_configs.iter().enumerate() {
+            if matches!(block_config, BlockConfig::SequenceLearner { .. }) {
+                let block_id = block_ids[idx];
+                let output = {
+                    let wrapper = net.blocks.get(&block_id).unwrap();
+                    let block_any = wrapper.as_any();
+                    if let Some(b) = block_any.downcast_ref::<crate::blocks::SequenceLearner>() {
+                        b.output()
+                    } else {
+                        continue;
+                    }
+                };
+
+                let wrapper = net.blocks.get_mut(&block_id).unwrap();
+                let block_any = wrapper.as_any_mut();
+                if let Some(b) = block_any.downcast_mut::<crate::blocks::SequenceLearner>() {
+                    b.context_mut().add_child(output, 1); // PREV time step
+                }
+            }
+        }
+
+        Ok(net)
+    }
+
+    /// Export network configuration with learned state.
+    ///
+    /// This method saves both the architecture (block configurations and topology)
+    /// and the learned state (synaptic permanences) of all blocks. This allows
+    /// you to save trained models and resume training or perform inference later.
+    ///
+    /// # Returns
+    ///
+    /// A NetworkConfig with both configuration and learned state.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use gnomics::{Network, blocks::PatternPooler, Block};
+    /// # let mut net = Network::new();
+    /// # let pooler = net.add(PatternPooler::new(512, 20, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0));
+    /// # net.build().unwrap();
+    /// // Train network...
+    /// // net.execute(true)?;
+    ///
+    /// // Save trained model
+    /// let config = net.to_config_with_state().unwrap();
+    /// let json = config.to_json().unwrap();
+    /// std::fs::write("trained_model.json", json).unwrap();
+    /// ```
+    pub fn to_config_with_state(&self) -> Result<crate::network_config::NetworkConfig> {
+        use crate::network_config::BlockStateful;
+
+        // First, get the base configuration
+        let mut config = self.to_config()?;
+
+        // Create ordered list of block IDs (same as in to_config)
+        let mut block_ids: Vec<BlockId> = self.blocks.keys().copied().collect();
+        block_ids.sort_by_key(|id| id.0);
+
+        // Extract learned state from each block
+        let mut states = Vec::new();
+        for &block_id in &block_ids {
+            let wrapper = self.blocks.get(&block_id).unwrap();
+            let block_any = wrapper.as_any();
+
+            // Try each block type and call to_state()
+            let state = if let Some(b) = block_any.downcast_ref::<crate::blocks::ScalarTransformer>() {
+                b.to_state()?
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::DiscreteTransformer>() {
+                b.to_state()?
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::PersistenceTransformer>() {
+                b.to_state()?
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::PatternPooler>() {
+                b.to_state()?
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::PatternClassifier>() {
+                b.to_state()?
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::ContextLearner>() {
+                b.to_state()?
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::SequenceLearner>() {
+                b.to_state()?
+            } else {
+                return Err(GnomicsError::Other("Unknown block type for state export".into()));
+            };
+
+            states.push(state);
+        }
+
+        // Add learned state to configuration
+        config.learned_state = Some(states);
+
+        Ok(config)
+    }
+
+    /// Import network configuration with learned state (fully automated).
+    ///
+    /// Reconstructs a network from a NetworkConfig and restores the learned
+    /// state (synaptic permanences) of all blocks. This method automatically handles:
+    /// 1. Creating all blocks from configuration
+    /// 2. Building the network (establishing execution order)
+    /// 3. Initializing learning blocks (allocating memory structures)
+    /// 4. Restoring learned state into initialized blocks
+    ///
+    /// The returned network is fully initialized and ready for immediate use.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - NetworkConfig with learned state, previously exported with `to_config_with_state()`
+    ///
+    /// # Returns
+    ///
+    /// A new Network with the same architecture and learned state, fully initialized.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use gnomics::{Network, NetworkConfig};
+    /// // Load trained model
+    /// let json = std::fs::read_to_string("trained_model.json").unwrap();
+    /// let config = NetworkConfig::from_json(&json).unwrap();
+    /// let mut net = Network::from_config_with_state(&config).unwrap();
+    ///
+    /// // Ready to use immediately - no manual build/init needed!
+    /// net.execute(false)?;  // Inference with trained weights
+    /// ```
+    pub fn from_config_with_state(config: &crate::network_config::NetworkConfig) -> Result<Self> {
+        use crate::network_config::BlockStateful;
+
+        // Step 1: Create the network from configuration
+        let mut net = Self::from_config(config)?;
+
+        // Step 2: Build the network (establish execution order)
+        net.build()?;
+
+        // Step 3: Initialize learning blocks (must be done before restoring state)
+        // This allocates memory structures that will receive the learned state
+        let block_ids: Vec<BlockId> = net.blocks.keys().copied().collect();
+        for &block_id in &block_ids {
+            let wrapper = net.blocks.get_mut(&block_id).unwrap();
+            let block_any = wrapper.as_any_mut();
+
+            // Initialize blocks that have memory (learning blocks)
+            if let Some(b) = block_any.downcast_mut::<crate::blocks::PatternPooler>() {
+                b.init()?;
+            } else if let Some(b) = block_any.downcast_mut::<crate::blocks::PatternClassifier>() {
+                b.init()?;
+            } else if let Some(b) = block_any.downcast_mut::<crate::blocks::ContextLearner>() {
+                b.init()?;
+            } else if let Some(b) = block_any.downcast_mut::<crate::blocks::SequenceLearner>() {
+                b.init()?;
+            }
+        }
+
+        // Step 4: Restore learned state (if present)
+        if let Some(states) = &config.learned_state {
+            // Create ordered list of block IDs (same as in to_config)
+            let mut sorted_ids: Vec<BlockId> = net.blocks.keys().copied().collect();
+            sorted_ids.sort_by_key(|id| id.as_usize());
+
+            // Verify we have the right number of states
+            if states.len() != sorted_ids.len() {
+                return Err(GnomicsError::Other(
+                    format!("State count mismatch: {} states for {} blocks",
+                            states.len(), sorted_ids.len()).into()
+                ));
+            }
+
+            // Restore learned state to each block
+            for (idx, &block_id) in sorted_ids.iter().enumerate() {
+                let state = &states[idx];
+                let wrapper = net.blocks.get_mut(&block_id).unwrap();
+                let block_any = wrapper.as_any_mut();
+
+                // Try each block type and call from_state()
+                if let Some(b) = block_any.downcast_mut::<crate::blocks::ScalarTransformer>() {
+                    b.from_state(state)?;
+                } else if let Some(b) = block_any.downcast_mut::<crate::blocks::DiscreteTransformer>() {
+                    b.from_state(state)?;
+                } else if let Some(b) = block_any.downcast_mut::<crate::blocks::PersistenceTransformer>() {
+                    b.from_state(state)?;
+                } else if let Some(b) = block_any.downcast_mut::<crate::blocks::PatternPooler>() {
+                    b.from_state(state)?;
+                } else if let Some(b) = block_any.downcast_mut::<crate::blocks::PatternClassifier>() {
+                    b.from_state(state)?;
+                } else if let Some(b) = block_any.downcast_mut::<crate::blocks::ContextLearner>() {
+                    b.from_state(state)?;
+                } else if let Some(b) = block_any.downcast_mut::<crate::blocks::SequenceLearner>() {
+                    b.from_state(state)?;
+                } else {
+                    return Err(GnomicsError::Other("Unknown block type for state import".into()));
+                }
+            }
+        }
+
+        Ok(net)
     }
 }
 

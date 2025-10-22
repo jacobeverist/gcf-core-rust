@@ -31,6 +31,8 @@ pub struct BlockBase {
     init_flag: bool,
     /// Seeded random number generator (MT19937 equivalent)
     rng: StdRng,
+    /// Seed used to create the RNG (for serialization)
+    seed: u64,
 }
 
 impl BlockBase {
@@ -59,6 +61,7 @@ impl BlockBase {
             id: NEXT_ID.fetch_add(1, Ordering::SeqCst),
             init_flag: false,
             rng: StdRng::seed_from_u64(seed),
+            seed,
         }
     }
 
@@ -66,6 +69,12 @@ impl BlockBase {
     #[inline]
     pub fn id(&self) -> u32 {
         self.id
+    }
+
+    /// Get the RNG seed.
+    #[inline]
+    pub fn seed(&self) -> u64 {
+        self.seed
     }
 
     /// Check if block has been initialized.

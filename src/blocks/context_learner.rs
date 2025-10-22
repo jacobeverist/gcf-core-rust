@@ -546,6 +546,46 @@ impl OutputAccess for ContextLearner {
     }
 }
 
+impl crate::network_config::BlockConfigurable for ContextLearner {
+    fn to_config(&self) -> crate::network_config::BlockConfig {
+        crate::network_config::BlockConfig::ContextLearner {
+            num_c: self.num_c,
+            num_spc: self.num_spc,
+            num_dps: self.num_dps,
+            num_rpd: self.num_rpd,
+            d_thresh: self.d_thresh,
+            perm_thr: self.perm_thr,
+            perm_inc: self.perm_inc,
+            perm_dec: self.perm_dec,
+            num_t: self.num_t,
+            always_update: self.always_update,
+            seed: self.base().seed(),
+        }
+    }
+
+    fn block_type_name(&self) -> &'static str {
+        "ContextLearner"
+    }
+}
+
+impl crate::network_config::BlockStateful for ContextLearner {
+    fn to_state(&self) -> crate::Result<crate::network_config::BlockState> {
+        let permanences = self.memory.get_all_permanences();
+        Ok(crate::network_config::BlockState::ContextLearner { permanences })
+    }
+
+    fn from_state(&mut self, state: &crate::network_config::BlockState) -> crate::Result<()> {
+        if let crate::network_config::BlockState::ContextLearner { permanences } = state {
+            self.memory.set_all_permanences(permanences)?;
+            Ok(())
+        } else {
+            Err(crate::GnomicsError::Other(
+                "Wrong state type for ContextLearner".into(),
+            ))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

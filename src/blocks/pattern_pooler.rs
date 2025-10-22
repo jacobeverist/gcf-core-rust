@@ -335,3 +335,43 @@ impl OutputAccess for PatternPooler {
         Rc::clone(&self.output)
     }
 }
+
+impl crate::network_config::BlockConfigurable for PatternPooler {
+    fn to_config(&self) -> crate::network_config::BlockConfig {
+        crate::network_config::BlockConfig::PatternPooler {
+            num_s: self.num_s,
+            num_as: self.num_as,
+            perm_thr: self.perm_thr,
+            perm_inc: self.perm_inc,
+            perm_dec: self.perm_dec,
+            pct_pool: self.pct_pool,
+            pct_conn: self.pct_conn,
+            pct_learn: self.pct_learn,
+            always_update: self.always_update,
+            num_t: self.num_t,
+            seed: self.base().seed(),
+        }
+    }
+
+    fn block_type_name(&self) -> &'static str {
+        "PatternPooler"
+    }
+}
+
+impl crate::network_config::BlockStateful for PatternPooler {
+    fn to_state(&self) -> crate::Result<crate::network_config::BlockState> {
+        let permanences = self.memory.get_all_permanences();
+        Ok(crate::network_config::BlockState::PatternPooler { permanences })
+    }
+
+    fn from_state(&mut self, state: &crate::network_config::BlockState) -> crate::Result<()> {
+        if let crate::network_config::BlockState::PatternPooler { permanences } = state {
+            self.memory.set_all_permanences(permanences)?;
+            Ok(())
+        } else {
+            Err(crate::GnomicsError::Other(
+                "Wrong state type for PatternPooler".into(),
+            ))
+        }
+    }
+}

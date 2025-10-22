@@ -19,7 +19,8 @@
       "Bash(for file in context_learner.rs sequence_learner.rs)",
       "Bash(for:*)",
       "Bash(head:*)",
-      "Bash(do echo \"=== $file ===\")"
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(cargo run:*)"
     ],
     "deny": [],
     "ask": []

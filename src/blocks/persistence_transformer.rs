@@ -314,6 +314,35 @@ impl BlockBaseAccess for PersistenceTransformer {
     }
 }
 
+impl crate::network_config::BlockConfigurable for PersistenceTransformer {
+    fn to_config(&self) -> crate::network_config::BlockConfig {
+        crate::network_config::BlockConfig::PersistenceTransformer {
+            min_val: self.min_val,
+            max_val: self.max_val,
+            num_s: self.num_s,
+            num_as: self.num_as,
+            max_step: self.max_step,
+            num_t: self.output.borrow().num_t(),
+            seed: self.base().seed(),
+        }
+    }
+
+    fn block_type_name(&self) -> &'static str {
+        "PersistenceTransformer"
+    }
+}
+
+impl crate::network_config::BlockStateful for PersistenceTransformer {
+    fn to_state(&self) -> crate::Result<crate::network_config::BlockState> {
+        Ok(crate::network_config::BlockState::NoState)
+    }
+
+    fn from_state(&mut self, _state: &crate::network_config::BlockState) -> crate::Result<()> {
+        // Transformers have no learned state
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
