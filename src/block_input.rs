@@ -299,6 +299,21 @@ impl BlockInput {
         self.id
     }
 
+    /// Get the source block IDs of all children.
+    ///
+    /// Used by Network::build() to automatically discover dependencies.
+    /// Returns only those children that have a source_block_id set.
+    ///
+    /// # Returns
+    ///
+    /// Vector of BlockIds from children that have been added to a Network.
+    pub fn get_source_blocks(&self) -> Vec<crate::network::BlockId> {
+        self.children
+            .iter()
+            .filter_map(|child| child.borrow().source_block_id())
+            .collect()
+    }
+
     /// Estimate memory usage in bytes.
     pub fn memory_usage(&self) -> usize {
         let mut bytes = std::mem::size_of::<Self>();

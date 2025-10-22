@@ -5,10 +5,10 @@
 //!
 //! # Features
 //!
+//! - Automatic dependency discovery from block connections
 //! - Automatic execution order via topological sort
 //! - Cycle detection
 //! - Type-safe block access
-//! - Manual or automatic dependency tracking
 //!
 //! # Example
 //!
@@ -26,25 +26,22 @@
 //! let encoder = net.add(ScalarTransformer::new(0.0, 100.0, 2048, 256, 2, 0));
 //! let pooler = net.add(PatternPooler::new(1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0));
 //!
-//! // Connect blocks
-//! net.connect(encoder, pooler)?;
-//!
 //! // Connect outputs to inputs
 //! let enc_out = net.get::<ScalarTransformer>(encoder)?.output();
 //! net.get_mut::<PatternPooler>(pooler)?.input_mut().add_child(enc_out, 0);
 //!
-//! // Build execution plan
+//! // Build execution plan (auto-discovers dependencies)
 //! net.build()?;
 //! net.get_mut::<PatternPooler>(pooler)?.init()?;
 //!
-//! // Execute all blocks in dependency order
+//! // Execute all blocks in correct dependency order
 //! net.get_mut::<ScalarTransformer>(encoder)?.set_value(42.0);
 //! net.execute(false)?;
 //! # Ok(())
 //! # }
 //! ```
 
-use crate::{Block, GnomicsError, Result};
+use crate::{Block, GnomicsError, OutputAccess, Result};
 use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 
@@ -183,23 +180,27 @@ impl Network {
     /// let mut net = Network::new();
     /// let encoder_id = net.add(ScalarTransformer::new(0.0, 100.0, 2048, 256, 2, 0));
     /// ```
-    pub fn add<B: Block + 'static>(&mut self, block: B) -> BlockId {
+    pub fn add<B: Block + OutputAccess + 'static>(&mut self, block: B) -> BlockId {
         let id = BlockId::new();
+
+        // Set source block ID on the output for auto-discovery
+        block.output().borrow_mut().set_source_block_id(id);
+
         self.blocks.insert(id, BlockWrapper::new(id, block));
         self.dependencies.insert(id, Vec::new());
         self.is_built = false;
         id
     }
 
-    /// Connect two blocks by establishing a dependency.
+    /// Manually specify a dependency between two blocks.
     ///
-    /// This creates a dependency: `source` must execute before `dest`.
-    /// The actual connection of outputs to inputs must still be done manually
-    /// using the block's InputAccess trait.
+    /// **Note**: As of Phase 2, this method is optional. Dependencies are automatically
+    /// discovered from block connections when `build()` is called. This method is kept
+    /// for backwards compatibility and explicit dependency specification.
     ///
     /// # Arguments
     ///
-    /// * `source` - The source block (must execute first)
+    /// * `source` - The source block (must execute before dest)
     /// * `dest` - The destination block (depends on source)
     ///
     /// # Errors
@@ -209,6 +210,7 @@ impl Network {
     /// # Examples
     ///
     /// ```ignore
+    /// // Optional: dependencies are auto-discovered from connections
     /// net.connect(encoder_id, pooler_id)?;
     /// ```
     pub fn connect(&mut self, source: BlockId, dest: BlockId) -> Result<()> {
@@ -230,9 +232,10 @@ impl Network {
 
     /// Build the execution plan by computing topological sort.
     ///
-    /// This analyzes the dependency graph and computes the correct execution
-    /// order. Must be called after adding all blocks and connections, and
-    /// before calling `execute()`.
+    /// This analyzes the dependency graph by auto-discovering dependencies
+    /// from block inputs and computes the correct execution order.
+    /// Must be called after adding all blocks and connecting inputs/outputs,
+    /// and before calling `execute()`.
     ///
     /// # Errors
     ///
@@ -245,10 +248,14 @@ impl Network {
     /// ```ignore
     /// net.add(encoder);
     /// net.add(pooler);
-    /// net.connect(encoder, pooler)?;
-    /// net.build()?;  // Compute execution order
+    /// // Connect outputs to inputs
+    /// net.get_mut::<PatternPooler>(pooler)?.input_mut().add_child(encoder_out, 0);
+    /// net.build()?;  // Auto-discover dependencies and compute execution order
     /// ```
     pub fn build(&mut self) -> Result<()> {
+        // Auto-discover dependencies from block inputs
+        self.discover_dependencies();
+
         self.execution_order = self.topological_sort()?;
         self.is_built = true;
         Ok(())
@@ -364,6 +371,34 @@ impl Network {
     /// Check if the network has been built.
     pub fn is_built(&self) -> bool {
         self.is_built
+    }
+
+    /// Auto-discover dependencies from block inputs.
+    ///
+    /// Calls get_dependencies() on each block to find which other blocks
+    /// they depend on by checking source_block_id of their input children.
+    ///
+    /// Merges auto-discovered dependencies with manually set ones.
+    fn discover_dependencies(&mut self) {
+        // Discover dependencies from each block
+        let block_ids: Vec<BlockId> = self.blocks.keys().copied().collect();
+
+        for &block_id in &block_ids {
+            let wrapper = self.blocks.get(&block_id).unwrap();
+            let auto_discovered = wrapper.block().get_dependencies();
+
+            // Merge with existing manual dependencies (if any)
+            if !auto_discovered.is_empty() {
+                let deps = self.dependencies.entry(block_id).or_insert_with(Vec::new);
+
+                // Add auto-discovered dependencies, avoiding duplicates
+                for source in auto_discovered {
+                    if !deps.contains(&source) {
+                        deps.push(source);
+                    }
+                }
+            }
+        }
     }
 
     /// Compute topological sort of the dependency graph.

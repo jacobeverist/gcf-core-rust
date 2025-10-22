@@ -507,6 +507,12 @@ impl Block for SequenceLearner {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
+
+    fn get_dependencies(&self) -> Vec<crate::network::BlockId> {
+        // Note: SequenceLearner has self-feedback, so context points to its own output
+        // We only return input dependencies (external blocks), not self-dependencies
+        self.input.get_source_blocks()
+    }
 }
 
 impl BlockBaseAccess for SequenceLearner {

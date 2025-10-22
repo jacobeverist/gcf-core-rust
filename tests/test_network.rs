@@ -8,7 +8,7 @@
 
 use gnomics::{
     blocks::{DiscreteTransformer, PatternClassifier, PatternPooler, ScalarTransformer},
-    Block, BlockId, InputAccess, Network, OutputAccess, Result,
+    Block, InputAccess, Network, OutputAccess, Result,
 };
 
 #[test]
@@ -21,10 +21,7 @@ fn test_network_simple_pipeline() -> Result<()> {
         1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0,
     ));
 
-    // Connect blocks
-    net.connect(encoder, pooler)?;
-
-    // Connect outputs to inputs manually
+    // Connect outputs to inputs (dependencies auto-discovered)
     {
         let enc_out = net.get::<ScalarTransformer>(encoder)?.output();
         net.get_mut::<PatternPooler>(pooler)?
@@ -60,11 +57,7 @@ fn test_network_three_stage_pipeline() -> Result<()> {
         3, 1023, 20, 20, 2, 1, 0.8, 0.5, 0.3, 2, 0,  // 1023 is divisible by 3
     ));
 
-    // Set up dependencies
-    net.connect(encoder, pooler)?;
-    net.connect(pooler, classifier)?;
-
-    // Connect blocks manually
+    // Connect outputs to inputs (dependencies auto-discovered)
     {
         let enc_out = net.get::<ScalarTransformer>(encoder)?.output();
         net.get_mut::<PatternPooler>(pooler)?
@@ -127,11 +120,7 @@ fn test_network_multiple_inputs() -> Result<()> {
         1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0,
     ));
 
-    // Both encoders feed pooler
-    net.connect(encoder1, pooler)?;
-    net.connect(encoder2, pooler)?;
-
-    // Connect outputs to inputs
+    // Connect outputs to inputs (dependencies auto-discovered)
     {
         let enc1_out = net.get::<ScalarTransformer>(encoder1)?.output();
         let enc2_out = net.get::<ScalarTransformer>(encoder2)?.output();
@@ -184,13 +173,7 @@ fn test_network_diamond_dependency() -> Result<()> {
         2, 1024, 20, 20, 2, 1, 0.8, 0.5, 0.3, 2, 0,
     ));
 
-    // Set up dependencies
-    net.connect(encoder, pooler1)?;
-    net.connect(encoder, pooler2)?;
-    net.connect(pooler1, classifier)?;
-    net.connect(pooler2, classifier)?;
-
-    // Connect blocks
+    // Connect outputs to inputs (dependencies auto-discovered)
     {
         let enc_out = net.get::<ScalarTransformer>(encoder)?.output();
 
@@ -244,12 +227,18 @@ fn test_network_diamond_dependency() -> Result<()> {
 fn test_network_cycle_detection() {
     let mut net = Network::new();
 
-    let block1 = net.add(ScalarTransformer::new(0.0, 10.0, 1024, 128, 2, 0));
-    let block2 = net.add(ScalarTransformer::new(0.0, 10.0, 1024, 128, 2, 1));
+    // Create two poolers that feed into each other (cycle)
+    let pooler1 = net.add(PatternPooler::new(512, 20, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0));
+    let pooler2 = net.add(PatternPooler::new(512, 20, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 1));
 
-    // Create cycle
-    net.connect(block1, block2).unwrap();
-    net.connect(block2, block1).unwrap();
+    // Create cycle: pooler1 depends on pooler2, pooler2 depends on pooler1
+    {
+        let out1 = net.get::<PatternPooler>(pooler1).unwrap().output();
+        let out2 = net.get::<PatternPooler>(pooler2).unwrap().output();
+
+        net.get_mut::<PatternPooler>(pooler1).unwrap().input_mut().add_child(out2, 0);
+        net.get_mut::<PatternPooler>(pooler2).unwrap().input_mut().add_child(out1, 0);
+    }
 
     // Should fail with cycle detection
     let result = net.build();
@@ -306,8 +295,7 @@ fn test_network_training_loop() -> Result<()> {
         1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 0,
     ));
 
-    net.connect(encoder, pooler)?;
-
+    // Connect outputs to inputs (dependencies auto-discovered)
     {
         let enc_out = net.get::<DiscreteTransformer>(encoder)?.output();
         net.get_mut::<PatternPooler>(pooler)?

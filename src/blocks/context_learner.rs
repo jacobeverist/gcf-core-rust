@@ -492,6 +492,12 @@ impl Block for ContextLearner {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
+
+    fn get_dependencies(&self) -> Vec<crate::network::BlockId> {
+        let mut deps = self.input.get_source_blocks();
+        deps.extend(self.context.get_source_blocks());
+        deps
+    }
 }
 
 impl BlockBaseAccess for ContextLearner {

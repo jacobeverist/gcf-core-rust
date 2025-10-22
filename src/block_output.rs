@@ -44,6 +44,7 @@
 //! ```
 
 use crate::bitfield::BitField;
+use crate::network::BlockId;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -90,6 +91,9 @@ pub struct BlockOutput {
 
     /// Unique output ID (for debugging)
     id: u32,
+
+    /// Source block ID (for automatic dependency tracking in Network)
+    source_block_id: Option<BlockId>,
 }
 
 impl BlockOutput {
@@ -106,6 +110,7 @@ impl BlockOutput {
             changed_flag: false,
             curr_idx: 0,
             id: NEXT_ID.fetch_add(1, Ordering::SeqCst),
+            source_block_id: None,
         }
     }
 
@@ -299,6 +304,22 @@ impl BlockOutput {
     #[inline]
     pub fn id(&self) -> u32 {
         self.id
+    }
+
+    /// Set the source block ID for automatic dependency tracking.
+    ///
+    /// Called by Network::add() to associate this output with its source block.
+    #[inline]
+    pub fn set_source_block_id(&mut self, block_id: BlockId) {
+        self.source_block_id = Some(block_id);
+    }
+
+    /// Get the source block ID if set.
+    ///
+    /// Returns None if this output hasn't been added to a Network yet.
+    #[inline]
+    pub fn source_block_id(&self) -> Option<BlockId> {
+        self.source_block_id
     }
 
     /// Estimate memory usage in bytes.

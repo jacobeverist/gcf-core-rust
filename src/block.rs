@@ -120,6 +120,17 @@ pub trait Block {
     /// This allows Network to downcast trait objects back to concrete types.
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
+    /// Get the source block IDs that this block depends on.
+    ///
+    /// Returns a vector of BlockIds from blocks whose outputs are connected
+    /// to this block's inputs. Used by Network for automatic dependency discovery.
+    ///
+    /// Default implementation returns empty vector (no dependencies).
+    /// Blocks with inputs should override this.
+    fn get_dependencies(&self) -> Vec<crate::network::BlockId> {
+        Vec::new()
+    }
+
     /// Execute the block's computation pipeline.
     ///
     /// Executes the full forward computation pipeline:

@@ -459,6 +459,10 @@ impl Block for PatternClassifier {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
+
+    fn get_dependencies(&self) -> Vec<crate::network::BlockId> {
+        self.input.get_source_blocks()
+    }
 }
 
 impl BlockBaseAccess for PatternClassifier {
