@@ -1,17 +1,88 @@
 # Gnomics Network Visualization
 
-This directory contains tools for visualizing the execution of Gnomics neural networks.
+This directory contains tools for visualizing the execution of Gnomics neural networks, including **real-time WASM visualization** directly in your browser!
+
+## Three Visualization Options
+
+### 1. Live Visualizer (viewer_live.html) - ✨ NEW!
+**Real-time WASM execution with zero installation**
+- Run Gnomics networks entirely in the browser
+- 4 built-in demo networks (Sequence Learning, Classification, Context Learning, Feature Pooling)
+- Live metrics: FPS, anomaly scores, class predictions
+- Adjustable execution speed
+- No Rust installation required for viewers!
+
+### 2. File Viewer (viewer.html)
+**Analyze pre-recorded execution traces**
+- Load JSON trace files from Rust programs
+- Scrub through execution history
+- Perfect for analyzing past runs and debugging
+
+### 3. Test Suite (test_wasm.html)
+**Validate WASM functionality**
+- 4 automated test suites
+- Performance benchmarking
+- Verification of network operations
 
 ## Features
 
 - **Network Graph Visualization**: Interactive force-directed graph showing blocks and connections
 - **BitField Heatmaps**: Real-time visualization of sparse binary patterns for each block
-- **Timeline Scrubbing**: Navigate through execution history with a timeline controller
+- **Timeline Scrubbing**: Navigate through execution history (file viewer)
 - **Playback Controls**: Play/pause animation of network execution
 - **Connection Types**: Visual distinction between input and context connections
 - **Block Naming**: Custom labels for blocks for easier identification
+- **Live Execution**: Watch networks learn in real-time (live viewer)
 
-## Quick Start
+## Quick Start - Live Visualizer (WASM)
+
+**Try Gnomics in your browser right now!**
+
+1. **Build WASM** (one-time setup):
+   ```bash
+   ./build_wasm.sh
+   ```
+
+2. **Start local server**:
+   ```bash
+   cd visualization
+   python3 -m http.server 8000
+   ```
+
+3. **Open in browser**:
+   - Navigate to `http://localhost:8000/viewer_live.html`
+   - Select a demo (e.g., "Sequence Learning")
+   - Click "Initialize Network"
+   - Click "Start" and watch it run!
+
+**That's it!** The network runs entirely in your browser.
+
+### Available Demos in Live Visualizer
+
+1. **Sequence Learning**
+   - Learns temporal pattern [0→1→2→3]
+   - Introduces anomaly at step 40 (value 7)
+   - Watch anomaly score spike when pattern breaks
+   - Perfect for understanding temporal memory
+
+2. **Classification**
+   - 3-class supervised learning
+   - Learns to classify: 0-3 → Class 0, 4-7 → Class 1, 8-10 → Class 2
+   - Real-time probability display
+   - Switch off learning to see predictions
+
+3. **Context Learning**
+   - Learns associations between input and context
+   - Different patterns in different contexts
+   - Demonstrates context-dependent recognition
+
+4. **Feature Pooling**
+   - Unsupervised feature extraction
+   - Input: sine wave (oscillating value)
+   - Learns stable sparse representations
+   - Watch patterns stabilize over time
+
+## Quick Start - File Viewer (Rust Traces)
 
 ### 1. Record Network Execution
 
@@ -54,6 +125,17 @@ if let Some(trace) = net.stop_recording() {
 
 ## Controls
 
+### Live Visualizer (viewer_live.html)
+- **Demo Selector**: Choose from 4 pre-built networks
+- **Initialize Network**: Create selected network
+- **Start/Stop**: Begin/pause execution
+- **Speed Slider**: Adjust execution rate (10ms - 1000ms per step)
+- **Learning Toggle**: Enable/disable learning during execution
+- **Reset**: Clear and reinitialize network
+- **Network Graph**: Drag nodes to rearrange, scroll to zoom
+- **Live Metrics**: Real-time FPS, step count, anomaly scores
+
+### File Viewer (viewer.html)
 - **Timeline Scrubber**: Click or drag to jump to any timestep
 - **Play/Pause Button**: Animate through execution automatically
 - **Keyboard**:

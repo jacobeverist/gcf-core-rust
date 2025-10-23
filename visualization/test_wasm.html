@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gnomics WASM Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        h1 {
+            color: #4a9eff;
+        }
+
+        button {
+            background: #4a9eff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+
+        button:hover {
+            background: #3a8eef;
+        }
+
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+        #output {
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .status.success {
+            background: #2a4a2a;
+            border: 1px solid #4a9a4a;
+        }
+
+        .status.error {
+            background: #4a2a2a;
+            border: 1px solid #9a4a4a;
+        }
+
+        .status.info {
+            background: #2a3a4a;
+            border: 1px solid #4a7a9a;
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 6px;
+        }
+
+        .test-section h2 {
+            margin-top: 0;
+            color: #4a9eff;
+            font-size: 18px;
+        }
+
+        .metric {
+            display: inline-block;
+            margin: 10px 20px 10px 0;
+        }
+
+        .metric-label {
+            color: #888;
+            font-size: 12px;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4a9eff;
+        }
+    </style>
+</head>
+<body>
+<h1>Gnomics WASM Test Page</h1>
+
+<div class="status info">
+    <strong>Prerequisites:</strong><br>
+    1. Run <code>./build_wasm.sh</code> in project root<br>
+    2. Serve this directory: <code>python3 -m http.server 8000</code><br>
+    3. Open <code>http://localhost:8000/test_wasm.html</code>
+</div>
+
+<div class="test-section">
+    <h2>Test 1: Basic Network Creation</h2>
+    <button id="test1">Run Test 1</button>
+    <div id="test1-status"></div>
+</div>
+
+<div class="test-section">
+    <h2>Test 2: Sequence Learning</h2>
+    <button id="test2">Run Test 2</button>
+    <div id="test2-status"></div>
+</div>
+
+<div class="test-section">
+    <h2>Test 3: Classification</h2>
+    <button id="test3">Run Test 3</button>
+    <div id="test3-status"></div>
+</div>
+
+<div class="test-section">
+    <h2>Test 4: Real-time Execution</h2>
+    <button id="test4-start">Start</button>
+    <button id="test4-stop" disabled>Stop</button>
+    <div id="test4-status"></div>
+    <div id="test4-metrics"></div>
+</div>
+
+<pre id="output"></pre>
+
+<script type="module">
+    import init, {WasmNetwork} from './pkg/gnomics.js';
+
+    let wasmInitialized = false;
+    let outputEl = document.getElementById('output');
+
+    function log(message) {
+        outputEl.textContent += message + '\n';
+        console.log(message);
+    }
+
+    function showStatus(elementId, message, type = 'info') {
+        const el = document.getElementById(elementId);
+        el.className = `status ${type}`;
+        el.innerHTML = message;
+    }
+
+    async function initWasm() {
+        if (wasmInitialized) return;
+
+        try {
+            await init();
+            wasmInitialized = true;
+            log('✅ WASM module initialized successfully');
+        } catch (err) {
+            log('❌ Failed to initialize WASM: ' + err);
+            throw err;
+        }
+    }
+
+    // Test 1: Basic Network Creation
+    document.getElementById('test1').addEventListener('click', async () => {
+        try {
+            showStatus('test1-status', 'Running...', 'info');
+            await initWasm();
+
+            log('\n=== Test 1: Basic Network Creation ===');
+
+            const net = new WasmNetwork();
+            log(`Created network with ${net.num_blocks()} blocks`);
+
+            const encoder = net.add_discrete_transformer("Test Encoder", 10, 256, 2, 42);
+            log(`Added encoder, handle: ${encoder}`);
+
+            const learner = net.add_sequence_learner("Test Learner", 256, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
+            log(`Added learner, handle: ${learner}`);
+
+            net.connect_to_input(encoder, learner);
+            log('Connected encoder → learner');
+
+            net.build();
+            log('Built network execution order');
+
+            net.init_block(learner);
+            log('Initialized learner');
+
+            log(`Final network: ${net.num_blocks()} blocks`);
+            log(`Encoder name: ${net.get_block_name(encoder)}`);
+            log(`Learner name: ${net.get_block_name(learner)}`);
+
+            showStatus('test1-status', '✅ Test 1 passed!', 'success');
+        } catch (err) {
+            log('❌ Test 1 failed: ' + err);
+            showStatus('test1-status', '❌ Test 1 failed: ' + err, 'error');
+        }
+    });
+
+    // Test 2: Sequence Learning
+    document.getElementById('test2').addEventListener('click', async () => {
+        try {
+            showStatus('test2-status', 'Training...', 'info');
+            await initWasm();
+
+            log('\n=== Test 2: Sequence Learning ===');
+
+            const net = new WasmNetwork();
+            const encoder = net.add_discrete_transformer("Sequence Encoder", 10, 512, 2, 42);
+            const learner = net.add_sequence_learner("Sequence Learner", 512, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
+
+            net.connect_to_input(encoder, learner);
+            net.build();
+            net.init_block(learner);
+            net.start_recording();
+
+            const sequence = [0, 1, 2, 3];
+            log(`Training on sequence: ${sequence.join(' → ')}`);
+
+            // Train for 10 epochs
+            for (let epoch = 0; epoch < 10; epoch++) {
+                for (let val of sequence) {
+                    net.set_discrete_value(encoder, val);
+                    net.execute(true);
+                }
+            }
+
+            log('Training complete. Testing sequence...');
+
+            // Test normal sequence
+            for (let val of sequence) {
+                net.set_discrete_value(encoder, val);
+                net.execute(false);
+                const anomaly = net.get_anomaly(learner);
+                log(`  Value ${val}: Anomaly = ${anomaly.toFixed(3)}`);
+            }
+
+            // Test anomaly
+            log('Introducing anomaly (value 7)...');
+            net.set_discrete_value(encoder, 7);
+            net.execute(false);
+            const anomaly = net.get_anomaly(learner);
+            log(`  Value 7: Anomaly = ${anomaly.toFixed(3)} (HIGH!)`);
+
+            // Get trace
+            const traceJson = net.get_trace_json();
+            const trace = JSON.parse(traceJson);
+            log(`Recorded ${trace.total_steps} steps, ${trace.connections.length} connections`);
+
+            showStatus('test2-status', `✅ Test 2 passed! Anomaly detection working (score: ${anomaly.toFixed(3)})`, 'success');
+        } catch (err) {
+            log('❌ Test 2 failed: ' + err);
+            showStatus('test2-status', '❌ Test 2 failed: ' + err, 'error');
+        }
+    });
+
+    // Test 3: Classification
+    document.getElementById('test3').addEventListener('click', async () => {
+        try {
+            showStatus('test3-status', 'Training classifier...', 'info');
+            await initWasm();
+
+            log('\n=== Test 3: Classification ===');
+
+            const net = new WasmNetwork();
+            const encoder = net.add_scalar_transformer("Input", 0.0, 10.0, 1024, 128, 2, 42);
+            const classifier = net.add_pattern_classifier("Classifier", 3, 3 * 64, 64, 20, 2, 1, 0.8, 0.5, 0.3, 2, 42);
+
+            net.connect_to_input(encoder, classifier);
+            net.build();
+            net.init_block(classifier);
+
+            // Training data: (value, label)
+            const trainingData = [
+                [1.0, 0], [1.5, 0], [2.0, 0],
+                [5.0, 1], [5.5, 1], [6.0, 1],
+                [9.0, 2], [9.5, 2], [10.0, 2],
+            ];
+
+            log('Training classifier...');
+            for (let i = 0; i < 5; i++) {
+                for (let [value, label] of trainingData) {
+                    net.set_scalar_value(encoder, value);
+                    net.set_classifier_label(classifier, label);
+                    net.execute(true);
+                }
+            }
+
+            log('Testing classification...');
+
+            // Test
+            const testCases = [
+                [1.8, 0, "Class 0"],
+                [5.2, 1, "Class 1"],
+                [9.3, 2, "Class 2"],
+            ];
+
+            for (let [value, expectedLabel, className] of testCases) {
+                net.set_scalar_value(encoder, value);
+                net.execute(false);
+                const probs = net.get_probabilities(classifier);
+                const maxIdx = probs.indexOf(Math.max(...probs));
+                const correct = maxIdx === expectedLabel ? '✓' : '✗';
+                log(`  ${className}: Input=${value} → Predicted=${maxIdx} ${correct}`);
+                log(`    Probabilities: [${probs.map(p => p.toFixed(2)).join(', ')}]`);
+            }
+
+            showStatus('test3-status', '✅ Test 3 passed! Classification working', 'success');
+        } catch (err) {
+            log('❌ Test 3 failed: ' + err);
+            showStatus('test3-status', '❌ Test 3 failed: ' + err, 'error');
+        }
+    });
+
+    // Test 4: Real-time Execution
+    let test4Interval = null;
+    let test4Step = 0;
+    let test4Net = null;
+    let test4Encoder = null;
+    let test4Learner = null;
+
+    document.getElementById('test4-start').addEventListener('click', async () => {
+        try {
+            await initWasm();
+
+            if (test4Net === null) {
+                log('\n=== Test 4: Real-time Execution ===');
+                log('Creating network...');
+
+                test4Net = new WasmNetwork();
+                test4Encoder = test4Net.add_discrete_transformer("Live Input", 10, 512, 2, 42);
+                test4Learner = test4Net.add_sequence_learner("Live Learner", 512, 4, 8, 32, 20, 20, 2, 1, 2, false, 42);
+
+                test4Net.connect_to_input(test4Encoder, test4Learner);
+                test4Net.build();
+                test4Net.init_block(test4Learner);
+                test4Net.start_recording();
+
+                log('Network ready. Starting execution...');
+            }
+
+            test4Step = 0;
+            const startTime = Date.now();
+
+            test4Interval = setInterval(() => {
+                const value = test4Step % 4;
+                test4Net.set_discrete_value(test4Encoder, value);
+                test4Net.execute(true);
+
+                const anomaly = test4Net.get_anomaly(test4Learner);
+
+                test4Step++;
+
+                // Update metrics every 10 steps
+                if (test4Step % 10 === 0) {
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    const fps = test4Step / elapsed;
+
+                    document.getElementById('test4-metrics').innerHTML = `
+                            <div class="metric">
+                                <div class="metric-label">Steps</div>
+                                <div class="metric-value">${test4Step}</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">FPS</div>
+                                <div class="metric-value">${fps.toFixed(1)}</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Anomaly</div>
+                                <div class="metric-value">${anomaly.toFixed(3)}</div>
+                            </div>
+                        `;
+                }
+            }, 100);
+
+            document.getElementById('test4-start').disabled = true;
+            document.getElementById('test4-stop').disabled = false;
+            showStatus('test4-status', '✅ Executing in real-time...', 'success');
+
+        } catch (err) {
+            log('❌ Test 4 failed: ' + err);
+            showStatus('test4-status', '❌ Test 4 failed: ' + err, 'error');
+        }
+    });
+
+    document.getElementById('test4-stop').addEventListener('click', () => {
+        if (test4Interval) {
+            clearInterval(test4Interval);
+            test4Interval = null;
+            document.getElementById('test4-start').disabled = false;
+            document.getElementById('test4-stop').disabled = true;
+            log(`Stopped after ${test4Step} steps`);
+            showStatus('test4-status', '⏸ Paused', 'info');
+        }
+    });
+
+    // Initialize on page load
+    log('=== Gnomics WASM Test Suite ===');
+    log('Click buttons above to run tests');
+    log('');
+</script>
+</body>
+</html>

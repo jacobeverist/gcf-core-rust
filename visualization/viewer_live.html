@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gnomics Live Visualizer (WASM)</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #header {
+            background: #2a2a2a;
+            padding: 15px 20px;
+            border-bottom: 2px solid #3a3a3a;
+        }
+
+        #header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #4a9eff;
+            margin-bottom: 10px;
+        }
+
+        #controls-bar {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .control-group label {
+            font-size: 13px;
+            color: #888;
+        }
+
+        select, button {
+            background: #3a3a3a;
+            color: #e0e0e0;
+            border: 1px solid #4a4a4a;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        button {
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #4a4a4a;
+        }
+
+        button.primary {
+            background: #4a9eff;
+            border-color: #4a9eff;
+        }
+
+        button.primary:hover {
+            background: #3a8eef;
+        }
+
+        button.danger {
+            background: #ff4a4a;
+            border-color: #ff4a4a;
+        }
+
+        button.danger:hover {
+            background: #ef3a3a;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #status-bar {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #555;
+        }
+
+        .status-indicator.active {
+            background: #4aff4a;
+            box-shadow: 0 0 8px #4aff4a;
+        }
+
+        .status-indicator.learning {
+            background: #ff9a4a;
+            box-shadow: 0 0 8px #ff9a4a;
+        }
+
+        #main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #network-panel {
+            flex: 1;
+            background: #1e1e1e;
+            border-right: 2px solid #3a3a3a;
+            position: relative;
+        }
+
+        #network-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        #bitfield-panel {
+            flex: 1;
+            background: #1e1e1e;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .bitfield-block {
+            margin-bottom: 30px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 15px;
+            border: 1px solid #3a3a3a;
+        }
+
+        .bitfield-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .bitfield-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #4a9eff;
+        }
+
+        .bitfield-stats {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .bitfield-grid {
+            display: grid;
+            gap: 1px;
+            grid-template-columns: repeat(auto-fill, minmax(8px, 1fr));
+            background: #1a1a1a;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .bitfield-cell {
+            aspect-ratio: 1;
+            background: #2a2a2a;
+            border-radius: 1px;
+            transition: background 0.15s;
+        }
+
+        .bitfield-cell.active {
+            background: #4a9eff;
+        }
+
+        #metrics-panel {
+            background: #2a2a2a;
+            padding: 15px 20px;
+            border-top: 2px solid #3a3a3a;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            font-size: 13px;
+        }
+
+        .metric {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .metric-label {
+            color: #888;
+        }
+
+        .metric-value {
+            color: #4a9eff;
+            font-weight: 600;
+        }
+
+        .node {
+            cursor: pointer;
+        }
+
+        .node circle {
+            stroke: #4a9eff;
+            stroke-width: 2px;
+        }
+
+        .node text {
+            font-size: 12px;
+            fill: #e0e0e0;
+            pointer-events: none;
+        }
+
+        .link {
+            fill: none;
+            stroke: #555;
+            stroke-width: 2px;
+            marker-end: url(#arrowhead);
+        }
+
+        .link.context {
+            stroke: #ff9a4a;
+            stroke-dasharray: 5, 5;
+        }
+
+        #empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #666;
+        }
+
+        #empty-state h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        #empty-state p {
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        #loading-indicator {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(42, 42, 42, 0.95);
+            padding: 20px 40px;
+            border-radius: 8px;
+            border: 2px solid #4a9eff;
+            font-size: 14px;
+            z-index: 1000;
+        }
+
+        #loading-indicator.visible {
+            display: block;
+        }
+
+        .demo-description {
+            margin-top: 5px;
+            font-size: 11px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="header">
+            <h1>Gnomics Live Visualizer (WASM)</h1>
+            <div id="controls-bar">
+                <div class="control-group">
+                    <label>Demo:</label>
+                    <select id="demo-select">
+                        <option value="">-- Select Demo --</option>
+                        <option value="sequence">Sequence Learning</option>
+                        <option value="classification">Classification</option>
+                        <option value="context">Context Learning</option>
+                        <option value="pooling">Feature Pooling</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <button id="init-btn" class="primary" disabled>Initialize Network</button>
+                    <button id="start-btn" class="primary" disabled>Start</button>
+                    <button id="stop-btn" class="danger" disabled>Stop</button>
+                    <button id="reset-btn" disabled>Reset</button>
+                </div>
+                <div class="control-group">
+                    <label>Speed:</label>
+                    <input type="range" id="speed-slider" min="10" max="1000" value="100" style="width: 120px;">
+                    <span id="speed-display">100ms</span>
+                </div>
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="learning-toggle" checked>
+                        Learning
+                    </label>
+                </div>
+            </div>
+            <div id="status-bar">
+                <div class="status-item">
+                    <div class="status-indicator" id="wasm-status"></div>
+                    <span id="wasm-status-text">WASM: Not loaded</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-indicator" id="network-status"></div>
+                    <span id="network-status-text">Network: Not created</span>
+                </div>
+                <div class="status-item">
+                    <span id="demo-description"></span>
+                </div>
+            </div>
+        </div>
+
+        <div id="main-content">
+            <div id="network-panel">
+                <svg id="network-svg"></svg>
+                <div id="empty-state">
+                    <h2>Real-Time WASM Visualization</h2>
+                    <p>Select a demo network and click "Initialize Network"</p>
+                    <div class="demo-description">
+                        <strong>Sequence Learning:</strong> Learns temporal patterns [0→1→2→3]<br>
+                        <strong>Classification:</strong> 3-class supervised learning<br>
+                        <strong>Context Learning:</strong> Context-dependent pattern recognition<br>
+                        <strong>Feature Pooling:</strong> Unsupervised feature extraction
+                    </div>
+                </div>
+            </div>
+            <div id="bitfield-panel"></div>
+        </div>
+
+        <div id="metrics-panel">
+            <div class="metric">
+                <span class="metric-label">Step:</span>
+                <span class="metric-value" id="step-counter">0</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">FPS:</span>
+                <span class="metric-value" id="fps-counter">0</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Blocks:</span>
+                <span class="metric-value" id="block-counter">0</span>
+            </div>
+            <div class="metric" id="anomaly-metric" style="display: none;">
+                <span class="metric-label">Anomaly:</span>
+                <span class="metric-value" id="anomaly-value">0.00</span>
+            </div>
+            <div class="metric" id="class-metric" style="display: none;">
+                <span class="metric-label">Predicted Class:</span>
+                <span class="metric-value" id="class-value">-</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading-indicator">Initializing WASM module...</div>
+
+    <script type="module">
+        import init, { WasmNetwork } from './pkg/gnomics.js';
+
+        // Global state
+        let wasmInitialized = false;
+        let wasmNetwork = null;
+        let executionInterval = null;
+        let isRunning = false;
+        let currentDemo = null;
+        let blockHandles = {};
+        let executionStep = 0;
+        let traceData = null;
+        let lastFrameTime = 0;
+        let fps = 0;
+
+        // DOM elements
+        const demoSelect = document.getElementById('demo-select');
+        const initBtn = document.getElementById('init-btn');
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedDisplay = document.getElementById('speed-display');
+        const learningToggle = document.getElementById('learning-toggle');
+        const emptyState = document.getElementById('empty-state');
+        const loadingIndicator = document.getElementById('loading-indicator');
+
+        // Initialize WASM on page load
+        window.addEventListener('load', async () => {
+            loadingIndicator.classList.add('visible');
+            try {
+                await init();
+                wasmInitialized = true;
+                updateStatus('wasm', 'active', 'WASM: Ready');
+                console.log('WASM initialized successfully');
+            } catch (err) {
+                console.error('Failed to initialize WASM:', err);
+                updateStatus('wasm', 'inactive', 'WASM: Failed to load');
+                alert('Failed to load WASM module. Make sure to build with ./build_wasm.sh first.');
+            }
+            loadingIndicator.classList.remove('visible');
+        });
+
+        // Update status indicator
+        function updateStatus(type, state, text) {
+            const indicator = document.getElementById(`${type}-status`);
+            const statusText = document.getElementById(`${type}-status-text`);
+
+            indicator.className = 'status-indicator';
+            if (state === 'active') indicator.classList.add('active');
+            if (state === 'learning') indicator.classList.add('learning');
+
+            statusText.textContent = text;
+        }
+
+        // Demo selection
+        demoSelect.addEventListener('change', (e) => {
+            currentDemo = e.target.value;
+            initBtn.disabled = !currentDemo || !wasmInitialized;
+
+            const descriptions = {
+                sequence: 'Learns sequence [0→1→2→3], detects anomalies',
+                classification: 'Classifies inputs into 3 categories',
+                context: 'Associates patterns with context',
+                pooling: 'Extracts stable sparse features'
+            };
+            document.getElementById('demo-description').textContent = descriptions[currentDemo] || '';
+        });
+
+        // Network initialization
+        initBtn.addEventListener('click', () => {
+            loadingIndicator.textContent = 'Creating network...';
+            loadingIndicator.classList.add('visible');
+
+            setTimeout(() => {
+                try {
+                    createNetwork(currentDemo);
+                    emptyState.style.display = 'none';
+                    startBtn.disabled = false;
+                    stopBtn.disabled = false;
+                    resetBtn.disabled = false;
+                    initBtn.disabled = true;
+                    loadingIndicator.classList.remove('visible');
+                } catch (err) {
+                    console.error('Failed to create network:', err);
+                    alert('Failed to create network: ' + err.message);
+                    loadingIndicator.classList.remove('visible');
+                }
+            }, 100);
+        });
+
+        // Create network based on demo type
+        function createNetwork(demoType) {
+            wasmNetwork = new WasmNetwork();
+            blockHandles = {};
+            executionStep = 0;
+            traceData = null;
+
+            switch (demoType) {
+                case 'sequence':
+                    createSequenceLearningNetwork();
+                    break;
+                case 'classification':
+                    createClassificationNetwork();
+                    break;
+                case 'context':
+                    createContextLearningNetwork();
+                    break;
+                case 'pooling':
+                    createPoolingNetwork();
+                    break;
+            }
+
+            wasmNetwork.build();
+
+            // Initialize learning blocks
+            if (blockHandles.learner) {
+                wasmNetwork.init_block(blockHandles.learner);
+            }
+            if (blockHandles.pooler) {
+                wasmNetwork.init_block(blockHandles.pooler);
+            }
+            if (blockHandles.classifier) {
+                wasmNetwork.init_block(blockHandles.classifier);
+            }
+
+            wasmNetwork.start_recording();
+
+            const numBlocks = wasmNetwork.num_blocks();
+            document.getElementById('block-counter').textContent = numBlocks;
+
+            updateStatus('network', 'active', `Network: ${numBlocks} blocks`);
+
+            // Initial visualization
+            drawNetworkGraph();
+        }
+
+        // Demo network configurations
+        function createSequenceLearningNetwork() {
+            blockHandles.encoder = wasmNetwork.add_discrete_transformer(
+                "Sequence Encoder", 10, 512, 2, 42
+            );
+            blockHandles.learner = wasmNetwork.add_sequence_learner(
+                "Sequence Learner", 512, 4, 8, 32, 20, 20, 2, 1, 2, false, 42
+            );
+            wasmNetwork.connect_to_input(blockHandles.encoder, blockHandles.learner);
+
+            document.getElementById('anomaly-metric').style.display = 'flex';
+            document.getElementById('class-metric').style.display = 'none';
+        }
+
+        function createClassificationNetwork() {
+            blockHandles.encoder = wasmNetwork.add_scalar_transformer(
+                "Input Encoder", 0.0, 10.0, 2048, 256, 2, 42
+            );
+            blockHandles.classifier = wasmNetwork.add_pattern_classifier(
+                "Classifier", 3, 1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, 2, 42
+            );
+            wasmNetwork.connect_to_input(blockHandles.encoder, blockHandles.classifier);
+
+            document.getElementById('anomaly-metric').style.display = 'none';
+            document.getElementById('class-metric').style.display = 'flex';
+        }
+
+        function createContextLearningNetwork() {
+            blockHandles.inputEncoder = wasmNetwork.add_discrete_transformer(
+                "Input Encoder", 10, 512, 2, 42
+            );
+            blockHandles.contextEncoder = wasmNetwork.add_discrete_transformer(
+                "Context Encoder", 5, 256, 2, 43
+            );
+            blockHandles.learner = wasmNetwork.add_context_learner(
+                "Context Learner", 512, 4, 8, 32, 20, 20, 2, 1, 2, false, 42
+            );
+            wasmNetwork.connect_to_input(blockHandles.inputEncoder, blockHandles.learner);
+            wasmNetwork.connect_to_context(blockHandles.contextEncoder, blockHandles.learner);
+
+            document.getElementById('anomaly-metric').style.display = 'flex';
+            document.getElementById('class-metric').style.display = 'none';
+        }
+
+        function createPoolingNetwork() {
+            blockHandles.encoder = wasmNetwork.add_scalar_transformer(
+                "Input Encoder", 0.0, 100.0, 2048, 256, 2, 42
+            );
+            blockHandles.pooler = wasmNetwork.add_pattern_pooler(
+                "Feature Pooler", 1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 42
+            );
+            wasmNetwork.connect_to_input(blockHandles.encoder, blockHandles.pooler);
+
+            document.getElementById('anomaly-metric').style.display = 'none';
+            document.getElementById('class-metric').style.display = 'none';
+        }
+
+        // Execution controls
+        startBtn.addEventListener('click', () => {
+            if (!isRunning) {
+                isRunning = true;
+                startBtn.disabled = true;
+                const speed = parseInt(speedSlider.value);
+                executionInterval = setInterval(executeStep, speed);
+                updateStatus('network', 'learning', 'Network: Running');
+                lastFrameTime = performance.now();
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            stopExecution();
+        });
+
+        resetBtn.addEventListener('click', () => {
+            stopExecution();
+            executionStep = 0;
+            document.getElementById('step-counter').textContent = '0';
+            document.getElementById('bitfield-panel').innerHTML = '';
+            createNetwork(currentDemo);
+        });
+
+        function stopExecution() {
+            if (executionInterval) {
+                clearInterval(executionInterval);
+                executionInterval = null;
+            }
+            isRunning = false;
+            startBtn.disabled = false;
+            updateStatus('network', 'active', `Network: ${wasmNetwork.num_blocks()} blocks`);
+        }
+
+        speedSlider.addEventListener('input', (e) => {
+            const speed = e.target.value;
+            speedDisplay.textContent = speed + 'ms';
+
+            if (isRunning) {
+                clearInterval(executionInterval);
+                executionInterval = setInterval(executeStep, speed);
+            }
+        });
+
+        // Execute one step
+        function executeStep() {
+            try {
+                const learn = learningToggle.checked;
+
+                // Set inputs based on demo type
+                switch (currentDemo) {
+                    case 'sequence':
+                        executeSequenceStep(learn);
+                        break;
+                    case 'classification':
+                        executeClassificationStep(learn);
+                        break;
+                    case 'context':
+                        executeContextStep(learn);
+                        break;
+                    case 'pooling':
+                        executePoolingStep(learn);
+                        break;
+                }
+
+                // Execute network
+                wasmNetwork.execute(learn);
+
+                // Update metrics
+                executionStep++;
+                document.getElementById('step-counter').textContent = executionStep;
+
+                // Calculate FPS
+                const now = performance.now();
+                const delta = now - lastFrameTime;
+                fps = Math.round(1000 / delta);
+                document.getElementById('fps-counter').textContent = fps;
+                lastFrameTime = now;
+
+                // Get trace and update visualization
+                const traceJson = wasmNetwork.get_trace_json();
+                if (traceJson) {
+                    const trace = JSON.parse(traceJson);
+                    if (!traceData) {
+                        traceData = trace;
+                    } else {
+                        traceData.steps.push(...trace.steps);
+                        traceData.total_steps = traceData.steps.length;
+                    }
+
+                    // Update visualization with latest step
+                    if (traceData.steps.length > 0) {
+                        updateVisualization(traceData.steps[traceData.steps.length - 1]);
+                    }
+                }
+
+            } catch (err) {
+                console.error('Execution error:', err);
+                stopExecution();
+                alert('Execution error: ' + err.message);
+            }
+        }
+
+        // Demo-specific execution logic
+        function executeSequenceStep(learn) {
+            const sequence = [0, 1, 2, 3];
+            let value;
+
+            if (learn && executionStep < 40) {
+                // Training phase
+                value = sequence[executionStep % sequence.length];
+            } else if (executionStep === 40) {
+                // Introduce anomaly
+                value = 7;
+            } else {
+                // Back to normal sequence
+                value = sequence[executionStep % sequence.length];
+            }
+
+            wasmNetwork.set_discrete_value(blockHandles.encoder, value);
+
+            // Get anomaly score
+            const anomaly = wasmNetwork.get_anomaly(blockHandles.learner);
+            document.getElementById('anomaly-value').textContent = anomaly.toFixed(3);
+        }
+
+        function executeClassificationStep(learn) {
+            // Generate data: class 0: 0-3, class 1: 4-7, class 2: 8-10
+            let value, label;
+
+            if (learn) {
+                const classId = Math.floor(Math.random() * 3);
+                if (classId === 0) {
+                    value = Math.random() * 3;
+                    label = 0;
+                } else if (classId === 1) {
+                    value = 4 + Math.random() * 3;
+                    label = 1;
+                } else {
+                    value = 8 + Math.random() * 2;
+                    label = 2;
+                }
+                wasmNetwork.set_classifier_label(blockHandles.classifier, label);
+            } else {
+                // Test mode - cycle through values
+                value = (executionStep % 30) / 3.0;
+            }
+
+            wasmNetwork.set_scalar_value(blockHandles.encoder, value);
+
+            if (!learn) {
+                const probs = wasmNetwork.get_probabilities(blockHandles.classifier);
+                const predicted = probs.indexOf(Math.max(...probs));
+                document.getElementById('class-value').textContent = `${predicted} (${probs[predicted]})`;
+            }
+        }
+
+        function executeContextStep(learn) {
+            const inputVal = executionStep % 10;
+            const contextVal = Math.floor(executionStep / 10) % 5;
+
+            wasmNetwork.set_discrete_value(blockHandles.inputEncoder, inputVal);
+            wasmNetwork.set_discrete_value(blockHandles.contextEncoder, contextVal);
+
+            const anomaly = wasmNetwork.get_anomaly(blockHandles.learner);
+            document.getElementById('anomaly-value').textContent = anomaly.toFixed(3);
+        }
+
+        function executePoolingStep(learn) {
+            const value = Math.sin(executionStep * 0.1) * 50 + 50;
+            wasmNetwork.set_scalar_value(blockHandles.encoder, value);
+        }
+
+        // Visualization functions (adapted from viewer.html)
+        function drawNetworkGraph() {
+            const svg = d3.select('#network-svg');
+            svg.selectAll('*').remove();
+
+            const width = document.getElementById('network-panel').clientWidth;
+            const height = document.getElementById('network-panel').clientHeight;
+
+            // Add arrowhead marker
+            svg.append('defs').append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '-10 -5 10 10')
+                .attr('refX', -5)
+                .attr('refY', 0)
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M-10,-5L0,0L-10,5')
+                .attr('fill', '#555');
+
+            const g = svg.append('g');
+
+            // Get network structure
+            const numBlocks = wasmNetwork.num_blocks();
+            const nodes = [];
+            for (let i = 0; i < numBlocks; i++) {
+                const name = wasmNetwork.get_block_name(i);
+                nodes.push({ id: i, name: name });
+            }
+
+            // Create links based on demo type
+            const links = [];
+            if (currentDemo === 'sequence' || currentDemo === 'classification' || currentDemo === 'pooling') {
+                links.push({ source: 0, target: 1, type: 'input' });
+            } else if (currentDemo === 'context') {
+                links.push({ source: 0, target: 2, type: 'input' });
+                links.push({ source: 1, target: 2, type: 'context' });
+            }
+
+            // Create force simulation
+            const simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).distance(150))
+                .force('charge', d3.forceManyBody().strength(-400))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(50));
+
+            // Draw links
+            const link = g.append('g')
+                .selectAll('path')
+                .data(links)
+                .join('path')
+                .attr('class', d => `link ${d.type}`)
+                .attr('stroke', d => d.type === 'context' ? '#ff9a4a' : '#555');
+
+            // Draw nodes
+            const node = g.append('g')
+                .selectAll('g')
+                .data(nodes)
+                .join('g')
+                .attr('class', 'node')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+
+            node.append('circle')
+                .attr('r', 30)
+                .attr('fill', '#2a2a2a');
+
+            node.append('text')
+                .attr('text-anchor', 'middle')
+                .attr('dy', -35)
+                .text(d => d.name)
+                .style('font-size', '12px');
+
+            // Update positions on simulation tick
+            simulation.on('tick', () => {
+                link.attr('d', d => {
+                    const dx = d.target.x - d.source.x;
+                    const dy = d.target.y - d.source.y;
+                    const dr = Math.sqrt(dx * dx + dy * dy);
+                    return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+                });
+
+                node.attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+
+            // Zoom behavior
+            const zoom = d3.zoom()
+                .scaleExtent([0.1, 4])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                });
+
+            svg.call(zoom);
+        }
+
+        function updateVisualization(step) {
+            updateBitFields(step);
+        }
+
+        function updateBitFields(step) {
+            const panel = document.getElementById('bitfield-panel');
+            panel.innerHTML = '';
+
+            for (const [blockId, state] of Object.entries(step.block_states)) {
+                const metadata = step.block_metadata[blockId];
+
+                const blockDiv = document.createElement('div');
+                blockDiv.className = 'bitfield-block';
+
+                const header = document.createElement('div');
+                header.className = 'bitfield-header';
+
+                const title = document.createElement('div');
+                title.className = 'bitfield-title';
+                title.textContent = metadata.name;
+
+                const stats = document.createElement('div');
+                stats.className = 'bitfield-stats';
+                stats.textContent = `${state.num_active} / ${state.num_bits} active (${(state.num_active / state.num_bits * 100).toFixed(1)}%)`;
+
+                header.appendChild(title);
+                header.appendChild(stats);
+
+                const grid = document.createElement('div');
+                grid.className = 'bitfield-grid';
+                grid.style.gridTemplateColumns = `repeat(${Math.min(64, state.num_bits)}, 1fr)`;
+
+                const activeSet = new Set(state.active_bits);
+
+                for (let i = 0; i < state.num_bits; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = activeSet.has(i) ? 'bitfield-cell active' : 'bitfield-cell';
+                    grid.appendChild(cell);
+                }
+
+                blockDiv.appendChild(header);
+                blockDiv.appendChild(grid);
+                panel.appendChild(blockDiv);
+            }
+        }
+    </script>
+</body>
+</html>

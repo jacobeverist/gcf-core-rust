@@ -24,7 +24,12 @@
       "Bash(cargo bench:*)",
       "Bash(tee:*)",
       "Bash(rustc:*)",
-      "Bash(/tmp/test_seq_net:*)"
+      "Bash(/tmp/test_seq_net:*)",
+      "Bash(chmod:*)",
+      "Bash(rustup target list:*)",
+      "Bash(cargo install:*)",
+      "Bash(wasm-pack build:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []

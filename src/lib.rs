@@ -116,6 +116,10 @@ pub mod network_config;
 // Execution Recording & Visualization
 pub mod execution_recorder;
 
+// WebAssembly interface (only compiled for wasm32 target)
+#[cfg(target_arch = "wasm32")]
+pub mod wasm_interface;
+
 // Re-exports for convenient access
 pub use bitfield::{bitfield_copy_words, BitField, Word, BITS_PER_WORD};
 pub use error::{GnomicsError, Result};
