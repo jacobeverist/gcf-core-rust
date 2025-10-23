@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use gnomics::{
     blocks::{DiscreteTransformer, SequenceLearner},
-    Block, Network,
+    Block, Network, PatternPooler, ScalarTransformer,
 };
 use rand::Rng;
 use std::time::Duration;
@@ -159,7 +159,7 @@ fn bench_execution_performance(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
             // Setup network once
             let mut net = Network::new();
-            let num_v = 10;  // Number of discrete values
+            let num_v = 10; // Number of discrete values
             let encoder = net.add(DiscreteTransformer::new(num_v, 512, 2, 0));
             let mut prev = encoder;
 
@@ -167,8 +167,14 @@ fn bench_execution_performance(c: &mut Criterion) {
                 let learner = net.add(SequenceLearner::new(
                     512, 4, 8, 32, 20, 20, 2, 1, 2, false, i as u64,
                 ));
-                net.connect_to_input(encoder, learner).unwrap();
+                net.connect_to_input(prev, learner).unwrap();
                 prev = learner;
+
+                let pooler = net.add(PatternPooler::new(
+                    512, 20, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, i as u64,
+                ));
+                net.connect_to_input(prev, pooler).unwrap();
+                prev = pooler;
             }
 
             net.build().unwrap();
@@ -177,6 +183,9 @@ fn bench_execution_performance(c: &mut Criterion) {
             for &block_id in net.block_ids().collect::<Vec<_>>().iter() {
                 if let Ok(learner) = net.get_mut::<SequenceLearner>(block_id) {
                     learner.init().unwrap();
+                }
+                if let Ok(pooler) = net.get_mut::<PatternPooler>(block_id) {
+                    pooler.init().unwrap();
                 }
             }
 
@@ -204,28 +213,24 @@ fn bench_connection_operations(c: &mut Criterion) {
 
     for size in [10, 50, 100, 250, 500].iter() {
         group.throughput(Throughput::Elements(*size as u64));
-        group.bench_with_input(
-            BenchmarkId::new("sequential", size),
-            size,
-            |b, &size| {
-                b.iter(|| {
-                    let mut net = Network::new();
+        group.bench_with_input(BenchmarkId::new("sequential", size), size, |b, &size| {
+            b.iter(|| {
+                let mut net = Network::new();
 
-                    // Create blocks
-                    let mut blocks = Vec::new();
-                    for i in 0..size {
-                        blocks.push(net.add(SequenceLearner::new(
-                            512, 4, 8, 32, 20, 20, 2, 1, 2, false, i as u64,
-                        )));
-                    }
+                // Create blocks
+                let mut blocks = Vec::new();
+                for i in 0..size {
+                    blocks.push(net.add(SequenceLearner::new(
+                        512, 4, 8, 32, 20, 20, 2, 1, 2, false, i as u64,
+                    )));
+                }
 
-                    // Connect sequentially (linear chain)
-                    for i in 0..size - 1 {
-                        black_box(net.connect_to_input(blocks[i], blocks[i + 1]).unwrap());
-                    }
-                });
-            },
-        );
+                // Connect sequentially (linear chain)
+                for i in 0..size - 1 {
+                    black_box(net.connect_to_input(blocks[i], blocks[i + 1]).unwrap());
+                }
+            });
+        });
     }
     group.finish();
 }
@@ -279,59 +284,51 @@ fn bench_complex_pipeline(c: &mut Criterion) {
     group.sample_size(10);
 
     for stages in [3, 5, 10].iter() {
-        group.bench_with_input(
-            BenchmarkId::new("stages", stages),
-            stages,
-            |b, &stages| {
-                b.iter(|| {
-                    let mut net = Network::new();
+        group.bench_with_input(BenchmarkId::new("stages", stages), stages, |b, &stages| {
+            b.iter(|| {
+                let mut net = Network::new();
 
-                    // Each stage: 3 encoders → learner
-                    let mut stage_outputs = Vec::new();
+                // Each stage: 3 encoders → learner
+                let mut stage_outputs = Vec::new();
 
-                    for stage in 0..stages {
-                        // 3 encoders per stage
-                        let enc1 = net.add(DiscreteTransformer::new(
-                            10,
-                            256,
-                            2,
-                            (stage * 3) as u64,
-                        ));
-                        let enc2 = net.add(DiscreteTransformer::new(
-                            10,
-                            256,
-                            2,
-                            (stage * 3 + 1) as u64,
-                        ));
-                        let enc3 = net.add(DiscreteTransformer::new(
-                            10,
-                            256,
-                            2,
-                            (stage * 3 + 2) as u64,
-                        ));
+                for stage in 0..stages {
+                    // 3 encoders per stage
+                    let enc1 = net.add(DiscreteTransformer::new(10, 256, 2, (stage * 3) as u64));
+                    let enc2 =
+                        net.add(DiscreteTransformer::new(10, 256, 2, (stage * 3 + 1) as u64));
+                    let enc3 =
+                        net.add(DiscreteTransformer::new(10, 256, 2, (stage * 3 + 2) as u64));
 
-                        // Learner for this stage
-                        let learner = net.add(SequenceLearner::new(
-                            768, 4, 8, 32, 20, 20, 2, 1, 2, false, stage as u64,
-                        ));
+                    // Learner for this stage
+                    let learner = net.add(SequenceLearner::new(
+                        768,
+                        4,
+                        8,
+                        32,
+                        20,
+                        20,
+                        2,
+                        1,
+                        2,
+                        false,
+                        stage as u64,
+                    ));
 
-                        net.connect_many_to_input(&[enc1, enc2, enc3], learner)
-                            .unwrap();
+                    net.connect_many_to_input(&[enc1, enc2, enc3], learner)
+                        .unwrap();
 
-                        // Connect to previous stage if not first
-                        if !stage_outputs.is_empty() {
-                            net.connect_many_to_input(&stage_outputs, learner)
-                                .unwrap();
-                        }
-
-                        stage_outputs.clear();
-                        stage_outputs.push(learner);
+                    // Connect to previous stage if not first
+                    if !stage_outputs.is_empty() {
+                        net.connect_many_to_input(&stage_outputs, learner).unwrap();
                     }
 
-                    black_box(net.build().unwrap());
-                });
-            },
-        );
+                    stage_outputs.clear();
+                    stage_outputs.push(learner);
+                }
+
+                black_box(net.build().unwrap());
+            });
+        });
     }
     group.finish();
 }
