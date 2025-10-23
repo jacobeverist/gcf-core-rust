@@ -42,13 +42,17 @@
 //! ```
 
 use crate::{Block, ContextAccess, GnomicsError, InputAccess, OutputAccess, Result};
+use crate::execution_recorder::{
+    BlockConnection, BlockMetadata, ConnectionType, ExecutionRecorder, ExecutionTrace,
+    BitFieldSnapshot,
+};
 use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 
 /// Unique identifier for a block in a Network.
 ///
 /// BlockIds are automatically generated when blocks are added to a Network.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct BlockId(u32);
 
 impl BlockId {
@@ -59,6 +63,12 @@ impl BlockId {
         use std::sync::atomic::{AtomicU32, Ordering};
         static COUNTER: AtomicU32 = AtomicU32::new(0);
         BlockId(COUNTER.fetch_add(1, Ordering::SeqCst))
+    }
+
+    /// Create a BlockId from a raw u32 value (for testing).
+    #[doc(hidden)]
+    pub fn from_raw(id: u32) -> Self {
+        BlockId(id)
     }
 
     /// Get the raw u32 value (for indexing).
@@ -148,6 +158,12 @@ pub struct Network {
 
     /// Whether build() has been called
     is_built: bool,
+
+    /// Optional execution recorder for visualization
+    recorder: Option<ExecutionRecorder>,
+
+    /// Block names for visualization (optional, user-provided)
+    block_names: HashMap<BlockId, String>,
 }
 
 impl Network {
@@ -158,6 +174,8 @@ impl Network {
             dependencies: HashMap::new(),
             execution_order: Vec::new(),
             is_built: false,
+            recorder: None,
+            block_names: HashMap::new(),
         }
     }
 
@@ -296,6 +314,9 @@ impl Network {
                 .block_mut()
                 .execute(learn)?;
         }
+
+        // Record state after execution if recording is active
+        self.record_current_state();
 
         Ok(())
     }
@@ -775,6 +796,322 @@ impl Network {
         self.dependencies.clear();
         self.execution_order.clear();
         self.is_built = false;
+        self.recorder = None;
+        self.block_names.clear();
+    }
+
+    /// Start recording execution for visualization.
+    ///
+    /// Creates an ExecutionRecorder that captures network state during execution.
+    /// Must be called before executing the network to capture traces.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// net.start_recording();
+    /// // ... execute network ...
+    /// let trace = net.stop_recording();
+    /// trace.to_json_file("trace.json")?;
+    /// ```
+    pub fn start_recording(&mut self) {
+        let mut recorder = ExecutionRecorder::new();
+
+        // Extract connection information
+        let connections = self.extract_connections();
+        recorder.set_connections(connections);
+
+        self.recorder = Some(recorder);
+    }
+
+    /// Stop recording and return the execution trace.
+    ///
+    /// Returns the accumulated execution trace, or None if recording was not started.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// net.start_recording();
+    /// for i in 0..100 {
+    ///     // ... update inputs ...
+    ///     net.execute(true)?;
+    /// }
+    /// let trace = net.stop_recording();
+    /// if let Some(trace) = trace {
+    ///     trace.to_json_file("trace.json")?;
+    /// }
+    /// ```
+    pub fn stop_recording(&mut self) -> Option<ExecutionTrace> {
+        self.recorder.take().map(|r| r.export_trace())
+    }
+
+    /// Check if recording is currently active.
+    pub fn is_recording(&self) -> bool {
+        self.recorder.as_ref().map_or(false, |r| r.is_recording())
+    }
+
+    /// Pause recording without losing accumulated data.
+    pub fn pause_recording(&mut self) {
+        if let Some(recorder) = &mut self.recorder {
+            recorder.stop();
+        }
+    }
+
+    /// Resume recording after pausing.
+    pub fn resume_recording(&mut self) {
+        if let Some(recorder) = &mut self.recorder {
+            recorder.start();
+        }
+    }
+
+    /// Set a human-readable name for a block (for visualization).
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - BlockId of the block to name
+    /// * `name` - Human-readable name (e.g., "Temperature Encoder", "Pooler Layer 1")
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let encoder = net.add(ScalarTransformer::new(0.0, 100.0, 2048, 256, 2, 0));
+    /// net.set_block_name(encoder, "Temperature Encoder");
+    /// ```
+    pub fn set_block_name(&mut self, id: BlockId, name: impl Into<String>) {
+        self.block_names.insert(id, name.into());
+    }
+
+    /// Get the name of a block (returns default if not set).
+    pub fn get_block_name(&self, id: BlockId) -> String {
+        self.block_names
+            .get(&id)
+            .cloned()
+            .unwrap_or_else(|| format!("Block_{}", id.as_usize()))
+    }
+
+    /// Extract connection information from the network for visualization.
+    fn extract_connections(&self) -> Vec<BlockConnection> {
+        let mut connections = Vec::new();
+
+        for (&target_id, _) in &self.blocks {
+            let wrapper = self.blocks.get(&target_id).unwrap();
+            let block_any = wrapper.as_any();
+
+            // Check blocks with InputAccess
+            if let Some(b) = block_any.downcast_ref::<crate::blocks::PatternPooler>() {
+                for child in b.input().get_children() {
+                    if let Some(source_id) = child.output.borrow().source_block_id() {
+                        connections.push(BlockConnection {
+                            source_id,
+                            target_id,
+                            connection_type: ConnectionType::Input,
+                            time_offset: child.time_offset,
+                        });
+                    }
+                }
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::PatternClassifier>() {
+                for child in b.input().get_children() {
+                    if let Some(source_id) = child.output.borrow().source_block_id() {
+                        connections.push(BlockConnection {
+                            source_id,
+                            target_id,
+                            connection_type: ConnectionType::Input,
+                            time_offset: child.time_offset,
+                        });
+                    }
+                }
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::ContextLearner>() {
+                // Input connections
+                for child in b.input().get_children() {
+                    if let Some(source_id) = child.output.borrow().source_block_id() {
+                        connections.push(BlockConnection {
+                            source_id,
+                            target_id,
+                            connection_type: ConnectionType::Input,
+                            time_offset: child.time_offset,
+                        });
+                    }
+                }
+                // Context connections
+                for child in b.context().get_children() {
+                    if let Some(source_id) = child.output.borrow().source_block_id() {
+                        connections.push(BlockConnection {
+                            source_id,
+                            target_id,
+                            connection_type: ConnectionType::Context,
+                            time_offset: child.time_offset,
+                        });
+                    }
+                }
+            } else if let Some(b) = block_any.downcast_ref::<crate::blocks::SequenceLearner>() {
+                // Input connections
+                for child in b.input().get_children() {
+                    if let Some(source_id) = child.output.borrow().source_block_id() {
+                        connections.push(BlockConnection {
+                            source_id,
+                            target_id,
+                            connection_type: ConnectionType::Input,
+                            time_offset: child.time_offset,
+                        });
+                    }
+                }
+                // Context connections (including self-feedback)
+                for child in b.context().get_children() {
+                    if let Some(source_id) = child.output.borrow().source_block_id() {
+                        connections.push(BlockConnection {
+                            source_id,
+                            target_id,
+                            connection_type: ConnectionType::Context,
+                            time_offset: child.time_offset,
+                        });
+                    }
+                }
+            }
+        }
+
+        connections
+    }
+
+    /// Extract metadata for a single block.
+    fn extract_block_metadata(&self, id: BlockId) -> Option<BlockMetadata> {
+        let wrapper = self.blocks.get(&id)?;
+        let block_any = wrapper.as_any();
+
+        let (block_type, num_statelets, num_active) = if let Some(b) =
+            block_any.downcast_ref::<crate::blocks::ScalarTransformer>()
+        {
+            (
+                "ScalarTransformer",
+                b.output().borrow().state.num_bits(),
+                b.output().borrow().state.num_set(),
+            )
+        } else if let Some(b) = block_any.downcast_ref::<crate::blocks::DiscreteTransformer>() {
+            (
+                "DiscreteTransformer",
+                b.output().borrow().state.num_bits(),
+                b.output().borrow().state.num_set(),
+            )
+        } else if let Some(b) = block_any.downcast_ref::<crate::blocks::PersistenceTransformer>()
+        {
+            (
+                "PersistenceTransformer",
+                b.output().borrow().state.num_bits(),
+                b.output().borrow().state.num_set(),
+            )
+        } else if let Some(b) = block_any.downcast_ref::<crate::blocks::PatternPooler>() {
+            (
+                "PatternPooler",
+                b.output().borrow().state.num_bits(),
+                b.output().borrow().state.num_set(),
+            )
+        } else if let Some(b) = block_any.downcast_ref::<crate::blocks::PatternClassifier>() {
+            (
+                "PatternClassifier",
+                b.output().borrow().state.num_bits(),
+                b.output().borrow().state.num_set(),
+            )
+        } else if let Some(b) = block_any.downcast_ref::<crate::blocks::ContextLearner>() {
+            (
+                "ContextLearner",
+                b.output().borrow().state.num_bits(),
+                b.output().borrow().state.num_set(),
+            )
+        } else if let Some(b) = block_any.downcast_ref::<crate::blocks::SequenceLearner>() {
+            (
+                "SequenceLearner",
+                b.output().borrow().state.num_bits(),
+                b.output().borrow().state.num_set(),
+            )
+        } else {
+            return None;
+        };
+
+        Some(BlockMetadata {
+            id,
+            name: self.get_block_name(id),
+            block_type: block_type.to_string(),
+            num_statelets,
+            num_active,
+        })
+    }
+
+    /// Record current network state (called during execute if recording is active).
+    fn record_current_state(&mut self) {
+        // Check if recording first
+        let is_recording = self.recorder.as_ref().map_or(false, |r| r.is_recording());
+        if !is_recording {
+            return;
+        }
+
+        // Extract data without holding a borrow on recorder
+        let mut block_states = HashMap::new();
+        let mut block_metadata = HashMap::new();
+
+        for &block_id in self.blocks.keys() {
+            // Extract state
+            if let Some(wrapper) = self.blocks.get(&block_id) {
+                let block_any = wrapper.as_any();
+
+                // Try to extract output state from each block type
+                let state_opt = if let Some(b) =
+                    block_any.downcast_ref::<crate::blocks::ScalarTransformer>()
+                {
+                    Some(BitFieldSnapshot::from_bitfield(
+                        &b.output().borrow().state,
+                    ))
+                } else if let Some(b) =
+                    block_any.downcast_ref::<crate::blocks::DiscreteTransformer>()
+                {
+                    Some(BitFieldSnapshot::from_bitfield(
+                        &b.output().borrow().state,
+                    ))
+                } else if let Some(b) =
+                    block_any.downcast_ref::<crate::blocks::PersistenceTransformer>()
+                {
+                    Some(BitFieldSnapshot::from_bitfield(
+                        &b.output().borrow().state,
+                    ))
+                } else if let Some(b) = block_any.downcast_ref::<crate::blocks::PatternPooler>()
+                {
+                    Some(BitFieldSnapshot::from_bitfield(
+                        &b.output().borrow().state,
+                    ))
+                } else if let Some(b) =
+                    block_any.downcast_ref::<crate::blocks::PatternClassifier>()
+                {
+                    Some(BitFieldSnapshot::from_bitfield(
+                        &b.output().borrow().state,
+                    ))
+                } else if let Some(b) =
+                    block_any.downcast_ref::<crate::blocks::ContextLearner>()
+                {
+                    Some(BitFieldSnapshot::from_bitfield(
+                        &b.output().borrow().state,
+                    ))
+                } else if let Some(b) =
+                    block_any.downcast_ref::<crate::blocks::SequenceLearner>()
+                {
+                    Some(BitFieldSnapshot::from_bitfield(
+                        &b.output().borrow().state,
+                    ))
+                } else {
+                    None
+                };
+
+                if let Some(state) = state_opt {
+                    block_states.insert(block_id, state);
+                }
+            }
+
+            // Extract metadata
+            if let Some(metadata) = self.extract_block_metadata(block_id) {
+                block_metadata.insert(block_id, metadata);
+            }
+        }
+
+        // Now record the step
+        if let Some(recorder) = &mut self.recorder {
+            recorder.record_step(block_states, block_metadata);
+        }
     }
 
     /// Export network configuration (architecture only, no learned state).

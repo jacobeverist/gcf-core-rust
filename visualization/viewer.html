@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gnomics Network Visualizer</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #header {
+            background: #2a2a2a;
+            padding: 15px 20px;
+            border-bottom: 2px solid #3a3a3a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #4a9eff;
+        }
+
+        #file-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        #load-btn {
+            background: #4a9eff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        #load-btn:hover {
+            background: #3a8eef;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        #filename {
+            color: #888;
+            font-size: 13px;
+        }
+
+        #main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #network-panel {
+            flex: 1;
+            background: #1e1e1e;
+            border-right: 2px solid #3a3a3a;
+            position: relative;
+        }
+
+        #network-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        #bitfield-panel {
+            flex: 1;
+            background: #1e1e1e;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .bitfield-block {
+            margin-bottom: 30px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 15px;
+            border: 1px solid #3a3a3a;
+        }
+
+        .bitfield-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .bitfield-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #4a9eff;
+        }
+
+        .bitfield-stats {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .bitfield-grid {
+            display: grid;
+            gap: 1px;
+            grid-template-columns: repeat(auto-fill, minmax(8px, 1fr));
+            background: #1a1a1a;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .bitfield-cell {
+            aspect-ratio: 1;
+            background: #2a2a2a;
+            border-radius: 1px;
+            transition: background 0.1s;
+        }
+
+        .bitfield-cell.active {
+            background: #4a9eff;
+        }
+
+        #controls {
+            background: #2a2a2a;
+            padding: 15px 20px;
+            border-top: 2px solid #3a3a3a;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        #timeline-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        #play-btn {
+            background: #4a9eff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            min-width: 80px;
+        }
+
+        #play-btn:hover {
+            background: #3a8eef;
+        }
+
+        #timeline {
+            flex: 1;
+            height: 40px;
+        }
+
+        #step-info {
+            font-size: 14px;
+            color: #888;
+            min-width: 120px;
+            text-align: right;
+        }
+
+        .node {
+            cursor: pointer;
+        }
+
+        .node circle {
+            stroke: #4a9eff;
+            stroke-width: 2px;
+        }
+
+        .node text {
+            font-size: 12px;
+            fill: #e0e0e0;
+            pointer-events: none;
+        }
+
+        .link {
+            fill: none;
+            stroke: #555;
+            stroke-width: 2px;
+            marker-end: url(#arrowhead);
+        }
+
+        .link.context {
+            stroke: #ff9a4a;
+            stroke-dasharray: 5, 5;
+        }
+
+        .link.active {
+            stroke: #4a9eff;
+            stroke-width: 3px;
+        }
+
+        #empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #666;
+        }
+
+        #empty-state h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        #empty-state p {
+            font-size: 14px;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(42, 42, 42, 0.95);
+            border: 1px solid #4a9eff;
+            border-radius: 4px;
+            padding: 8px 12px;
+            pointer-events: none;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 1000;
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="header">
+            <h1>Gnomics Network Visualizer</h1>
+            <div id="file-controls">
+                <span id="filename">No file loaded</span>
+                <button id="load-btn" onclick="document.getElementById('file-input').click()">
+                    Load Trace
+                </button>
+                <input type="file" id="file-input" accept=".json">
+            </div>
+        </div>
+
+        <div id="main-content">
+            <div id="network-panel">
+                <svg id="network-svg"></svg>
+                <div id="empty-state">
+                    <h2>No Data Loaded</h2>
+                    <p>Click "Load Trace" to visualize a network execution trace</p>
+                </div>
+            </div>
+            <div id="bitfield-panel" id="bitfield-container"></div>
+        </div>
+
+        <div id="controls">
+            <div id="timeline-container">
+                <button id="play-btn">Play</button>
+                <svg id="timeline"></svg>
+                <span id="step-info">Step: 0 / 0</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // Global state
+        let traceData = null;
+        let currentStep = 0;
+        let isPlaying = false;
+        let playInterval = null;
+
+        // DOM elements
+        const fileInput = document.getElementById('file-input');
+        const filename = document.getElementById('filename');
+        const emptyState = document.getElementById('empty-state');
+        const playBtn = document.getElementById('play-btn');
+        const stepInfo = document.getElementById('step-info');
+        const tooltip = document.getElementById('tooltip');
+
+        // Load trace file
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    traceData = JSON.parse(event.target.result);
+                    filename.textContent = file.name;
+                    emptyState.style.display = 'none';
+                    initializeVisualization();
+                } catch (error) {
+                    alert('Error loading trace file: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // Initialize visualization
+        function initializeVisualization() {
+            if (!traceData || !traceData.steps || traceData.steps.length === 0) {
+                return;
+            }
+
+            currentStep = 0;
+            drawNetworkGraph();
+            drawTimeline();
+            updateVisualization();
+        }
+
+        // Draw network graph
+        function drawNetworkGraph() {
+            const svg = d3.select('#network-svg');
+            svg.selectAll('*').remove();
+
+            const width = document.getElementById('network-panel').clientWidth;
+            const height = document.getElementById('network-panel').clientHeight;
+
+            // Add arrowhead marker
+            svg.append('defs').append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '-10 -5 10 10')
+                .attr('refX', -5)
+                .attr('refY', 0)
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M-10,-5L0,0L-10,5')
+                .attr('fill', '#555');
+
+            const g = svg.append('g');
+
+            // Extract nodes from first step
+            const firstStep = traceData.steps[0];
+            const nodes = Object.entries(firstStep.block_metadata).map(([id, meta]) => ({
+                id: parseInt(id),
+                name: meta.name,
+                type: meta.block_type,
+            }));
+
+            // Extract links from connections
+            const links = traceData.connections.map(conn => ({
+                source: nodes.findIndex(n => n.id === conn.source_id),
+                target: nodes.findIndex(n => n.id === conn.target_id),
+                type: conn.connection_type,
+            })).filter(link => link.source >= 0 && link.target >= 0);
+
+            // Create force simulation
+            const simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).distance(150))
+                .force('charge', d3.forceManyBody().strength(-400))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(50));
+
+            // Draw links
+            const link = g.append('g')
+                .selectAll('path')
+                .data(links)
+                .join('path')
+                .attr('class', d => `link ${d.type}`)
+                .attr('stroke', d => d.type === 'context' ? '#ff9a4a' : '#555');
+
+            // Draw nodes
+            const node = g.append('g')
+                .selectAll('g')
+                .data(nodes)
+                .join('g')
+                .attr('class', 'node')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+
+            node.append('circle')
+                .attr('r', 30)
+                .attr('fill', '#2a2a2a');
+
+            node.append('text')
+                .attr('text-anchor', 'middle')
+                .attr('dy', -35)
+                .text(d => d.name)
+                .style('font-size', '12px');
+
+            node.append('text')
+                .attr('text-anchor', 'middle')
+                .attr('dy', 5)
+                .text(d => d.type)
+                .style('font-size', '10px')
+                .style('fill', '#888');
+
+            // Update positions on simulation tick
+            simulation.on('tick', () => {
+                link.attr('d', d => {
+                    const dx = d.target.x - d.source.x;
+                    const dy = d.target.y - d.source.y;
+                    const dr = Math.sqrt(dx * dx + dy * dy);
+                    return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+                });
+
+                node.attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+
+            // Drag functions
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+
+            // Zoom behavior
+            const zoom = d3.zoom()
+                .scaleExtent([0.1, 4])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                });
+
+            svg.call(zoom);
+        }
+
+        // Draw timeline
+        function drawTimeline() {
+            const svg = d3.select('#timeline');
+            svg.selectAll('*').remove();
+
+            const container = document.getElementById('timeline-container');
+            const width = container.clientWidth - 300;
+            const height = 40;
+
+            svg.attr('width', width).attr('height', height);
+
+            const numSteps = traceData.steps.length;
+            const scale = d3.scaleLinear()
+                .domain([0, numSteps - 1])
+                .range([10, width - 10]);
+
+            // Timeline track
+            svg.append('rect')
+                .attr('x', 10)
+                .attr('y', 15)
+                .attr('width', width - 20)
+                .attr('height', 10)
+                .attr('fill', '#3a3a3a')
+                .attr('rx', 5);
+
+            // Timeline scrubber
+            const scrubber = svg.append('circle')
+                .attr('id', 'scrubber')
+                .attr('cx', scale(0))
+                .attr('cy', 20)
+                .attr('r', 8)
+                .attr('fill', '#4a9eff')
+                .attr('cursor', 'pointer')
+                .call(d3.drag()
+                    .on('drag', function(event) {
+                        const x = Math.max(10, Math.min(width - 10, event.x));
+                        const step = Math.round(scale.invert(x));
+                        currentStep = Math.max(0, Math.min(numSteps - 1, step));
+                        updateVisualization();
+                    }));
+
+            // Click on timeline to jump
+            svg.append('rect')
+                .attr('x', 0)
+                .attr('y', 0)
+                .attr('width', width)
+                .attr('height', height)
+                .attr('fill', 'transparent')
+                .attr('cursor', 'pointer')
+                .on('click', function(event) {
+                    const x = d3.pointer(event)[0];
+                    const step = Math.round(scale.invert(x));
+                    currentStep = Math.max(0, Math.min(numSteps - 1, step));
+                    updateVisualization();
+                });
+        }
+
+        // Update visualization for current step
+        function updateVisualization() {
+            if (!traceData || currentStep >= traceData.steps.length) return;
+
+            const step = traceData.steps[currentStep];
+
+            // Update step info
+            stepInfo.textContent = `Step: ${currentStep + 1} / ${traceData.steps.length}`;
+
+            // Update timeline scrubber
+            const container = document.getElementById('timeline-container');
+            const width = container.clientWidth - 300;
+            const scale = d3.scaleLinear()
+                .domain([0, traceData.steps.length - 1])
+                .range([10, width - 10]);
+
+            d3.select('#scrubber').attr('cx', scale(currentStep));
+
+            // Update BitField visualizations
+            updateBitFields(step);
+        }
+
+        // Update BitField panels
+        function updateBitFields(step) {
+            const panel = document.getElementById('bitfield-panel');
+            panel.innerHTML = '';
+
+            for (const [blockId, state] of Object.entries(step.block_states)) {
+                const metadata = step.block_metadata[blockId];
+
+                const blockDiv = document.createElement('div');
+                blockDiv.className = 'bitfield-block';
+
+                const header = document.createElement('div');
+                header.className = 'bitfield-header';
+
+                const title = document.createElement('div');
+                title.className = 'bitfield-title';
+                title.textContent = metadata.name;
+
+                const stats = document.createElement('div');
+                stats.className = 'bitfield-stats';
+                stats.textContent = `${state.num_active} / ${state.num_bits} active (${(state.num_active / state.num_bits * 100).toFixed(1)}%)`;
+
+                header.appendChild(title);
+                header.appendChild(stats);
+
+                const grid = document.createElement('div');
+                grid.className = 'bitfield-grid';
+                grid.style.gridTemplateColumns = `repeat(${Math.min(64, state.num_bits)}, 1fr)`;
+
+                const activeSet = new Set(state.active_bits);
+
+                for (let i = 0; i < state.num_bits; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = activeSet.has(i) ? 'bitfield-cell active' : 'bitfield-cell';
+                    cell.title = `Bit ${i}`;
+                    grid.appendChild(cell);
+                }
+
+                blockDiv.appendChild(header);
+                blockDiv.appendChild(grid);
+                panel.appendChild(blockDiv);
+            }
+        }
+
+        // Play/pause animation
+        playBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            playBtn.textContent = isPlaying ? 'Pause' : 'Play';
+
+            if (isPlaying) {
+                playInterval = setInterval(() => {
+                    currentStep++;
+                    if (currentStep >= traceData.steps.length) {
+                        currentStep = 0;
+                    }
+                    updateVisualization();
+                }, 200);
+            } else {
+                clearInterval(playInterval);
+            }
+        });
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (!traceData) return;
+
+            if (e.key === 'ArrowLeft') {
+                currentStep = Math.max(0, currentStep - 1);
+                updateVisualization();
+            } else if (e.key === 'ArrowRight') {
+                currentStep = Math.min(traceData.steps.length - 1, currentStep + 1);
+                updateVisualization();
+            } else if (e.key === ' ') {
+                e.preventDefault();
+                playBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>

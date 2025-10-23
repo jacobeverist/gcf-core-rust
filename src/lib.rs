@@ -113,6 +113,9 @@ pub mod blocks;
 pub mod network;
 pub mod network_config;
 
+// Execution Recording & Visualization
+pub mod execution_recorder;
+
 // Re-exports for convenient access
 pub use bitfield::{bitfield_copy_words, BitField, Word, BITS_PER_WORD};
 pub use error::{GnomicsError, Result};
@@ -120,7 +123,7 @@ pub use error::{GnomicsError, Result};
 // Phase 2 re-exports
 pub use block::Block;
 pub use block_base::{BlockBase, BlockBaseAccess};
-pub use block_input::{BlockInput, ContextAccess, InputAccess};
+pub use block_input::{BlockInput, ChildInfo, ContextAccess, InputAccess};
 pub use block_output::{BlockOutput, OutputAccess, CURR, PREV};
 pub use block_memory::{BlockMemory, MemoryAccess, PERM_MAX, PERM_MIN};
 
@@ -131,10 +134,16 @@ pub use blocks::{
 };
 
 // Network re-exports
-pub use network::{BlockId, ConnectionBuilder, Network};
+pub use network::{ConnectionBuilder, Network};
 pub use network_config::{
     BlockConfig, BlockConfigurable, BlockInfo, BlockState, BlockStateful, ConnectionConfig,
     InputType, NetworkConfig,
+};
+
+// Execution recording re-exports
+pub use execution_recorder::{
+    BitFieldSnapshot, BlockConnection, BlockMetadata, ConnectionType, ExecutionRecorder,
+    ExecutionStep, ExecutionTrace, BlockId,
 };
 
 /// Version information

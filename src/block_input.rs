@@ -61,6 +61,12 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
+/// Information about a child connection
+pub struct ChildInfo {
+    pub output: Rc<RefCell<BlockOutput>>,
+    pub time_offset: usize,
+}
+
 /// BlockInput manages inputs from multiple child BlockOutputs with lazy copying.
 ///
 /// # Fields
@@ -311,6 +317,21 @@ impl BlockInput {
         self.children
             .iter()
             .filter_map(|child| child.borrow().source_block_id())
+            .collect()
+    }
+
+    /// Get information about all children (output references and time offsets).
+    ///
+    /// Returns a vector of ChildInfo structs containing the output reference
+    /// and time offset for each child.
+    pub fn get_children(&self) -> Vec<ChildInfo> {
+        self.children
+            .iter()
+            .zip(self.times.iter())
+            .map(|(output, &time_offset)| ChildInfo {
+                output: Rc::clone(output),
+                time_offset,
+            })
             .collect()
     }
 
