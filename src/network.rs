@@ -368,6 +368,16 @@ impl Network {
         self.blocks.len()
     }
 
+    /// Get the total memory usage of all blocks in the network.
+    ///
+    /// Returns the sum of memory_usage() for all blocks.
+    pub fn memory_usage(&self) -> usize {
+        self.blocks
+            .values()
+            .map(|wrapper| wrapper.block.memory_usage())
+            .sum()
+    }
+
     /// Check if the network has been built.
     pub fn is_built(&self) -> bool {
         self.is_built

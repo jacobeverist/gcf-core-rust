@@ -121,3 +121,11 @@ harness = false
 [[bench]]
 name = "block_bench"
 harness = false
+
+[[bench]]
+name = "network_scalability_bench"
+harness = false
+
+[[bench]]
+name = "sequence_learner_scalability_bench"
+harness = false

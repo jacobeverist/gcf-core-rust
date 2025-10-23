@@ -20,7 +20,11 @@
       "Bash(for:*)",
       "Bash(head:*)",
       "Bash(do echo \"=== $file ===\")",
-      "Bash(cargo run:*)"
+      "Bash(cargo run:*)",
+      "Bash(cargo bench:*)",
+      "Bash(tee:*)",
+      "Bash(rustc:*)",
+      "Bash(/tmp/test_seq_net:*)"
     ],
     "deny": [],
     "ask": []
