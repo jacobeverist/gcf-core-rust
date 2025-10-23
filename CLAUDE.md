@@ -1,9 +1,6 @@
 # CLAUDE.md - Gnomic Computing Framework (Rust Port)
 
-> **Rust Port of C++ Gnomic Computing Framework**
->
-> This is a complete Rust port of the original C++ implementation available at:
-> https://github.com/jacobeverist/gcf-core-cpp
+> **Gnomic Computing Framework (Rust)**
 >
 > **Status**: ✅ Production Ready (95% test coverage, all 5 phases complete)
 
@@ -11,11 +8,10 @@
 
 Gnomic Computing is a **Rust framework** for building scalable Machine Learning applications using computational neuroscience principles. The framework models neuron activations with **binary patterns** (vectors of 1s and 0s) that form a "cortical language" for computation.
 
-This Rust implementation is a **complete port** of the original C++ codebase, providing:
+This Rust implementation provides:
 - **Memory safety** without garbage collection
 - **Zero-cost abstractions** for high performance
 - **Modern tooling** (Cargo, comprehensive testing, documentation)
-- **100% semantic equivalence** with C++ reference implementation
 
 ### Key Characteristics
 
@@ -29,25 +25,6 @@ This Rust implementation is a **complete port** of the original C++ codebase, pr
 ---
 
 ## Architecture
-
-### Rust vs C++ API Differences
-
-**IMPORTANT**: The Rust port uses different method names than C++:
-
-| Operation | C++ API | Rust API | Description |
-|-----------|---------|----------|-------------|
-| Process block | `feedforward(learn)` | `execute(learn)` | Main processing loop |
-| Encode data | `encode()` | `compute()` | Convert inputs to outputs |
-| Decode (feedback) | `feedback()` | ❌ Not implemented | Removed in refactoring |
-| Push to children | `push()` | ❌ Not implemented | Removed in refactoring |
-| Reverse decode | `decode()` | ❌ Not implemented | Removed in refactoring |
-
-**Core Block Lifecycle** (Rust):
-```
-execute(learn_flag) → step() → pull() → compute() → store() → [learn()]
-```
-
-The Rust implementation removed the feedback/push/decode methods during architectural refactoring as they were not being used in practice.
 
 ### Core Components
 
@@ -641,9 +618,9 @@ gcs-core-
 
 ---
 
-## Conversion History
+## Development History
 
-This Rust implementation was converted from C++ in 5 phases (2025):
+This Rust implementation was built in 5 phases (2025):
 
 ### Phase 1: Foundation
 - BitField with complete word-level operations
@@ -674,7 +651,6 @@ This Rust implementation was converted from C++ in 5 phases (2025):
 - **Result**: Complete framework with temporal capabilities
 
 **Final Status**:
-- ✅ 100% feature parity with C++
 - ✅ 95% test coverage (127/133 tests passing)
 - ✅ Production ready
 - ✅ Zero unsafe code
@@ -721,7 +697,7 @@ See `.claude/reports/` for detailed phase documentation.
 - **Tests**: Some tests expect exact boundaries; tests marked as ignored to document this design choice
 
 **Issue 3: PersistenceTransformer Initialization** (7 ignored tests)
-- **Status**: Pre-existing bug from C++ 
+- **Status**: Pre-existing bug
 - **Impact**: First execute() call incorrectly resets counter
 - **Workaround**: Documented behavior, can be worked around
 - **Solution**: Initialize `pct_val_prev` to match initial value
@@ -761,76 +737,57 @@ Gnomics implements concepts from neuroscience and HTM:
 
 ---
 
-## Differences from C++ Implementation
+## Recent Improvements
 
-### API Method Names
+### ✅ Simplified Network Connection API (2025-10-22)
 
-| Feature | C++ | Rust |
-|---------|-----|------|
-| Main processing loop | `feedforward(learn)` | `execute(learn)` |
-| Encoding step | `encode()` | `compute()` |
-| Feedback (removed) | `feedback()` | ❌ Not implemented |
-| Push to children (removed) | `push()` | ❌ Not implemented |
-| Decode (removed) | `decode()` | ❌ Not implemented |
+The network connection API has been dramatically simplified, reducing connection code from **5 lines to 1 line** (80% reduction).
 
-### Architectural Improvements
-
-1. **Memory Safety**: Rust's ownership system prevents use-after-free, double-free, and data races
-2. **Error Handling**: Result<T> with proper error types vs C++ assertions
-3. **Interior Mutability**: `Rc<RefCell<>>` for shared mutable state vs raw pointers
-4. **Trait-Based Encapsulation** (Oct 2025): Private fields with accessor traits
-   - All block fields (`input`, `output`, `memory`, `context`) are private
-   - Access through trait methods: `InputAccess`, `OutputAccess`, `MemoryAccess`, `ContextAccess`
-   - `BlockBaseAccess` trait eliminates boilerplate for common `BlockBase` operations
-   - Type-safe: Blocks only implement traits for components they actually have
-   - Example: `pooler.input_mut().add_child(encoder.output())`
-5. **Testing**: Integrated test framework with `cargo test`
-6. **Documentation**: Built-in doc comments with examples
-
-### Performance Equivalence
-
-The Rust implementation **meets or exceeds** C++ performance:
-- Word-level BitField operations compile to identical assembly
-- Lazy copying optimization preserved with minimal overhead
-- Change tracking enables same 5-100× speedups
-- Zero-cost abstractions ensure no runtime penalty
-
-
----
-
-## Planned Improvements
-
-### Simplify network connection API
-One of the main tasks for setting up a network of blocks is to connect them together
-via their inputs and outputs and setting up their execution dependencies.  
-
-In the current architecture:
-- execution dependency between blocks is not auto-discovered which is good
-- however, connecting outputs to inputs is messy as shown below
-
+**Old API** (verbose, 5 lines):
 ```rust
-// Connect blocks
 {
     let enc_out = net.get::<ScalarTransformer>(encoder)?.output();
     net.get_mut::<SequenceLearner>(learner)?
-    .input_mut()
-    .add_child(enc_out, 0);
+        .input_mut()
+        .add_child(enc_out, 0);
 }
 ```
 
-Can this be simplified with something simple like:
+**New API** (simple, 1 line):
 ```rust
-{
-    net.connect_to_input(encoder, learner);
-    net.connect_to_context(encoder, learner);
-}
+net.connect_to_input(encoder, learner)?;
+net.connect_to_context(context_encoder, learner)?;
 ```
-The method has two arguments, the source for BlockOutput, and the target for BlockInput.  
 
-Here the method name determines the InputType but perhaps the InputType can be specified some other way.
+**Features implemented**:
+- ✅ **Phase 1**: Core connection methods (`connect_to_input`, `connect_to_context`)
+- ✅ **Phase 2**: Builder pattern for chaining (`connect_from(source).to_input(target)?`)
+- ✅ **Phase 3**: Batch helpers (`connect_many_to_input(&[enc1, enc2], pooler)?`)
+- ✅ **11 comprehensive tests** (100% passing)
+- ✅ **Fully backwards compatible** (old API still works)
+- ✅ **Zero performance overhead** (same compiled output)
 
+**API Reference**:
+```rust
+// Simple connections (most common)
+net.connect_to_input(encoder, pooler)?;
+net.connect_to_context(context_enc, learner)?;
 
+// Advanced: with custom offset
+net.connect_to_input_with_offset(encoder, pooler, 1)?;
 
+// Builder pattern: one source → multiple targets
+net.connect_from(encoder)
+    .to_input(pooler)?
+    .to_input(classifier)?
+    .to_context(learner)?;
+
+// Batch: multiple sources → one target
+net.connect_many_to_input(&[enc1, enc2], pooler)?;
+net.connect_many_to_context(&[ctx1, ctx2], learner)?;
+```
+
+**Documentation**: See `NETWORK_CONNECTION_API_IMPLEMENTATION_REPORT.md` for complete details, examples, and migration guide.
 
 ---
 
@@ -957,16 +914,6 @@ MIT License - See [LICENSE](LICENSE) file
 
 ---
 
-## Original C++ Implementation
-
-This Rust port is based on the C++ implementation:
-- **Repository**: https://github.com/jacobeverist/gcf-core-cpp
-- **Author**: Jacob Everist
-- **Year**: 2024
-- **License**: MIT
-
----
-
 ## Status
 
 **✅ Production Ready**
@@ -981,6 +928,11 @@ This Rust port is based on the C++ implementation:
 **Framework ready for real-world applications.**
 
 **Recent Improvements**:
+- ✅ **2025-10-22**: Simplified Network Connection API (80% code reduction)
+  - Simple API: `net.connect_to_input(encoder, pooler)?` replaces 5-line verbose pattern
+  - Builder pattern: `net.connect_from(source).to_input(target1)?.to_input(target2)?`
+  - Batch helpers: `net.connect_many_to_input(&[enc1, enc2], pooler)?`
+  - 11 comprehensive tests, fully backwards compatible, zero overhead
 - ✅ **2025-10-22**: Trait-based encapsulation with private fields
   - Created `BlockBaseAccess`, `InputAccess`, `OutputAccess`, `MemoryAccess`, `ContextAccess` traits
   - All block fields (input, output, memory, context) are now private
@@ -988,7 +940,6 @@ This Rust port is based on the C++ implementation:
   - Eliminates boilerplate while maintaining type safety
 - ✅ **2025-10-06**: Fixed Architecture Issue #1: All blocks now use shared output references
 - ✅ Improved test passing rate from 95% to 99%
-- ✅ Cleaner API: `block.input_mut().add_child(encoder.output())`
 
 ---
 
@@ -998,11 +949,10 @@ If you use Gnomics in your research, please cite:
 
 ```bibtex
 @software{gnomics_rust2025,
-  title = {Gnomics: High-Performance Computational Neuroscience Framework (Rust Port)},
+  title = {Gnomics: High-Performance Computational Neuroscience Framework},
   author = {Jacob Everist},
   year = {2025},
   url = {https://github.com/jacobeverist/gcs-core-rust},
-  note = {Rust port of C++ implementation}
 }
 ```
 

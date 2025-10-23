@@ -440,7 +440,7 @@ All originally discovered issues have been resolved:
 
 ## References
 
-- [Network Architecture Proposal](./NETWORK_ARCHITECTURE_PROPOSAL.md)
-- [Parallel Execution & Scalability Analysis](./PARALLEL_EXECUTION_SCALABILITY.md)
-- [Implementation Code](./src/network.rs)
-- [Integration Tests](./tests/test_network.rs)
+- [Network Architecture Proposal](NETWORK_ARCHITECTURE_PROPOSAL.md)
+- [Parallel Execution & Scalability Analysis](PARALLEL_EXECUTION_SCALABILITY.md)
+- [Implementation Code](../../src/network.rs)
+- [Integration Tests](../../tests/test_network.rs)
