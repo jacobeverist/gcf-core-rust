@@ -32,6 +32,7 @@
 use bitvec::prelude::*;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use std::cell::Cell;
 use std::ops::{BitAnd, BitOr, BitXor, Not};
 
 /// Word type for bit storage (32-bit unsigned integer)
@@ -67,6 +68,11 @@ const fn bitmask(n: usize) -> Word {
     }
 }
 
+/// Default version for deserialization (reset to 0)
+fn default_version() -> Cell<u64> {
+    Cell::new(0)
+}
+
 /// Efficient bit array using bitvec crate with word-level access.
 ///
 /// Provides bit-level operations with word-level performance using the
@@ -79,10 +85,22 @@ const fn bitmask(n: usize) -> Word {
 /// - **toggle_all**: Word-level XOR instead of bit-by-bit
 /// - **Logical ops**: Direct word-level operations on raw slices
 /// - **get_acts**: Optimized word iteration with early exit
+///
+/// # Version Tracking
+///
+/// Each BitField maintains a version counter that increments on any modification.
+/// This enables O(1) change detection in BlockOutput (vs O(n) BitField comparison).
+/// Version counter uses Cell for interior mutability and wrapping arithmetic to
+/// handle overflow (which is negligible: ~584 years at 1GHz mutation rate).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BitField {
     /// Underlying bitvec storage with u32 words, LSB0 ordering
     bv: BitVec<u32, Lsb0>,
+
+    /// Version counter incremented on every modification (wrapping)
+    /// Skipped during serialization - reset to 0 on deserialization
+    #[serde(skip, default = "default_version")]
+    version: Cell<u64>,
 }
 
 impl BitField {
@@ -101,6 +119,7 @@ impl BitField {
     pub fn new(n: usize) -> Self {
         Self {
             bv: BitVec::repeat(false, n),
+            version: Cell::new(0),
         }
     }
 
@@ -110,11 +129,13 @@ impl BitField {
     pub fn resize(&mut self, n: usize) {
         self.bv.resize(n, false);
         self.bv.fill(false);
+        self.increment_version();
     }
 
     /// Clear all storage and set size to 0.
     pub fn erase(&mut self) {
         self.bv.clear();
+        self.increment_version();
     }
 
     /// Get total number of bits.
@@ -130,6 +151,28 @@ impl BitField {
     }
 
     // =========================================================================
+    // Version Tracking
+    // =========================================================================
+
+    /// Get current version number.
+    ///
+    /// The version number increments on every modification. Used by BlockOutput
+    /// for O(1) change detection instead of O(n) BitField comparison.
+    #[inline(always)]
+    pub fn version(&self) -> u64 {
+        self.version.get()
+    }
+
+    /// Increment version counter (wrapping on overflow).
+    ///
+    /// Called internally by all mutable operations. Uses wrapping_add to handle
+    /// overflow gracefully (overflow is negligible: ~584 years at 1GHz mutation rate).
+    #[inline(always)]
+    fn increment_version(&self) {
+        self.version.set(self.version.get().wrapping_add(1));
+    }
+
+    // =========================================================================
     // Single Bit Operations
     // =========================================================================
 
@@ -142,6 +185,7 @@ impl BitField {
     pub fn set_bit(&mut self, b: usize) {
         debug_assert!(b < self.bv.len(), "bit index {} out of bounds (length: {})", b, self.bv.len());
         self.bv.set(b, true);
+        self.increment_version();
     }
 
     /// Get bit at position `b` (returns 0 or 1 as u8).
@@ -164,6 +208,7 @@ impl BitField {
     pub fn clear_bit(&mut self, b: usize) {
         debug_assert!(b < self.bv.len(), "bit index {} out of bounds (length: {})", b, self.bv.len());
         self.bv.set(b, false);
+        self.increment_version();
     }
 
     /// Toggle bit at position `b` (0 -> 1, 1 -> 0).
@@ -176,6 +221,7 @@ impl BitField {
         debug_assert!(b < self.bv.len(), "bit index {} out of bounds (length: {})", b, self.bv.len());
         let current = self.bv[b];
         self.bv.set(b, !current);
+        self.increment_version();
     }
 
     /// Assign bit at position `b` to given value (0 or 1).
@@ -204,6 +250,7 @@ impl BitField {
         for i in beg..(beg + len) {
             self.bv.set(i, true);
         }
+        self.increment_version();
     }
 
     /// Clear range of bits [beg, beg+len) to 0.
@@ -216,6 +263,7 @@ impl BitField {
         for i in beg..(beg + len) {
             self.bv.set(i, false);
         }
+        self.increment_version();
     }
 
     /// Toggle range of bits [beg, beg+len).
@@ -229,6 +277,7 @@ impl BitField {
             let current = self.bv[i];
             self.bv.set(i, !current);
         }
+        self.increment_version();
     }
 
     // =========================================================================
@@ -238,11 +287,13 @@ impl BitField {
     /// Set all bits to 1.
     pub fn set_all(&mut self) {
         self.bv.fill(true);
+        self.increment_version();
     }
 
     /// Clear all bits to 0.
     pub fn clear_all(&mut self) {
         self.bv.fill(false);
+        self.increment_version();
     }
 
     /// Toggle all bits (binary NOT operation).
@@ -265,6 +316,8 @@ impl BitField {
             let mask = bitmask(valid_bits);
             words[last_idx] &= mask;
         }
+
+        self.increment_version();
     }
 
     // =========================================================================
@@ -276,12 +329,13 @@ impl BitField {
     /// Clears all bits first, then sets bits where vals[i] > 0.
     pub fn set_bits(&mut self, vals: &[u8]) {
         debug_assert!(vals.len() <= self.bv.len());
-        self.clear_all();
+        self.bv.fill(false);
         for (i, &val) in vals.iter().enumerate() {
             if val > 0 {
                 self.bv.set(i, true);
             }
         }
+        self.increment_version();
     }
 
     /// Set bits from vector of indices.
@@ -289,12 +343,13 @@ impl BitField {
     /// Clears all bits first, then sets bits at indices in `idxs`.
     /// Indices >= num_bits are silently ignored.
     pub fn set_acts(&mut self, idxs: &[usize]) {
-        self.clear_all();
+        self.bv.fill(false);
         for &idx in idxs {
             if idx < self.bv.len() {
                 self.bv.set(idx, true);
             }
         }
+        self.increment_version();
     }
 
     /// Get all bit values as vector of 0s and 1s.
@@ -482,9 +537,11 @@ impl BitField {
         for i in (1..self.bv.len()).rev() {
             let j = rng.gen_range(0..=i);
             let temp = self.get_bit(i);
-            self.assign_bit(i, self.get_bit(j));
-            self.assign_bit(j, temp);
+            let val_j = self.get_bit(j);
+            self.bv.set(i, val_j > 0);
+            self.bv.set(j, temp > 0);
         }
+        self.increment_version();
     }
 
     /// Randomly set exactly `num` bits to 1.
@@ -492,10 +549,11 @@ impl BitField {
     /// Clears all bits first, then randomly selects bits to set.
     pub fn random_set_num<R: Rng>(&mut self, rng: &mut R, num: usize) {
         debug_assert!(num <= self.bv.len());
-        self.clear_all();
+        self.bv.fill(false);
         let num_actual = num.min(self.bv.len());
 
         if num_actual == 0 {
+            self.increment_version();
             return;
         }
 
@@ -508,6 +566,7 @@ impl BitField {
                 count += 1;
             }
         }
+        self.increment_version();
     }
 
     /// Randomly set approximately `pct * num_bits` bits to 1.
@@ -534,8 +593,13 @@ impl BitField {
     /// Get direct mutable access to word storage.
     ///
     /// CRITICAL: Used for efficient word-level copying in Phase 2.
+    ///
+    /// **Note**: Conservative version tracking - increments version when called,
+    /// assuming modification will occur. This is necessary since we can't track
+    /// what the caller does with the mutable slice.
     #[inline(always)]
     pub fn words_mut(&mut self) -> &mut [Word] {
+        self.increment_version();
         self.bv.as_raw_mut_slice()
     }
 
