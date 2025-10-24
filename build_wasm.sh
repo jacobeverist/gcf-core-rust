@@ -32,8 +32,7 @@ echo "🔨 Building WASM module..."
 wasm-pack build \
     --target web \
     --out-dir visualization/pkg \
-    --features wasm \
-    --release
+    --features wasm
 
 echo
 echo "✅ Build complete!"

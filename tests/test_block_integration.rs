@@ -12,6 +12,7 @@ use std::rc::Rc;
 struct MockEncoder {
     output: Rc<RefCell<BlockOutput>>,
     pattern_index: usize,
+    pattern_index_prev: usize,
 }
 
 impl MockEncoder {
@@ -22,6 +23,7 @@ impl MockEncoder {
         Self {
             output: Rc::new(RefCell::new(output)),
             pattern_index: 0,
+            pattern_index_prev: usize::MAX, // Force first encode
         }
     }
 
@@ -56,13 +58,18 @@ impl Block for MockEncoder {
     }
 
     fn compute(&mut self) {
-        // Generate different pattern based on index
-        let mut output = self.output.borrow_mut();
-        output.state.clear_all();
+        // Optimization: Only encode if pattern changed (matches real blocks)
+        if self.pattern_index != self.pattern_index_prev {
+            // Generate different pattern based on index
+            let mut output = self.output.borrow_mut();
+            output.state.clear_all();
 
-        let base = self.pattern_index * 100;
-        for i in 0..10 {
-            output.state.set_bit(base + i);
+            let base = self.pattern_index * 100;
+            for i in 0..10 {
+                output.state.set_bit(base + i);
+            }
+
+            self.pattern_index_prev = self.pattern_index;
         }
     }
 

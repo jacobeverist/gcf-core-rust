@@ -229,7 +229,7 @@ pub struct NetworkConfig {
     pub connections: Vec<ConnectionConfig>,
 
     /// Optional learned state for each block
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub learned_state: Option<Vec<BlockState>>,
 
     /// Optional metadata (name, description, etc.)
@@ -237,7 +237,7 @@ pub struct NetworkConfig {
     pub metadata: HashMap<String, String>,
 
     // Deprecated: kept for backwards compatibility
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub blocks: Vec<BlockConfig>,
 }
 
@@ -303,7 +303,7 @@ impl NetworkConfig {
     /// Uses bincode to create a compact binary representation.
     /// For very large learned states (>100MB), JSON may be more reliable.
     pub fn to_binary(&self) -> Result<Vec<u8>> {
-        // Use bincode with unlimited size for large learned states
+        // Use bincode with default configuration
         bincode::serialize(self)
             .map_err(|e| crate::GnomicsError::Other(format!("Binary serialization failed: {}", e)))
     }
@@ -314,7 +314,7 @@ impl NetworkConfig {
     /// Note: For very large files, this may fail due to bincode's internal limits.
     /// In such cases, use JSON format instead.
     pub fn from_binary(data: &[u8]) -> Result<Self> {
-        // Try deserialization with bincode
+        // Use bincode with default configuration
         bincode::deserialize(data)
             .map_err(|e| crate::GnomicsError::Other(format!("Binary deserialization failed: {}. Try using JSON format for large learned states.", e)))
     }

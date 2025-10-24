@@ -1493,13 +1493,16 @@ impl Network {
     ///
     /// ```no_run
     /// # use gnomics::{Network, NetworkConfig};
+    /// # fn example() -> gnomics::Result<()> {
     /// // Load trained model
     /// let json = std::fs::read_to_string("trained_model.json").unwrap();
-    /// let config = NetworkConfig::from_json(&json).unwrap();
-    /// let mut net = Network::from_config_with_state(&config).unwrap();
+    /// let config = NetworkConfig::from_json(&json)?;
+    /// let mut net = Network::from_config_with_state(&config)?;
     ///
     /// // Ready to use immediately - no manual build/init needed!
     /// net.execute(false)?;  // Inference with trained weights
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn from_config_with_state(config: &crate::network_config::NetworkConfig) -> Result<Self> {
         use crate::network_config::BlockStateful;

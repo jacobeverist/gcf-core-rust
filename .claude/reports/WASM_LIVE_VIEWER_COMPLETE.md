@@ -366,6 +366,20 @@ If you want to extend the visualizer:
 5. **Comparison Mode**: Run multiple networks side-by-side
 6. **Video Export**: Record visualization as video
 
+
+### Fine-tuning development steps
+
+1. Record scalar or discrete data inputs to encoders in the trace
+2. Display the scalar or discrete data inputs in the visualization as a real-time plot
+3. Create visually distinct representations of block types in the network diagram
+4. By default, arrange the blocks in a hierarchical fashion so that execution passes from the top to the bottom.
+5. Hovering over a block in the diagram shows a tooltip describing the type and configuration of the block.
+6. Clicking on a block automatically highlights the corresponding data display on the right
+7. The edges between the blocks have arrows showing the directionality of the data and dependency
+8. Hovering over the arrow brings a tooltip describing the connection configuration, the source and target blocks, and the output and input types.
+9. Record scalar or discrete data outputs from blocks such as PatternClassifier or SequenceLearner in the trace
+10. Display the scalar or discrete data outputs in the visualization as a real-time plot.
+
 ## Conclusion
 
 The real-time WASM visualization system is **complete and production-ready**. You now have:

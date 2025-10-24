@@ -153,6 +153,62 @@
             padding: 20px;
         }
 
+        #plots-section {
+            margin-bottom: 30px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 15px;
+        }
+
+        #plots-section h3 {
+            font-size: 14px;
+            color: #4a9eff;
+            margin-bottom: 10px;
+        }
+
+        .plot-container {
+            margin-bottom: 20px;
+            background: #1e1e1e;
+            border-radius: 4px;
+            padding: 10px;
+        }
+
+        .plot-title {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .plot-svg {
+            width: 100%;
+            height: 150px;
+        }
+
+        .plot-line {
+            fill: none;
+            stroke-width: 2;
+        }
+
+        .plot-axis {
+            color: #888;
+            font-size: 10px;
+        }
+
+        .plot-axis path,
+        .plot-axis line {
+            stroke: #4a4a4a;
+        }
+
+        .plot-axis text {
+            fill: #888;
+        }
+
+        #bitfields-section h3 {
+            font-size: 14px;
+            color: #4a9eff;
+            margin-bottom: 10px;
+        }
+
         .bitfield-block {
             margin-bottom: 30px;
             background: #2a2a2a;
@@ -241,13 +297,9 @@
 
         .link {
             fill: none;
-            stroke: #555;
-            stroke-width: 2px;
-            marker-end: url(#arrowhead);
         }
 
         .link.context {
-            stroke: #ff9a4a;
             stroke-dasharray: 5, 5;
         }
 
@@ -293,6 +345,66 @@
             font-size: 11px;
             color: #666;
         }
+
+        /* Tooltip styles */
+        .block-tooltip {
+            position: absolute;
+            background: rgba(42, 42, 42, 0.95);
+            border: 2px solid #4a9eff;
+            border-radius: 6px;
+            padding: 12px;
+            pointer-events: none;
+            font-size: 12px;
+            z-index: 1000;
+            max-width: 300px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .block-tooltip.visible {
+            opacity: 1;
+        }
+
+        .tooltip-header {
+            font-weight: 600;
+            font-size: 14px;
+            color: #4a9eff;
+            margin-bottom: 4px;
+        }
+
+        .tooltip-type {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .tooltip-config {
+            color: #e0e0e0;
+            line-height: 1.4;
+        }
+
+        .tooltip-metrics {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #4a4a4a;
+            color: #4aff4a;
+        }
+
+        /* Highlighted bitfield block */
+        .bitfield-block.highlighted {
+            border: 2px solid #4a9eff;
+            box-shadow: 0 0 10px 2px rgba(74, 158, 255, 0.3);
+        }
+
+        .bitfield-block.highlighted.pulse {
+            animation: highlight-pulse 1s ease-out;
+        }
+
+        @keyframes highlight-pulse {
+            0% { box-shadow: 0 0 10px 2px rgba(74, 158, 255, 0.3); }
+            50% { box-shadow: 0 0 25px 8px rgba(74, 158, 255, 0.6); }
+            100% { box-shadow: 0 0 10px 2px rgba(74, 158, 255, 0.3); }
+        }
     </style>
 </head>
 <body>
@@ -315,6 +427,7 @@
                     <button id="start-btn" class="primary" disabled>Start</button>
                     <button id="stop-btn" class="danger" disabled>Stop</button>
                     <button id="reset-btn" disabled>Reset</button>
+                    <button id="reset-layout-btn" disabled>Reset Layout</button>
                 </div>
                 <div class="control-group">
                     <label>Speed:</label>
@@ -357,7 +470,16 @@
                     </div>
                 </div>
             </div>
-            <div id="bitfield-panel"></div>
+            <div id="bitfield-panel">
+                <div id="plots-section">
+                    <h3>Input/Output Values</h3>
+                    <div id="plots-container"></div>
+                </div>
+                <div id="bitfields-section">
+                    <h3>BitField States</h3>
+                    <div id="bitfields-container"></div>
+                </div>
+            </div>
         </div>
 
         <div id="metrics-panel">
@@ -385,6 +507,7 @@
     </div>
 
     <div id="loading-indicator">Initializing WASM module...</div>
+    <div class="block-tooltip"></div>
 
     <script type="module">
         import init, { WasmNetwork } from './pkg/gnomics.js';
@@ -400,6 +523,66 @@
         let traceData = null;
         let lastFrameTime = 0;
         let fps = 0;
+        let selectedBlockId = null;
+
+        // Time series data for plotting
+        const timeSeriesData = {
+            blocks: {},  // blockId -> { values: [], timestamps: [] }
+            maxPoints: 200  // Keep last 200 points
+        };
+        const activePlots = {};
+
+        // Block type styles configuration
+        const blockStyles = {
+            'ScalarTransformer': {
+                fill: '#4a9eff',
+                stroke: '#3a7ecf',
+                shape: 'circle',
+                icon: 'S'
+            },
+            'DiscreteTransformer': {
+                fill: '#ff9a4a',
+                stroke: '#cf7a2a',
+                shape: 'circle',
+                icon: 'D'
+            },
+            'PersistenceTransformer': {
+                fill: '#9a4aff',
+                stroke: '#7a2acf',
+                shape: 'circle',
+                icon: 'P'
+            },
+            'PatternPooler': {
+                fill: '#4aff4a',
+                stroke: '#2acf2a',
+                shape: 'rect',
+                icon: 'PP'
+            },
+            'PatternClassifier': {
+                fill: '#ff4aff',
+                stroke: '#cf2acf',
+                shape: 'rect',
+                icon: 'PC'
+            },
+            'SequenceLearner': {
+                fill: '#ffff4a',
+                stroke: '#cfcf2a',
+                shape: 'diamond',
+                icon: 'SL'
+            },
+            'ContextLearner': {
+                fill: '#4affff',
+                stroke: '#2acfcf',
+                shape: 'diamond',
+                icon: 'CL'
+            },
+            'default': {
+                fill: '#2a2a2a',
+                stroke: '#4a9eff',
+                shape: 'circle',
+                icon: '?'
+            }
+        };
 
         // DOM elements
         const demoSelect = document.getElementById('demo-select');
@@ -407,6 +590,7 @@
         const startBtn = document.getElementById('start-btn');
         const stopBtn = document.getElementById('stop-btn');
         const resetBtn = document.getElementById('reset-btn');
+        const resetLayoutBtn = document.getElementById('reset-layout-btn');
         const speedSlider = document.getElementById('speed-slider');
         const speedDisplay = document.getElementById('speed-display');
         const learningToggle = document.getElementById('learning-toggle');
@@ -455,6 +639,307 @@
             document.getElementById('demo-description').textContent = descriptions[currentDemo] || '';
         });
 
+        // Helper function to extract block type from name
+        function getBlockType(name) {
+            const types = [
+                'ScalarTransformer', 'DiscreteTransformer', 'PersistenceTransformer',
+                'PatternPooler', 'PatternClassifier', 'SequenceLearner', 'ContextLearner'
+            ];
+
+            for (const type of types) {
+                if (name.includes('Encoder')) {
+                    if (name.includes('Sequence')) return 'DiscreteTransformer';
+                    if (name.includes('Input')) return 'DiscreteTransformer';
+                    if (name.includes('Context')) return 'DiscreteTransformer';
+                    return 'ScalarTransformer';
+                }
+                if (name.includes('Learner')) {
+                    if (name.includes('Sequence')) return 'SequenceLearner';
+                    if (name.includes('Context')) return 'ContextLearner';
+                }
+                if (name.includes('Pooler')) return 'PatternPooler';
+                if (name.includes('Classifier')) return 'PatternClassifier';
+            }
+            return 'default';
+        }
+
+        // Generate tooltip content for a block
+        function getBlockTooltipContent(d) {
+            const type = d.type || 'Unknown';
+
+            return `
+                <div class="tooltip-header">${d.name}</div>
+                <div class="tooltip-type">${type}</div>
+                <div class="tooltip-config">
+                    Block ID: ${d.id}<br>
+                    Type: ${type}<br>
+                    Status: Active
+                </div>
+                <div class="tooltip-metrics">
+                    Click to highlight in BitField panel
+                </div>
+            `;
+        }
+
+        // Generate tooltip content for a connection
+        function getConnectionTooltipContent(d) {
+            const sourceNode = typeof d.source === 'object' ? d.source : { id: d.source, name: 'Unknown' };
+            const targetNode = typeof d.target === 'object' ? d.target : { id: d.target, name: 'Unknown' };
+
+            const connectionType = d.type === 'context' ? 'Context Connection' : 'Input Connection';
+            const color = d.type === 'context' ? '#ff9a4a' : '#4a9eff';
+
+            return `
+                <div class="tooltip-header" style="color: ${color}">${connectionType}</div>
+                <div class="tooltip-config">
+                    <strong>Source:</strong> ${sourceNode.name}<br>
+                    <strong>Target:</strong> ${targetNode.name}<br>
+                    <strong>Type:</strong> ${d.type === 'context' ? 'Context (dashed)' : 'Input (solid)'}<br>
+                    <strong>Data Flow:</strong> ${sourceNode.type || 'Block'} → ${targetNode.type || 'Block'}
+                </div>
+            `;
+        }
+
+        // Show tooltip
+        function showTooltip(event, d) {
+            const tooltip = document.querySelector('.block-tooltip');
+            tooltip.innerHTML = getBlockTooltipContent(d);
+            tooltip.classList.add('visible');
+            tooltip.style.left = (event.pageX + 10) + 'px';
+            tooltip.style.top = (event.pageY - 28) + 'px';
+        }
+
+        // Show connection tooltip
+        function showConnectionTooltip(event, d) {
+            const tooltip = document.querySelector('.block-tooltip');
+            tooltip.innerHTML = getConnectionTooltipContent(d);
+            tooltip.classList.add('visible');
+            tooltip.style.left = (event.pageX + 10) + 'px';
+            tooltip.style.top = (event.pageY - 28) + 'px';
+        }
+
+        // Hide tooltip
+        function hideTooltip() {
+            const tooltip = document.querySelector('.block-tooltip');
+            tooltip.classList.remove('visible');
+        }
+
+        // Highlight block in bitfield panel
+        function highlightBlock(blockId) {
+            // Unhighlight all blocks first
+            unhighlightAllBitfieldBlocks();
+
+            // Highlight the selected block
+            const bitfieldBlock = document.querySelector(`[data-block-id="${blockId}"]`);
+            if (bitfieldBlock) {
+                bitfieldBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                bitfieldBlock.classList.add('highlighted', 'pulse');
+
+                // Remove pulse animation after it completes, but keep the highlight
+                setTimeout(() => {
+                    bitfieldBlock.classList.remove('pulse');
+                }, 1000);
+            }
+        }
+
+        // Unhighlight all bitfield blocks
+        function unhighlightAllBitfieldBlocks() {
+            document.querySelectorAll('.bitfield-block').forEach(block => {
+                block.classList.remove('highlighted', 'pulse');
+            });
+        }
+
+        // Time series data management
+        function updateTimeSeriesData(blockId, value, timestamp) {
+            if (!timeSeriesData.blocks[blockId]) {
+                timeSeriesData.blocks[blockId] = {
+                    values: [],
+                    timestamps: []
+                };
+            }
+
+            const data = timeSeriesData.blocks[blockId];
+            data.values.push(value);
+            data.timestamps.push(timestamp);
+
+            // Keep only recent data
+            if (data.values.length > timeSeriesData.maxPoints) {
+                data.values.shift();
+                data.timestamps.shift();
+            }
+        }
+
+        // Create a D3 line chart
+        function createPlot(blockId, blockName, valueType, color) {
+            const container = d3.select('#plots-container')
+                .append('div')
+                .attr('class', 'plot-container')
+                .attr('data-plot-id', blockId);
+
+            container.append('div')
+                .attr('class', 'plot-title')
+                .text(`${blockName} - ${valueType}`);
+
+            const svg = container.append('svg')
+                .attr('class', 'plot-svg');
+
+            const margin = { top: 10, right: 20, bottom: 30, left: 40 };
+            const containerWidth = document.getElementById('plots-container').clientWidth || 400;
+            const width = containerWidth - margin.left - margin.right;
+            const height = 150 - margin.top - margin.bottom;
+
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+
+            // Scales
+            const xScale = d3.scaleLinear().range([0, width]);
+            const yScale = d3.scaleLinear().range([height, 0]);
+
+            // Axes
+            const xAxis = d3.axisBottom(xScale).ticks(5);
+            const yAxis = d3.axisLeft(yScale).ticks(5);
+
+            const xAxisGroup = g.append('g')
+                .attr('class', 'plot-axis')
+                .attr('transform', `translate(0,${height})`)
+                .call(xAxis);
+
+            const yAxisGroup = g.append('g')
+                .attr('class', 'plot-axis')
+                .call(yAxis);
+
+            // Line generator
+            const line = d3.line()
+                .x((d, i) => xScale(i))
+                .y(d => yScale(d))
+                .curve(d3.curveMonotoneX);
+
+            // Path for line
+            const path = g.append('path')
+                .attr('class', 'plot-line')
+                .attr('stroke', color || '#4a9eff');
+
+            return {
+                svg, g, xScale, yScale, xAxis, yAxis, line, path,
+                width, height, xAxisGroup, yAxisGroup
+            };
+        }
+
+        // Update a plot with new data
+        function updatePlot(plotObj, data) {
+            const { xScale, yScale, xAxis, yAxis, line, path, xAxisGroup, yAxisGroup } = plotObj;
+
+            if (!data || data.length === 0) return;
+
+            // Update scales
+            xScale.domain([0, data.length - 1]);
+            const yMin = d3.min(data);
+            const yMax = d3.max(data);
+            const yPadding = (yMax - yMin) * 0.1 || 1;
+            yScale.domain([yMin - yPadding, yMax + yPadding]);
+
+            // Update axes
+            xAxisGroup.call(xAxis);
+            yAxisGroup.call(yAxis);
+
+            // Update line
+            path.datum(data)
+                .attr('d', line);
+        }
+
+        // Initialize plots based on demo type
+        function initializePlots(demoType) {
+            // Clear existing plots
+            d3.select('#plots-container').selectAll('*').remove();
+            Object.keys(activePlots).forEach(key => delete activePlots[key]);
+            Object.keys(timeSeriesData.blocks).forEach(key => delete timeSeriesData.blocks[key]);
+
+            // Create plots based on demo type
+            switch(demoType) {
+                case 'sequence':
+                    activePlots.input = createPlot(
+                        'input',
+                        'Input Value',
+                        'Discrete',
+                        '#ff9a4a'
+                    );
+                    activePlots.anomaly = createPlot(
+                        'anomaly',
+                        'Anomaly Score',
+                        'Scalar',
+                        '#ff4a4a'
+                    );
+                    break;
+
+                case 'classification':
+                    activePlots.input = createPlot(
+                        'input',
+                        'Input Value',
+                        'Scalar',
+                        '#4a9eff'
+                    );
+                    activePlots.class0 = createPlot(
+                        'class0',
+                        'Class 0 Probability',
+                        'Scalar',
+                        '#4aff4a'
+                    );
+                    activePlots.class1 = createPlot(
+                        'class1',
+                        'Class 1 Probability',
+                        'Scalar',
+                        '#ffff4a'
+                    );
+                    activePlots.class2 = createPlot(
+                        'class2',
+                        'Class 2 Probability',
+                        'Scalar',
+                        '#ff4aff'
+                    );
+                    break;
+
+                case 'context':
+                    activePlots.input = createPlot(
+                        'input',
+                        'Input Value',
+                        'Discrete',
+                        '#ff9a4a'
+                    );
+                    activePlots.context = createPlot(
+                        'context',
+                        'Context Value',
+                        'Discrete',
+                        '#4affff'
+                    );
+                    activePlots.anomaly = createPlot(
+                        'anomaly',
+                        'Anomaly Score',
+                        'Scalar',
+                        '#ff4a4a'
+                    );
+                    break;
+
+                case 'pooling':
+                    activePlots.input = createPlot(
+                        'input',
+                        'Input Value',
+                        'Scalar',
+                        '#4a9eff'
+                    );
+                    break;
+            }
+        }
+
+        // Update all active plots
+        function updateAllPlots() {
+            for (const [plotId, plotObj] of Object.entries(activePlots)) {
+                const data = timeSeriesData.blocks[plotId];
+                if (data && data.values.length > 0) {
+                    updatePlot(plotObj, data.values);
+                }
+            }
+        }
+
         // Network initialization
         initBtn.addEventListener('click', () => {
             loadingIndicator.textContent = 'Creating network...';
@@ -467,6 +952,7 @@
                     startBtn.disabled = false;
                     stopBtn.disabled = false;
                     resetBtn.disabled = false;
+                    resetLayoutBtn.disabled = false;
                     initBtn.disabled = true;
                     loadingIndicator.classList.remove('visible');
                 } catch (err) {
@@ -519,6 +1005,9 @@
 
             updateStatus('network', 'active', `Network: ${numBlocks} blocks`);
 
+            // Initialize plots for this demo
+            initializePlots(currentDemo);
+
             // Initial visualization
             drawNetworkGraph();
         }
@@ -526,7 +1015,7 @@
         // Demo network configurations
         function createSequenceLearningNetwork() {
             blockHandles.encoder = wasmNetwork.add_discrete_transformer(
-                "Sequence Encoder", 10, 512, 2, 42
+                "Discrete Encoder", 10, 512, 2, 42
             );
             blockHandles.learner = wasmNetwork.add_sequence_learner(
                 "Sequence Learner", 512, 4, 8, 32, 20, 20, 2, 1, 2, false, 42
@@ -539,10 +1028,10 @@
 
         function createClassificationNetwork() {
             blockHandles.encoder = wasmNetwork.add_scalar_transformer(
-                "Input Encoder", 0.0, 10.0, 2048, 256, 2, 42
+                "Scalar Encoder", 0.0, 10.0, 2048, 256, 2, 42
             );
             blockHandles.classifier = wasmNetwork.add_pattern_classifier(
-                "Classifier", 3, 1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, 2, 42
+                "Pattern Classifier", 3, 1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, 2, 42
             );
             wasmNetwork.connect_to_input(blockHandles.encoder, blockHandles.classifier);
 
@@ -552,10 +1041,10 @@
 
         function createContextLearningNetwork() {
             blockHandles.inputEncoder = wasmNetwork.add_discrete_transformer(
-                "Input Encoder", 10, 512, 2, 42
+                "Discrete Encoder", 10, 512, 2, 42
             );
             blockHandles.contextEncoder = wasmNetwork.add_discrete_transformer(
-                "Context Encoder", 5, 256, 2, 43
+                "Discrete Encoder", 5, 256, 2, 43
             );
             blockHandles.learner = wasmNetwork.add_context_learner(
                 "Context Learner", 512, 4, 8, 32, 20, 20, 2, 1, 2, false, 42
@@ -569,10 +1058,10 @@
 
         function createPoolingNetwork() {
             blockHandles.encoder = wasmNetwork.add_scalar_transformer(
-                "Input Encoder", 0.0, 100.0, 2048, 256, 2, 42
+                "Scalar Encoder", 0.0, 100.0, 2048, 256, 2, 42
             );
             blockHandles.pooler = wasmNetwork.add_pattern_pooler(
-                "Feature Pooler", 1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 42
+                "Pattern Pooler", 1024, 40, 20, 2, 1, 0.8, 0.5, 0.3, false, 2, 42
             );
             wasmNetwork.connect_to_input(blockHandles.encoder, blockHandles.pooler);
 
@@ -600,7 +1089,8 @@
             stopExecution();
             executionStep = 0;
             document.getElementById('step-counter').textContent = '0';
-            document.getElementById('bitfield-panel').innerHTML = '';
+            document.getElementById('bitfields-container').innerHTML = '';
+            document.getElementById('plots-container').innerHTML = '';
             createNetwork(currentDemo);
         });
 
@@ -621,6 +1111,13 @@
             if (isRunning) {
                 clearInterval(executionInterval);
                 executionInterval = setInterval(executeStep, speed);
+            }
+        });
+
+        // Reset layout button
+        resetLayoutBtn.addEventListener('click', () => {
+            if (wasmNetwork) {
+                drawNetworkGraph();
             }
         });
 
@@ -658,6 +1155,9 @@
                 fps = Math.round(1000 / delta);
                 document.getElementById('fps-counter').textContent = fps;
                 lastFrameTime = now;
+
+                // Update plots
+                updateAllPlots();
 
                 // Get trace and update visualization
                 const traceJson = wasmNetwork.get_trace_json();
@@ -701,9 +1201,15 @@
 
             wasmNetwork.set_discrete_value(blockHandles.encoder, value);
 
+            // Capture input value for plotting
+            updateTimeSeriesData('input', value, executionStep);
+
             // Get anomaly score
             const anomaly = wasmNetwork.get_anomaly(blockHandles.learner);
             document.getElementById('anomaly-value').textContent = anomaly.toFixed(3);
+
+            // Capture anomaly for plotting
+            updateTimeSeriesData('anomaly', anomaly, executionStep);
         }
 
         function executeClassificationStep(learn) {
@@ -730,8 +1236,18 @@
 
             wasmNetwork.set_scalar_value(blockHandles.encoder, value);
 
+            // Capture input value for plotting
+            updateTimeSeriesData('input', value, executionStep);
+
+            // Get probabilities
+            const probs = wasmNetwork.get_probabilities(blockHandles.classifier);
+
+            // Capture probabilities for plotting
+            updateTimeSeriesData('class0', probs[0] || 0, executionStep);
+            updateTimeSeriesData('class1', probs[1] || 0, executionStep);
+            updateTimeSeriesData('class2', probs[2] || 0, executionStep);
+
             if (!learn) {
-                const probs = wasmNetwork.get_probabilities(blockHandles.classifier);
                 const predicted = probs.indexOf(Math.max(...probs));
                 document.getElementById('class-value').textContent = `${predicted} (${probs[predicted]})`;
             }
@@ -744,13 +1260,94 @@
             wasmNetwork.set_discrete_value(blockHandles.inputEncoder, inputVal);
             wasmNetwork.set_discrete_value(blockHandles.contextEncoder, contextVal);
 
+            // Capture input and context values for plotting
+            updateTimeSeriesData('input', inputVal, executionStep);
+            updateTimeSeriesData('context', contextVal, executionStep);
+
             const anomaly = wasmNetwork.get_anomaly(blockHandles.learner);
             document.getElementById('anomaly-value').textContent = anomaly.toFixed(3);
+
+            // Capture anomaly for plotting
+            updateTimeSeriesData('anomaly', anomaly, executionStep);
         }
 
         function executePoolingStep(learn) {
             const value = Math.sin(executionStep * 0.1) * 50 + 50;
             wasmNetwork.set_scalar_value(blockHandles.encoder, value);
+
+            // Capture input value for plotting
+            updateTimeSeriesData('input', value, executionStep);
+        }
+
+        // Hierarchical layout computation
+        function computeHierarchicalLevels(nodes, links) {
+            const levels = {};
+            const visited = new Set();
+
+            // Find root nodes (no incoming edges)
+            const incomingCount = {};
+            nodes.forEach(n => incomingCount[n.id] = 0);
+            links.forEach(l => {
+                const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+                incomingCount[targetId]++;
+            });
+
+            const roots = nodes.filter(n => incomingCount[n.id] === 0);
+
+            // BFS to assign levels
+            const queue = roots.map(n => ({ node: n, level: 0 }));
+
+            while (queue.length > 0) {
+                const { node, level } = queue.shift();
+
+                if (visited.has(node.id)) continue;
+                visited.add(node.id);
+                levels[node.id] = level;
+
+                // Add children
+                const children = links
+                    .filter(l => {
+                        const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+                        return sourceId === node.id;
+                    })
+                    .map(l => {
+                        const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+                        return nodes.find(n => n.id === targetId);
+                    })
+                    .filter(n => n !== undefined);
+
+                children.forEach(child => {
+                    if (!visited.has(child.id)) {
+                        queue.push({ node: child, level: level + 1 });
+                    }
+                });
+            }
+
+            return levels;
+        }
+
+        function applyHierarchicalLayout(nodes, links, width, height) {
+            const levels = computeHierarchicalLevels(nodes, links);
+            const maxLevel = Math.max(...Object.values(levels));
+            const levelHeight = height / (maxLevel + 2);
+
+            // Group nodes by level
+            const nodesByLevel = {};
+            nodes.forEach(node => {
+                const level = levels[node.id] || 0;
+                if (!nodesByLevel[level]) nodesByLevel[level] = [];
+                nodesByLevel[level].push(node);
+            });
+
+            // Position nodes
+            nodes.forEach(node => {
+                const level = levels[node.id] || 0;
+                const nodesInLevel = nodesByLevel[level];
+                const indexInLevel = nodesInLevel.indexOf(node);
+
+                node.fx = width / (nodesInLevel.length + 1) * (indexInLevel + 1);
+                node.fy = levelHeight * (level + 1);
+            });
         }
 
         // Visualization functions (adapted from viewer.html)
@@ -761,18 +1358,44 @@
             const width = document.getElementById('network-panel').clientWidth;
             const height = document.getElementById('network-panel').clientHeight;
 
-            // Add arrowhead marker
-            svg.append('defs').append('marker')
+            // Add defs for markers and filters
+            const defs = svg.append('defs');
+
+            // Arrowhead marker for input connections
+            defs.append('marker')
                 .attr('id', 'arrowhead')
-                .attr('viewBox', '-10 -5 10 10')
-                .attr('refX', -5)
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 28)  // Position at edge of 30px radius node
                 .attr('refY', 0)
                 .attr('markerWidth', 6)
                 .attr('markerHeight', 6)
                 .attr('orient', 'auto')
                 .append('path')
-                .attr('d', 'M-10,-5L0,0L-10,5')
-                .attr('fill', '#555');
+                .attr('d', 'M0,-5L10,0L0,5')
+                .attr('fill', '#4a9eff');
+
+            // Arrowhead marker for context connections
+            defs.append('marker')
+                .attr('id', 'arrowhead-context')
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 28)  // Position at edge of 30px radius node
+                .attr('refY', 0)
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M0,-5L10,0L0,5')
+                .attr('fill', '#ff9a4a');
+
+            // Glow filter for selected nodes
+            const glow = defs.append('filter')
+                .attr('id', 'glow');
+            glow.append('feGaussianBlur')
+                .attr('stdDeviation', '4')
+                .attr('result', 'coloredBlur');
+            const feMerge = glow.append('feMerge');
+            feMerge.append('feMergeNode').attr('in', 'coloredBlur');
+            feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
 
             const g = svg.append('g');
 
@@ -781,7 +1404,8 @@
             const nodes = [];
             for (let i = 0; i < numBlocks; i++) {
                 const name = wasmNetwork.get_block_name(i);
-                nodes.push({ id: i, name: name });
+                const type = getBlockType(name);
+                nodes.push({ id: i, name: name, type: type });
             }
 
             // Create links based on demo type
@@ -793,12 +1417,17 @@
                 links.push({ source: 1, target: 2, type: 'context' });
             }
 
-            // Create force simulation
+            // Apply hierarchical layout
+            applyHierarchicalLayout(nodes, links, width, height);
+
+            // Create force simulation with minimal forces to keep positions
             const simulation = d3.forceSimulation(nodes)
                 .force('link', d3.forceLink(links).distance(150))
-                .force('charge', d3.forceManyBody().strength(-400))
+                .force('charge', d3.forceManyBody().strength(-100))
                 .force('center', d3.forceCenter(width / 2, height / 2))
-                .force('collision', d3.forceCollide().radius(50));
+                .force('collision', d3.forceCollide().radius(50))
+                .alpha(0.1)
+                .alphaDecay(0.05);
 
             // Draw links
             const link = g.append('g')
@@ -806,7 +1435,27 @@
                 .data(links)
                 .join('path')
                 .attr('class', d => `link ${d.type}`)
-                .attr('stroke', d => d.type === 'context' ? '#ff9a4a' : '#555');
+                .attr('stroke', d => d.type === 'context' ? '#ff9a4a' : '#4a9eff')
+                .attr('stroke-width', 4)
+                .attr('fill', 'none')
+                .attr('marker-end', d => d.type === 'context' ? 'url(#arrowhead-context)' : 'url(#arrowhead)')
+                .style('cursor', 'pointer')
+                .on('mouseover', function(event, d) {
+                    // Highlight connection
+                    d3.select(this)
+                        // .attr('filter', 'url(#glow)')
+                        .attr('stroke-width', 6)
+                        .attr('stroke', d.type === 'context' ? '#ff9a4a' : '#4a9eff');
+                    showConnectionTooltip(event, d);
+                })
+                .on('mouseout', function(event, d) {
+                    // Reset connection style
+                    d3.select(this)
+                        // .attr('filter', null)
+                        .attr('stroke-width', 4)
+                        .attr('stroke', d.type === 'context' ? '#ff9a4a' : '#4a9eff');
+                    hideTooltip();
+                });
 
             // Draw nodes
             const node = g.append('g')
@@ -817,25 +1466,76 @@
                 .call(d3.drag()
                     .on('start', dragstarted)
                     .on('drag', dragged)
-                    .on('end', dragended));
+                    .on('end', dragended))
+                .on('mouseover', showTooltip)
+                .on('mouseout', hideTooltip)
+                .on('click', function(event, d) {
+                    event.stopPropagation();
 
-            node.append('circle')
-                .attr('r', 30)
-                .attr('fill', '#2a2a2a');
+                    // Toggle selection
+                    if (selectedBlockId === d.id) {
+                        selectedBlockId = null;
+                        unhighlightAll();
+                    } else {
+                        selectedBlockId = d.id;
+                        highlightSelectedNode(d.id);
+                        highlightBlock(d.id);
+                    }
+                });
 
+            // Draw different shapes based on block type
+            node.each(function(d) {
+                const style = blockStyles[d.type] || blockStyles.default;
+                const nodeGroup = d3.select(this);
+
+                if (style.shape === 'circle') {
+                    nodeGroup.append('circle')
+                        .attr('r', 30)
+                        .attr('fill', style.fill)
+                        .attr('stroke', style.stroke)
+                        .attr('stroke-width', 2);
+                } else if (style.shape === 'rect') {
+                    nodeGroup.append('rect')
+                        .attr('x', -30)
+                        .attr('y', -30)
+                        .attr('width', 60)
+                        .attr('height', 60)
+                        .attr('rx', 8)
+                        .attr('fill', style.fill)
+                        .attr('stroke', style.stroke)
+                        .attr('stroke-width', 2);
+                } else if (style.shape === 'diamond') {
+                    nodeGroup.append('polygon')
+                        .attr('points', '0,-35 35,0 0,35 -35,0')
+                        .attr('fill', style.fill)
+                        .attr('stroke', style.stroke)
+                        .attr('stroke-width', 2);
+                }
+
+                // Add type icon
+                nodeGroup.append('text')
+                    .attr('text-anchor', 'middle')
+                    .attr('dy', 5)
+                    .text(style.icon)
+                    .style('font-size', '14px')
+                    .style('font-weight', 'bold')
+                    .style('fill', 'white')
+                    .style('pointer-events', 'none');
+            });
+
+            // Add block name labels
             node.append('text')
                 .attr('text-anchor', 'middle')
-                .attr('dy', -35)
+                .attr('dy', -40)
                 .text(d => d.name)
-                .style('font-size', '12px');
+                .style('font-size', '12px')
+                .style('pointer-events', 'none');
 
             // Update positions on simulation tick
             simulation.on('tick', () => {
                 link.attr('d', d => {
-                    const dx = d.target.x - d.source.x;
-                    const dy = d.target.y - d.source.y;
-                    const dr = Math.sqrt(dx * dx + dy * dy);
-                    return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+                    // Use straight lines for better arrow visibility
+                    return `M${d.source.x},${d.source.y}L${d.target.x},${d.target.y}`;
                 });
 
                 node.attr('transform', d => `translate(${d.x},${d.y})`);
@@ -854,9 +1554,36 @@
 
             function dragended(event, d) {
                 if (!event.active) simulation.alphaTarget(0);
-                d.fx = null;
-                d.fy = null;
+                // Keep position after dragging (hierarchical mode)
+                // Position is already fixed by drag, so no need to change fx/fy
             }
+
+            // Highlight selected node
+            function highlightSelectedNode(nodeId) {
+                node.selectAll('circle, rect, polygon')
+                    .attr('stroke-width', function() {
+                        const d = d3.select(this.parentNode).datum();
+                        return d.id === nodeId ? 4 : 2;
+                    })
+                    .attr('filter', function() {
+                        const d = d3.select(this.parentNode).datum();
+                        return d.id === nodeId ? 'url(#glow)' : null;
+                    });
+            }
+
+            // Unhighlight all nodes
+            function unhighlightAll() {
+                node.selectAll('circle, rect, polygon')
+                    .attr('stroke-width', 2)
+                    .attr('filter', null);
+                unhighlightAllBitfieldBlocks();
+            }
+
+            // Click background to deselect
+            svg.on('click', () => {
+                selectedBlockId = null;
+                unhighlightAll();
+            });
 
             // Zoom behavior
             const zoom = d3.zoom()
@@ -873,14 +1600,20 @@
         }
 
         function updateBitFields(step) {
-            const panel = document.getElementById('bitfield-panel');
-            panel.innerHTML = '';
+            const container = document.getElementById('bitfields-container');
+            container.innerHTML = '';
 
             for (const [blockId, state] of Object.entries(step.block_states)) {
                 const metadata = step.block_metadata[blockId];
 
                 const blockDiv = document.createElement('div');
                 blockDiv.className = 'bitfield-block';
+                blockDiv.setAttribute('data-block-id', blockId);
+
+                // Preserve highlight if this block is selected
+                if (selectedBlockId !== null && parseInt(blockId) === selectedBlockId) {
+                    blockDiv.classList.add('highlighted');
+                }
 
                 const header = document.createElement('div');
                 header.className = 'bitfield-header';
@@ -910,7 +1643,7 @@
 
                 blockDiv.appendChild(header);
                 blockDiv.appendChild(grid);
-                panel.appendChild(blockDiv);
+                container.appendChild(blockDiv);
             }
         }
     </script>

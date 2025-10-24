@@ -256,7 +256,8 @@ impl BlockInput {
     /// let mut input = BlockInput::new();
     /// let mut output = BlockOutput::new();
     /// output.setup(2, 32);
-    /// output.store();
+    /// output.store();  // First store establishes baseline version
+    /// output.store();  // Second store detects no change
     ///
     /// let output = Rc::new(RefCell::new(output));
     /// input.add_child(Rc::clone(&output), 0);
