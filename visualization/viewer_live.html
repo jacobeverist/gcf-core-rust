@@ -532,55 +532,88 @@
         };
         const activePlots = {};
 
-        // Block type styles configuration
+        // Block type styles configuration (muted pastels)
         const blockStyles = {
             'ScalarTransformer': {
-                fill: '#4a9eff',
-                stroke: '#3a7ecf',
-                shape: 'circle',
-                icon: 'S'
+                fill: '#8DB4E2',  // Muted blue
+                stroke: '#5B8AC4',
+                shape: 'triangle',
+                icon: 'S',
+                width: 40,
+                height: 40,
+                inputType: 'scalar',  // Small circle on top
+                hasOutput: true  // Horizontal rect on bottom
             },
             'DiscreteTransformer': {
-                fill: '#ff9a4a',
-                stroke: '#cf7a2a',
-                shape: 'circle',
-                icon: 'D'
+                fill: '#E2A98D',  // Muted orange
+                stroke: '#C47F5B',
+                shape: 'triangle',
+                icon: 'D',
+                width: 40,
+                height: 40,
+                inputType: 'discrete',  // Small circle on top
+                hasOutput: true  // Horizontal rect on bottom
             },
             'PersistenceTransformer': {
-                fill: '#9a4aff',
-                stroke: '#7a2acf',
-                shape: 'circle',
-                icon: 'P'
+                fill: '#C48DE2',  // Muted purple
+                stroke: '#9A5BC4',
+                shape: 'triangle',
+                icon: 'P',
+                width: 40,
+                height: 40,
+                inputType: 'scalar',  // Small circle on top
+                hasOutput: true  // Horizontal rect on bottom
             },
             'PatternPooler': {
-                fill: '#4aff4a',
-                stroke: '#2acf2a',
-                shape: 'rect',
-                icon: 'PP'
+                fill: '#A8D8A8',  // Muted green
+                stroke: '#7AB67A',
+                shape: 'horizontal-rect',
+                icon: 'PP',
+                width: 80,
+                height: 40,
+                inputType: 'BlockInput',  // Horizontal rect on top
+                hasOutput: true  // Horizontal rect on bottom
             },
             'PatternClassifier': {
-                fill: '#ff4aff',
-                stroke: '#cf2acf',
-                shape: 'rect',
-                icon: 'PC'
+                fill: '#E2A8E2',  // Muted magenta
+                stroke: '#C47AC4',
+                shape: 'horizontal-rect',
+                icon: 'PC',
+                width: 80,
+                height: 40,
+                inputType: 'BlockInput',  // Horizontal rect on top
+                hasOutput: true  // Horizontal rect on bottom
             },
             'SequenceLearner': {
-                fill: '#ffff4a',
-                stroke: '#cfcf2a',
-                shape: 'diamond',
-                icon: 'SL'
+                fill: '#E2E28D',  // Muted yellow
+                stroke: '#C4C45B',
+                shape: 'square',
+                icon: 'SL',
+                width: 80,
+                height: 80,
+                inputType: 'BlockInput',  // Horizontal rect on top
+                hasContext: true,  // Vertical rect on side (auto-connected)
+                hasOutput: true  // Horizontal rect on bottom
             },
             'ContextLearner': {
-                fill: '#4affff',
-                stroke: '#2acfcf',
-                shape: 'diamond',
-                icon: 'CL'
+                fill: '#8DE2E2',  // Muted cyan
+                stroke: '#5BC4C4',
+                shape: 'square',
+                icon: 'CL',
+                width: 80,
+                height: 80,
+                inputType: 'BlockInput',  // Horizontal rect on top
+                hasContext: true,  // Vertical rect on side
+                hasOutput: true  // Horizontal rect on bottom
             },
             'default': {
-                fill: '#2a2a2a',
-                stroke: '#4a9eff',
-                shape: 'circle',
-                icon: '?'
+                fill: '#A8A8A8',  // Muted gray
+                stroke: '#8DB4E2',
+                shape: 'triangle',
+                icon: '?',
+                width: 40,
+                height: 40,
+                hasOutput: true
             }
         };
 
@@ -774,11 +807,37 @@
             const container = d3.select('#plots-container')
                 .append('div')
                 .attr('class', 'plot-container')
-                .attr('data-plot-id', blockId);
+                .attr('data-plot-id', blockId)
+                .attr('draggable', true);
 
-            container.append('div')
+            // Add title with close button
+            const titleBar = container.append('div')
                 .attr('class', 'plot-title')
+                .style('display', 'flex')
+                .style('justify-content', 'space-between')
+                .style('align-items', 'center')
+                .style('cursor', 'grab');
+
+            titleBar.append('span')
                 .text(`${blockName} - ${valueType}`);
+
+            // Close button
+            titleBar.append('span')
+                .attr('class', 'plot-close')
+                .html('×')
+                .style('cursor', 'pointer')
+                .style('font-size', '20px')
+                .style('font-weight', 'bold')
+                .style('color', '#888')
+                .on('mouseover', function() { d3.select(this).style('color', '#fff'); })
+                .on('mouseout', function() { d3.select(this).style('color', '#888'); })
+                .on('click', function(event) {
+                    event.stopPropagation();
+                    // Remove plot
+                    const plotId = container.attr('data-plot-id');
+                    delete activePlots[plotId];
+                    container.remove();
+                });
 
             const svg = container.append('svg')
                 .attr('class', 'plot-svg');
@@ -1156,9 +1215,6 @@
                 document.getElementById('fps-counter').textContent = fps;
                 lastFrameTime = now;
 
-                // Update plots
-                updateAllPlots();
-
                 // Get trace and update visualization
                 const traceJson = wasmNetwork.get_trace_json();
                 if (traceJson) {
@@ -1172,9 +1228,44 @@
 
                     // Update visualization with latest step
                     if (traceData.steps.length > 0) {
-                        updateVisualization(traceData.steps[traceData.steps.length - 1]);
+                        const latestStep = traceData.steps[traceData.steps.length - 1];
+                        updateVisualization(latestStep);
+
+                        // Capture data for dynamically added block plots
+                        for (const plotKey of Object.keys(activePlots)) {
+                            if (plotKey.startsWith('block_')) {
+                                // Extract block ID from plotKey (e.g., "block_0" -> "0")
+                                const blockIdStr = plotKey.replace('block_', '');
+
+                                // Try accessing with string key first, then numeric
+                                let blockState = latestStep.block_states[blockIdStr];
+                                if (!blockState) {
+                                    // Try numeric key
+                                    const blockIdNum = parseInt(blockIdStr);
+                                    blockState = latestStep.block_states[blockIdNum];
+                                }
+
+                                if (blockState && blockState.num_active !== undefined) {
+                                    // Use number of active bits as the output value
+                                    updateTimeSeriesData(plotKey, blockState.num_active, executionStep);
+
+                                    // Debug: verify data is being captured
+                                    if (executionStep % 50 === 0) {
+                                        console.log(`Captured data for ${plotKey}: ${blockState.num_active} active bits`);
+                                    }
+                                } else {
+                                    // Debug: log if block state not found
+                                    if (executionStep % 50 === 0) {
+                                        console.log(`No block state found for ${plotKey} (tried ${blockIdStr})`);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+
+                // Update plots
+                updateAllPlots();
 
             } catch (err) {
                 console.error('Execution error:', err);
@@ -1339,7 +1430,95 @@
                 nodesByLevel[level].push(node);
             });
 
-            // Position nodes
+            // Position nodes initially (will be refined below)
+            nodes.forEach(node => {
+                const level = levels[node.id] || 0;
+                const nodesInLevel = nodesByLevel[level];
+                const indexInLevel = nodesInLevel.indexOf(node);
+                node.fx = width / (nodesInLevel.length + 1) * (indexInLevel + 1);
+                node.fy = levelHeight * (level + 1);
+            });
+
+            // Special handling for context connections:
+            // Source blocks should be positioned to the left of target blocks
+            links.forEach(link => {
+                if (link.type === 'context') {
+                    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+                    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+                    const sourceNode = nodes.find(n => n.id === sourceId);
+                    const targetNode = nodes.find(n => n.id === targetId);
+
+                    if (sourceNode && targetNode) {
+                        // If they're at the same level, position source to the left
+                        if (levels[sourceId] === levels[targetId]) {
+                            const sourceLevel = nodesByLevel[levels[sourceId]];
+                            const targetIdx = sourceLevel.indexOf(targetNode);
+                            const sourceIdx = sourceLevel.indexOf(sourceNode);
+
+                            // Swap if source is to the right of target
+                            if (sourceIdx > targetIdx) {
+                                sourceLevel[sourceIdx] = targetNode;
+                                sourceLevel[targetIdx] = sourceNode;
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Sort nodes within each level to minimize crossings
+            // Use barycenter method: sort by average position of connected nodes in previous level
+            for (let level = 0; level <= maxLevel; level++) {
+                if (nodesByLevel[level]) {
+                    nodesByLevel[level].sort((a, b) => {
+                        // Check if nodes are context sources (have outgoing context connections)
+                        const aIsContextSource = links.some(l => {
+                            const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+                            return sourceId === a.id && l.type === 'context';
+                        });
+                        const bIsContextSource = links.some(l => {
+                            const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+                            return sourceId === b.id && l.type === 'context';
+                        });
+
+                        // Context sources should be positioned on the LEFT (lower x)
+                        if (aIsContextSource && !bIsContextSource) {
+                            return -1; // a comes first (left)
+                        } else if (!aIsContextSource && bIsContextSource) {
+                            return 1; // b comes first (left)
+                        }
+
+                        // Calculate barycenter (average x position of parents) for non-context sources
+                        const aParents = links.filter(l => {
+                            const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+                            return targetId === a.id && l.type !== 'context';
+                        });
+                        const bParents = links.filter(l => {
+                            const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+                            return targetId === b.id && l.type !== 'context';
+                        });
+
+                        const aBarycenter = aParents.length > 0
+                            ? aParents.reduce((sum, l) => {
+                                const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+                                const sourceNode = nodes.find(n => n.id === sourceId);
+                                return sum + (sourceNode ? (sourceNode.fx || 0) : 0);
+                            }, 0) / aParents.length
+                            : 0;
+
+                        const bBarycenter = bParents.length > 0
+                            ? bParents.reduce((sum, l) => {
+                                const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+                                const sourceNode = nodes.find(n => n.id === sourceId);
+                                return sum + (sourceNode ? (sourceNode.fx || 0) : 0);
+                            }, 0) / bParents.length
+                            : 0;
+
+                        return aBarycenter - bBarycenter;
+                    });
+                }
+            }
+
+            // Final positioning with updated order
             nodes.forEach(node => {
                 const level = levels[node.id] || 0;
                 const nodesInLevel = nodesByLevel[level];
@@ -1361,31 +1540,31 @@
             // Add defs for markers and filters
             const defs = svg.append('defs');
 
-            // Arrowhead marker for input connections
+            // Arrowhead marker for input connections (muted blue)
             defs.append('marker')
                 .attr('id', 'arrowhead')
                 .attr('viewBox', '0 -5 10 10')
-                .attr('refX', 28)  // Position at edge of 30px radius node
+                .attr('refX', 10)  // Arrow tip at end of line
                 .attr('refY', 0)
-                .attr('markerWidth', 6)
-                .attr('markerHeight', 6)
+                .attr('markerWidth', 8)
+                .attr('markerHeight', 8)
                 .attr('orient', 'auto')
                 .append('path')
                 .attr('d', 'M0,-5L10,0L0,5')
-                .attr('fill', '#4a9eff');
+                .attr('fill', '#8DB4E2');
 
-            // Arrowhead marker for context connections
+            // Arrowhead marker for context connections (muted orange)
             defs.append('marker')
                 .attr('id', 'arrowhead-context')
                 .attr('viewBox', '0 -5 10 10')
-                .attr('refX', 28)  // Position at edge of 30px radius node
+                .attr('refX', 10)  // Arrow tip at end of line
                 .attr('refY', 0)
-                .attr('markerWidth', 6)
-                .attr('markerHeight', 6)
+                .attr('markerWidth', 8)
+                .attr('markerHeight', 8)
                 .attr('orient', 'auto')
                 .append('path')
                 .attr('d', 'M0,-5L10,0L0,5')
-                .attr('fill', '#ff9a4a');
+                .attr('fill', '#E2A98D');
 
             // Glow filter for selected nodes
             const glow = defs.append('filter')
@@ -1429,31 +1608,29 @@
                 .alpha(0.1)
                 .alphaDecay(0.05);
 
-            // Draw links
+            // Draw links (muted colors)
             const link = g.append('g')
                 .selectAll('path')
                 .data(links)
                 .join('path')
                 .attr('class', d => `link ${d.type}`)
-                .attr('stroke', d => d.type === 'context' ? '#ff9a4a' : '#4a9eff')
-                .attr('stroke-width', 4)
+                .attr('stroke', d => d.type === 'context' ? '#E2A98D' : '#8DB4E2')
+                .attr('stroke-width', 3)
                 .attr('fill', 'none')
                 .attr('marker-end', d => d.type === 'context' ? 'url(#arrowhead-context)' : 'url(#arrowhead)')
                 .style('cursor', 'pointer')
                 .on('mouseover', function(event, d) {
                     // Highlight connection
                     d3.select(this)
-                        // .attr('filter', 'url(#glow)')
-                        .attr('stroke-width', 6)
-                        .attr('stroke', d.type === 'context' ? '#ff9a4a' : '#4a9eff');
+                        .attr('stroke-width', 5)
+                        .attr('stroke', d.type === 'context' ? '#C47F5B' : '#5B8AC4');
                     showConnectionTooltip(event, d);
                 })
                 .on('mouseout', function(event, d) {
                     // Reset connection style
                     d3.select(this)
-                        // .attr('filter', null)
-                        .attr('stroke-width', 4)
-                        .attr('stroke', d.type === 'context' ? '#ff9a4a' : '#4a9eff');
+                        .attr('stroke-width', 3)
+                        .attr('stroke', d.type === 'context' ? '#E2A98D' : '#8DB4E2');
                     hideTooltip();
                 });
 
@@ -1481,35 +1658,115 @@
                         highlightSelectedNode(d.id);
                         highlightBlock(d.id);
                     }
+                })
+                .on('contextmenu', function(event, d) {
+                    // Right-click: show context menu for adding plots
+                    showPlotMenu(event, d.id, d.name);
                 });
 
             // Draw different shapes based on block type
             node.each(function(d) {
                 const style = blockStyles[d.type] || blockStyles.default;
                 const nodeGroup = d3.select(this);
+                const w = style.width || 60;
+                const h = style.height || 60;
 
-                if (style.shape === 'circle') {
-                    nodeGroup.append('circle')
-                        .attr('r', 30)
+                // Draw main shape
+                if (style.shape === 'triangle') {
+                    // Upward pointing triangle
+                    const halfW = w / 2;
+                    nodeGroup.append('polygon')
+                        .attr('points', `0,${-h/2} ${halfW},${h/2} ${-halfW},${h/2}`)
                         .attr('fill', style.fill)
                         .attr('stroke', style.stroke)
-                        .attr('stroke-width', 2);
-                } else if (style.shape === 'rect') {
+                        .attr('stroke-width', 2)
+                        .attr('class', 'block-shape');
+                } else if (style.shape === 'horizontal-rect') {
+                    // Horizontal rectangle
                     nodeGroup.append('rect')
-                        .attr('x', -30)
-                        .attr('y', -30)
-                        .attr('width', 60)
-                        .attr('height', 60)
+                        .attr('x', -w/2)
+                        .attr('y', -h/2)
+                        .attr('width', w)
+                        .attr('height', h)
+                        .attr('rx', 6)
+                        .attr('fill', style.fill)
+                        .attr('stroke', style.stroke)
+                        .attr('stroke-width', 2)
+                        .attr('class', 'block-shape');
+                } else if (style.shape === 'square') {
+                    // Square
+                    const size = w;  // Use width as the size
+                    nodeGroup.append('rect')
+                        .attr('x', -size/2)
+                        .attr('y', -size/2)
+                        .attr('width', size)
+                        .attr('height', size)
                         .attr('rx', 8)
                         .attr('fill', style.fill)
                         .attr('stroke', style.stroke)
-                        .attr('stroke-width', 2);
-                } else if (style.shape === 'diamond') {
-                    nodeGroup.append('polygon')
-                        .attr('points', '0,-35 35,0 0,35 -35,0')
-                        .attr('fill', style.fill)
-                        .attr('stroke', style.stroke)
-                        .attr('stroke-width', 2);
+                        .attr('stroke-width', 2)
+                        .attr('class', 'block-shape');
+                }
+
+                // Add port annotations
+                const portGroup = nodeGroup.append('g').attr('class', 'ports');
+
+                // Input port (top)
+                if (style.inputType === 'scalar' || style.inputType === 'discrete') {
+                    // Small circle on top
+                    portGroup.append('circle')
+                        .attr('cx', 0)
+                        .attr('cy', -h/2 - 5)
+                        .attr('r', 4)
+                        .attr('fill', '#888')
+                        .attr('stroke', '#fff')
+                        .attr('stroke-width', 1)
+                        .attr('class', 'port-input');
+                    // Store port position for connection
+                    d.inputPort = { x: 0, y: -h/2 - 5 };
+                } else if (style.inputType === 'BlockInput') {
+                    // Thin horizontal rectangle on top
+                    const portW = w * 0.6;
+                    portGroup.append('rect')
+                        .attr('x', -portW/2)
+                        .attr('y', -h/2 - 8)
+                        .attr('width', portW)
+                        .attr('height', 4)
+                        .attr('fill', '#4a9eff')
+                        .attr('stroke', '#3a7ecf')
+                        .attr('stroke-width', 1)
+                        .attr('class', 'port-input');
+                    d.inputPort = { x: 0, y: -h/2 - 6 };
+                }
+
+                // Context port (side) - vertical rectangle
+                if (style.hasContext) {
+                    const portH = h * 0.4;
+                    portGroup.append('rect')
+                        .attr('x', -w/2 - 8)
+                        .attr('y', -portH/2)
+                        .attr('width', 4)
+                        .attr('height', portH)
+                        .attr('fill', '#ff9a4a')
+                        .attr('stroke', '#cf7a2a')
+                        .attr('stroke-width', 1)
+                        .attr('class', 'port-context');
+                    d.contextPort = { x: -w/2 - 6, y: 0 };
+                }
+
+                // Output port (bottom) - horizontal rectangle
+                if (style.hasOutput) {
+                    const portW = w * 0.6;
+                    portGroup.append('rect')
+                        .attr('x', -portW/2)
+                        .attr('y', h/2 + 4)
+                        .attr('width', portW)
+                        .attr('height', 4)
+                        .attr('fill', '#4aff4a')
+                        .attr('stroke', '#2acf2a')
+                        .attr('stroke-width', 1)
+                        .attr('class', 'port-output');
+                    d.outputPort = { x: 0, y: h/2 + 6 };
                 }
 
                 // Add type icon
@@ -1517,7 +1774,7 @@
                     .attr('text-anchor', 'middle')
                     .attr('dy', 5)
                     .text(style.icon)
-                    .style('font-size', '14px')
+                    .style('font-size', '12px')
                     .style('font-weight', 'bold')
                     .style('fill', 'white')
                     .style('pointer-events', 'none');
@@ -1534,8 +1791,38 @@
             // Update positions on simulation tick
             simulation.on('tick', () => {
                 link.attr('d', d => {
-                    // Use straight lines for better arrow visibility
-                    return `M${d.source.x},${d.source.y}L${d.target.x},${d.target.y}`;
+                    // Connect to ports instead of node centers
+                    let sx = d.source.x;
+                    let sy = d.source.y;
+                    let tx = d.target.x;
+                    let ty = d.target.y;
+
+                    // Source: use output port if available
+                    if (d.source.outputPort) {
+                        sx += d.source.outputPort.x;
+                        sy += d.source.outputPort.y;
+                    }
+
+                    // Target: use input port (or context port for context connections) if available
+                    if (d.type === 'context' && d.target.contextPort) {
+                        tx += d.target.contextPort.x;
+                        ty += d.target.contextPort.y;
+                    } else if (d.target.inputPort) {
+                        tx += d.target.inputPort.x;
+                        ty += d.target.inputPort.y;
+                    }
+
+                    // Create elbow/orthogonal arrows for cleaner layout
+                    const midY = (sy + ty) / 2;
+
+                    // For context connections (side-to-side), use horizontal elbow
+                    if (d.type === 'context') {
+                        const midX = (sx + tx) / 2;
+                        return `M${sx},${sy}L${midX},${sy}L${midX},${ty}L${tx},${ty}`;
+                    } else {
+                        // For vertical connections, use vertical elbow
+                        return `M${sx},${sy}L${sx},${midY}L${tx},${midY}L${tx},${ty}`;
+                    }
                 });
 
                 node.attr('transform', d => `translate(${d.x},${d.y})`);
@@ -1646,6 +1933,173 @@
                 container.appendChild(blockDiv);
             }
         }
+
+        // Drag and drop functionality for plots and bitfield blocks
+        let draggedElement = null;
+
+        // Setup drag listeners on the containers
+        function setupDragAndDrop() {
+            const plotsContainer = document.getElementById('plots-container');
+            const bitfieldsContainer = document.getElementById('bitfields-container');
+
+            // Drag events for plot containers
+            plotsContainer.addEventListener('dragstart', (e) => {
+                if (e.target.classList.contains('plot-container')) {
+                    draggedElement = e.target;
+                    e.target.style.opacity = '0.4';
+                }
+            });
+
+            plotsContainer.addEventListener('dragend', (e) => {
+                if (e.target.classList.contains('plot-container')) {
+                    e.target.style.opacity = '1';
+                }
+            });
+
+            plotsContainer.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const afterElement = getDragAfterElement(plotsContainer, e.clientY);
+                if (afterElement == null) {
+                    plotsContainer.appendChild(draggedElement);
+                } else {
+                    plotsContainer.insertBefore(draggedElement, afterElement);
+                }
+            });
+
+            // Drag events for bitfield blocks (make them draggable)
+            bitfieldsContainer.addEventListener('dragstart', (e) => {
+                if (e.target.classList.contains('bitfield-block')) {
+                    draggedElement = e.target;
+                    e.target.style.opacity = '0.4';
+                }
+            });
+
+            bitfieldsContainer.addEventListener('dragend', (e) => {
+                if (e.target.classList.contains('bitfield-block')) {
+                    e.target.style.opacity = '1';
+                }
+            });
+
+            bitfieldsContainer.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const afterElement = getDragAfterElement(bitfieldsContainer, e.clientY);
+                if (afterElement == null) {
+                    bitfieldsContainer.appendChild(draggedElement);
+                } else {
+                    bitfieldsContainer.insertBefore(draggedElement, afterElement);
+                }
+            });
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.plot-container:not(.dragging), .bitfield-block:not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        // Context menu for adding plots
+        let contextMenu = null;
+
+        function createContextMenu() {
+            contextMenu = document.createElement('div');
+            contextMenu.id = 'context-menu';
+            contextMenu.style.cssText = `
+                position: fixed;
+                background: rgba(30, 30, 30, 0.95);
+                border: 2px solid #4a9eff;
+                border-radius: 4px;
+                padding: 8px 0;
+                display: none;
+                z-index: 10000;
+                min-width: 150px;
+            `;
+            document.body.appendChild(contextMenu);
+
+            // Close menu when clicking elsewhere
+            document.addEventListener('click', () => {
+                contextMenu.style.display = 'none';
+            });
+        }
+
+        function showPlotMenu(event, blockId, blockName) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (!contextMenu) createContextMenu();
+
+            contextMenu.innerHTML = '';
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = event.pageX + 'px';
+            contextMenu.style.top = event.pageY + 'px';
+
+            // Add menu items
+            const menuItems = [
+                { label: 'Add Input/Output Plot', value: 'plot' },
+                { label: 'View BitField State', value: 'bitfield' },
+            ];
+
+            menuItems.forEach(item => {
+                const menuItem = document.createElement('div');
+                menuItem.style.cssText = `
+                    padding: 8px 16px;
+                    cursor: pointer;
+                    color: #fff;
+                    font-size: 13px;
+                `;
+                menuItem.textContent = item.label;
+                menuItem.addEventListener('mouseover', () => {
+                    menuItem.style.background = '#4a9eff';
+                });
+                menuItem.addEventListener('mouseout', () => {
+                    menuItem.style.background = 'transparent';
+                });
+                menuItem.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (item.value === 'plot') {
+                        // Add plot for this block if it doesn't exist
+                        const plotKey = `block_${blockId}`;
+                        if (!activePlots[plotKey]) {
+                            activePlots[plotKey] = createPlot(plotKey, blockName, 'output', '#A8D8A8');
+                            // Initialize time series data for this block
+                            if (!timeSeriesData.blocks[plotKey]) {
+                                timeSeriesData.blocks[plotKey] = {
+                                    values: [],
+                                    timestamps: []
+                                };
+                            }
+                        }
+                    }
+                    contextMenu.style.display = 'none';
+                });
+                contextMenu.appendChild(menuItem);
+            });
+        }
+
+        // Initialize drag/drop when page loads
+        setupDragAndDrop();
+
+        // Make bitfield blocks draggable after they're created
+        const observer = new MutationObserver(() => {
+            document.querySelectorAll('.bitfield-block').forEach(block => {
+                if (!block.getAttribute('draggable')) {
+                    block.setAttribute('draggable', 'true');
+                }
+            });
+        });
+
+        observer.observe(document.getElementById('bitfields-container'), {
+            childList: true,
+            subtree: true
+        });
     </script>
 </body>
 </html>
