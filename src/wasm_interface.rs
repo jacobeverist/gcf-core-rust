@@ -109,6 +109,46 @@ impl WasmNetwork {
         handle
     }
 
+    /// Add a PersistenceTransformer block for encoding temporal persistence/change.
+    ///
+    /// # Arguments
+    /// * `name` - Human-readable name
+    /// * `min_val` - Minimum input value
+    /// * `max_val` - Maximum input value
+    /// * `num_s` - Number of statelets
+    /// * `num_as` - Number of active statelets
+    /// * `max_step` - Maximum persistence steps to track
+    /// * `num_t` - History depth
+    /// * `seed` - Random seed
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// const encoder = net.add_persistence_transformer(
+    ///     "Change Detector", 0.0, 100.0, 2048, 256, 10, 2, 42
+    /// );
+    /// ```
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_persistence_transformer(
+        &mut self,
+        name: &str,
+        min_val: f64,
+        max_val: f64,
+        num_s: usize,
+        num_as: usize,
+        max_step: usize,
+        num_t: usize,
+        seed: u32,
+    ) -> usize {
+        let block = PersistenceTransformer::new(
+            min_val, max_val, num_s, num_as, max_step, num_t, seed.into(),
+        );
+        let id = self.net.add(block);
+        self.net.set_block_name(id, name);
+        let handle = self.block_handles.len();
+        self.block_handles.push((name.to_string(), id));
+        handle
+    }
+
     /// Add a PatternPooler block for unsupervised feature learning.
     ///
     /// # Example (JavaScript)

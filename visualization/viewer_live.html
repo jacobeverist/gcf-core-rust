@@ -1733,15 +1733,195 @@
 
         function addNewBlock(blockType, params, x, y) {
             console.log(`Adding new ${blockType} at (${x}, ${y}) with params:`, params);
-            // TODO: Call WASM API to add block (Phase 2)
-            // For now, just show a notification
-            alert(`Block creation will be implemented in Phase 2!\n\nType: ${blockType}\nParams: ${JSON.stringify(params, null, 2)}`);
+
+            if (!wasmNetwork) {
+                alert('Network not initialized. Please load a demo first.');
+                return;
+            }
+
+            try {
+                let handle;
+                const name = params.name || blockType.toLowerCase();
+                const seed = 0;
+
+                // Call appropriate WASM method based on block type
+                switch (blockType) {
+                    case 'ScalarTransformer':
+                        handle = wasmNetwork.add_scalar_transformer(
+                            name,
+                            params.min || 0,
+                            params.max || 100,
+                            params.statelets || 2048,
+                            params.active || 256,
+                            2, // num_t (history depth)
+                            seed
+                        );
+                        break;
+
+                    case 'DiscreteTransformer':
+                        handle = wasmNetwork.add_discrete_transformer(
+                            name,
+                            params.categories || 10,
+                            params.statelets || 2048,
+                            2, // num_t
+                            seed
+                        );
+                        break;
+
+                    case 'PersistenceTransformer':
+                        handle = wasmNetwork.add_persistence_transformer(
+                            name,
+                            params.min || 0,
+                            params.max || 100,
+                            params.statelets || 2048,
+                            params.active || 256,
+                            10, // max_step
+                            2, // num_t
+                            seed
+                        );
+                        break;
+
+                    case 'PatternPooler':
+                        handle = wasmNetwork.add_pattern_pooler(
+                            name,
+                            params.dendrites || 1024,
+                            params.active || 40,
+                            params['perm-thr'] || 20,
+                            2, // perm_inc
+                            1, // perm_dec
+                            0.8, // pct_pool
+                            0.5, // pct_conn
+                            0.3, // pct_learn
+                            false, // always_update
+                            2, // num_t
+                            seed
+                        );
+                        break;
+
+                    case 'PatternClassifier':
+                        handle = wasmNetwork.add_pattern_classifier(
+                            name,
+                            3, // num_l (number of labels)
+                            params.dendrites || 1024,
+                            params.active || 20,
+                            params['perm-thr'] || 20,
+                            2, // perm_inc
+                            1, // perm_dec
+                            0.8, // pct_pool
+                            0.5, // pct_conn
+                            0.3, // pct_learn
+                            2, // num_t
+                            seed
+                        );
+                        break;
+
+                    case 'SequenceLearner':
+                        handle = wasmNetwork.add_sequence_learner(
+                            name,
+                            512, // num_c (columns)
+                            4, // num_spc (statelets per column)
+                            8, // num_dps (dendrites per statelet)
+                            32, // num_rpd (receptors per dendrite)
+                            20, // dendrite threshold
+                            20, // perm_thr
+                            2, // perm_inc
+                            1, // perm_dec
+                            2, // num_t
+                            false, // always_update
+                            seed
+                        );
+                        break;
+
+                    case 'ContextLearner':
+                        handle = wasmNetwork.add_context_learner(
+                            name,
+                            512, // num_c
+                            4, // num_spc
+                            8, // num_dps
+                            32, // num_rpd
+                            20, // dendrite threshold
+                            20, // perm_thr
+                            2, // perm_inc
+                            1, // perm_dec
+                            2, // num_t
+                            false, // always_update
+                            seed
+                        );
+                        break;
+
+                    default:
+                        alert(`Unknown block type: ${blockType}`);
+                        return;
+                }
+
+                // Initialize and rebuild network
+                wasmNetwork.init_block(handle);
+                wasmNetwork.rebuild();
+
+                console.log(`Created block "${name}" with handle ${handle}`);
+
+                // Redraw network graph to show the new block
+                const traceJson = wasmNetwork.get_trace_json();
+                if (traceJson) {
+                    const trace = JSON.parse(traceJson);
+                    drawNetworkGraph(trace);
+                }
+
+                editorState.isDirty = true;
+
+            } catch (error) {
+                console.error('Error adding block:', error);
+                alert(`Error adding block: ${error.message || error}`);
+            }
         }
 
         function updateBlockParameters(blockId, params) {
             console.log(`Updating block ${blockId} with params:`, params);
-            // TODO: Call WASM API to update parameters (Phase 2)
-            alert(`Parameter update will be implemented in Phase 2!\n\nBlock: ${blockId}\nParams: ${JSON.stringify(params, null, 2)}`);
+            // TODO: Call WASM API to update parameters (would need to recreate block or add update methods)
+            alert(`Parameter update not yet implemented.\n\nTo change parameters, delete and recreate the block.`);
+        }
+
+        function deleteBlock(blockId) {
+            if (!wasmNetwork) {
+                alert('Network not initialized.');
+                return;
+            }
+
+            try {
+                // Get block info to map names to handles
+                const blocksInfoJson = wasmNetwork.get_blocks_info();
+                const blocksInfo = JSON.parse(blocksInfoJson);
+
+                // Find the handle for this block
+                const blockInfo = blocksInfo.find(b => b.name === blockId);
+                if (!blockInfo) {
+                    throw new Error(`Block "${blockId}" not found`);
+                }
+
+                // Remove the block via WASM API
+                wasmNetwork.remove_block(blockInfo.handle);
+
+                // Rebuild network and update visualization
+                wasmNetwork.rebuild();
+
+                console.log(`Deleted block "${blockId}"`);
+
+                // Remove from selected blocks
+                editorState.selectedBlocks.delete(blockId);
+
+                // Redraw network graph
+                const traceJson = wasmNetwork.get_trace_json();
+                if (traceJson) {
+                    const trace = JSON.parse(traceJson);
+                    drawNetworkGraph(trace);
+                }
+
+                editorState.isDirty = true;
+
+            } catch (error) {
+                console.error('Error deleting block:', error);
+                alert(`Error deleting block: ${error.message || error}`);
+            }
         }
 
         // Modal close handlers
@@ -1761,13 +1941,77 @@
                 alert('No network to save');
                 return;
             }
-            // TODO: Implement save (Phase 4)
-            alert('Save functionality will be implemented in Phase 4');
+
+            try {
+                // Export network configuration as JSON
+                const configJson = wasmNetwork.export_config();
+
+                // Create a blob and download it
+                const blob = new Blob([configJson], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `gnomics_network_${Date.now()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                console.log('Network configuration saved');
+                editorState.isDirty = false;
+
+            } catch (error) {
+                console.error('Error saving network:', error);
+                alert(`Error saving network: ${error.message || error}`);
+            }
         });
 
         toolLoad.addEventListener('click', () => {
-            // TODO: Implement load (Phase 4)
-            alert('Load functionality will be implemented in Phase 4');
+            // Create a file input element
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const configJson = event.target.result;
+
+                        // Stop simulation if running
+                        if (isRunning) {
+                            toggleSimulation();
+                        }
+
+                        // Create a new network and import the configuration
+                        wasmNetwork = WasmNetwork.new();
+                        wasmNetwork.import_config(configJson);
+                        wasmNetwork.build();
+
+                        console.log('Network configuration loaded');
+
+                        // Update visualization
+                        const traceJson = wasmNetwork.get_trace_json();
+                        if (traceJson) {
+                            const trace = JSON.parse(traceJson);
+                            drawNetworkGraph(trace);
+                        }
+
+                        editorState.isDirty = false;
+                        currentDemo = 'custom';
+
+                    } catch (error) {
+                        console.error('Error loading network:', error);
+                        alert(`Error loading network: ${error.message || error}`);
+                    }
+                };
+                reader.readAsText(file);
+            };
+
+            input.click();
         });
 
         // Undo/Redo (placeholders for Phase 4)
@@ -1799,8 +2043,10 @@
             else if (e.key === 'Delete' || e.key === 'Backspace') {
                 if (editorState.selectedBlocks.size > 0) {
                     e.preventDefault();
-                    // TODO: Delete selected blocks (Phase 2)
-                    alert('Block deletion will be implemented in Phase 2');
+                    const selectedArray = Array.from(editorState.selectedBlocks);
+                    if (confirm(`Delete ${selectedArray.length} selected block(s)?`)) {
+                        selectedArray.forEach(blockId => deleteBlock(blockId));
+                    }
                 }
             }
         });
@@ -1864,8 +2110,56 @@
 
                 console.log(`Create connection: ${sourceId} → ${targetBlockId} (${connType})`);
 
-                // TODO: Call WASM API to add connection (Phase 2)
-                alert(`Connection creation will be implemented in Phase 2!\n\nFrom: Block ${sourceId}\nTo: Block ${targetBlockId}\nType: ${connType}`);
+                if (!wasmNetwork) {
+                    alert('Network not initialized.');
+                    connectionDragData = null;
+                    return;
+                }
+
+                try {
+                    // Get block info to map names to handles
+                    const blocksInfoJson = wasmNetwork.get_blocks_info();
+                    const blocksInfo = JSON.parse(blocksInfoJson);
+
+                    // Build name-to-handle mapping
+                    const nameToHandle = {};
+                    blocksInfo.forEach(block => {
+                        nameToHandle[block.name] = block.handle;
+                    });
+
+                    // Get handles for source and target blocks
+                    const sourceHandle = nameToHandle[sourceId];
+                    const targetHandle = nameToHandle[targetBlockId];
+
+                    if (sourceHandle === undefined || targetHandle === undefined) {
+                        throw new Error(`Could not find handles for blocks: ${sourceId} -> ${targetBlockId}`);
+                    }
+
+                    // Create connection using WASM API
+                    if (connType === 'context') {
+                        wasmNetwork.connect_to_context(sourceHandle, targetHandle);
+                    } else {
+                        wasmNetwork.connect_to_input(sourceHandle, targetHandle);
+                    }
+
+                    // Rebuild network and update visualization
+                    wasmNetwork.rebuild();
+
+                    console.log(`Connected ${sourceId} → ${targetBlockId} (${connType})`);
+
+                    // Redraw network graph to show the new connection
+                    const traceJson = wasmNetwork.get_trace_json();
+                    if (traceJson) {
+                        const trace = JSON.parse(traceJson);
+                        drawNetworkGraph(trace);
+                    }
+
+                    editorState.isDirty = true;
+
+                } catch (error) {
+                    console.error('Error creating connection:', error);
+                    alert(`Error creating connection: ${error.message || error}`);
+                }
             }
 
             connectionDragData = null;
@@ -2820,13 +3114,12 @@
                         // Open parameter editor for this block
                         showBlockParameterEditor(blockType, blockId);
                     } else if (item.value === 'duplicate') {
-                        // Duplicate block (Phase 2)
-                        alert('Block duplication will be implemented in Phase 2');
+                        // Duplicate block (TODO: Phase 6)
+                        alert('Block duplication will be implemented in a future phase');
                     } else if (item.value === 'delete') {
-                        // Delete block (Phase 2)
+                        // Delete block
                         if (confirm(`Are you sure you want to delete "${blockName}"?`)) {
-                            console.log(`Delete block ${blockId}`);
-                            alert('Block deletion will be implemented in Phase 2');
+                            deleteBlock(blockId);
                         }
                     }
 
