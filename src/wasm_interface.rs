@@ -533,4 +533,204 @@ impl WasmNetwork {
         }
         Ok(self.block_handles[handle].0.clone())
     }
+
+    // ===== PHASE 2: Network Editing API =====
+
+    /// Remove a block from the network.
+    ///
+    /// Note: All connections to/from this block must be removed first.
+    /// The block handle will become invalid after removal.
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// net.remove_block(block_handle);
+    /// ```
+    pub fn remove_block(&mut self, handle: usize) -> Result<(), JsValue> {
+        if handle >= self.block_handles.len() {
+            return Err(JsValue::from_str("Invalid block handle"));
+        }
+
+        let block_id = self.block_handles[handle].1;
+
+        // Remove from network
+        self.net
+            .remove(block_id)
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+
+        // Mark handle as invalid (keep array size but clear entry)
+        self.block_handles[handle] = ("<removed>".to_string(), BlockId::from_raw(u32::MAX));
+
+        Ok(())
+    }
+
+    /// Remove a connection between two blocks.
+    ///
+    /// # Arguments
+    /// * `source_handle` - Handle of the source block
+    /// * `target_handle` - Handle of the target block
+    /// * `connection_type` - "input" or "context"
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// net.remove_connection(encoder, pooler, "input");
+    /// net.remove_connection(context_enc, learner, "context");
+    /// ```
+    pub fn remove_connection(
+        &mut self,
+        source_handle: usize,
+        target_handle: usize,
+        connection_type: &str,
+    ) -> Result<(), JsValue> {
+        if source_handle >= self.block_handles.len() {
+            return Err(JsValue::from_str("Invalid source handle"));
+        }
+        if target_handle >= self.block_handles.len() {
+            return Err(JsValue::from_str("Invalid target handle"));
+        }
+
+        let source_id = self.block_handles[source_handle].1;
+        let target_id = self.block_handles[target_handle].1;
+
+        // Remove connection from target's input or context
+        match connection_type {
+            "input" => {
+                self.net
+                    .disconnect_from_input(source_id, target_id)
+                    .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+            }
+            "context" => {
+                self.net
+                    .disconnect_from_context(source_id, target_id)
+                    .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+            }
+            _ => {
+                return Err(JsValue::from_str(
+                    "Invalid connection type. Use 'input' or 'context'",
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Export network configuration as JSON string.
+    ///
+    /// This saves the network topology and block parameters, but not learned state.
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// const configJson = net.export_config();
+    /// localStorage.setItem('myNetwork', configJson);
+    /// ```
+    pub fn export_config(&self) -> Result<String, JsValue> {
+        let config = self
+            .net
+            .to_config()
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+
+        config
+            .to_json()
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+    }
+
+    /// Import network configuration from JSON string.
+    ///
+    /// This replaces the current network with the loaded configuration.
+    /// All existing blocks and connections will be lost.
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// const configJson = localStorage.getItem('myNetwork');
+    /// net.import_config(configJson);
+    /// ```
+    pub fn import_config(&mut self, config_json: &str) -> Result<(), JsValue> {
+        use crate::network_config::NetworkConfig;
+
+        let config = NetworkConfig::from_json(config_json)
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+
+        // Create new network from config
+        let new_net = Network::from_config(&config)
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+
+        // Replace current network
+        self.net = new_net;
+
+        // Rebuild block handles
+        self.block_handles.clear();
+        for (i, block_info) in config.block_info.iter().enumerate() {
+            let block_id = BlockId::from_raw(i as u32);
+            self.block_handles
+                .push((block_info.name.clone(), block_id));
+        }
+
+        Ok(())
+    }
+
+    /// Get list of all block handles, names, and types.
+    ///
+    /// Returns JSON array of {handle, name, type} objects.
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// const blocksJson = net.get_blocks_info();
+    /// const blocks = JSON.parse(blocksJson);
+    /// blocks.forEach(block => {
+    ///     console.log(`${block.handle}: ${block.name} (${block.type})`);
+    /// });
+    /// ```
+    pub fn get_blocks_info(&self) -> Result<String, JsValue> {
+        let mut blocks = Vec::new();
+
+        for (handle, (name, block_id)) in self.block_handles.iter().enumerate() {
+            if name == "<removed>" {
+                continue; // Skip removed blocks
+            }
+
+            // Determine block type by trying to get each type
+            let block_type = if self.net.get::<ScalarTransformer>(*block_id).is_ok() {
+                "ScalarTransformer"
+            } else if self.net.get::<DiscreteTransformer>(*block_id).is_ok() {
+                "DiscreteTransformer"
+            } else if self.net.get::<PersistenceTransformer>(*block_id).is_ok() {
+                "PersistenceTransformer"
+            } else if self.net.get::<PatternPooler>(*block_id).is_ok() {
+                "PatternPooler"
+            } else if self.net.get::<PatternClassifier>(*block_id).is_ok() {
+                "PatternClassifier"
+            } else if self.net.get::<SequenceLearner>(*block_id).is_ok() {
+                "SequenceLearner"
+            } else if self.net.get::<ContextLearner>(*block_id).is_ok() {
+                "ContextLearner"
+            } else {
+                "Unknown"
+            };
+
+            blocks.push(serde_json::json!({
+                "handle": handle,
+                "name": name,
+                "type": block_type,
+                "id": block_id.as_usize()
+            }));
+        }
+
+        serde_json::to_string(&blocks).map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+
+    /// Rebuild the network after modifications.
+    ///
+    /// This recomputes the execution order after adding/removing blocks or connections.
+    /// Must be called before execute() after making changes.
+    ///
+    /// # Example (JavaScript)
+    /// ```javascript
+    /// net.remove_connection(encoder, pooler, "input");
+    /// net.connect_to_input(encoder, classifier);
+    /// net.rebuild();  // Recompute execution order
+    /// ```
+    pub fn rebuild(&mut self) -> Result<(), JsValue> {
+        self.net
+            .build()
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+    }
 }

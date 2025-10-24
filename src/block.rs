@@ -131,6 +131,38 @@ pub trait Block {
         Vec::new()
     }
 
+    /// Remove a connection from this block's input.
+    ///
+    /// # Arguments
+    /// * `source` - The BlockId of the source block to disconnect
+    ///
+    /// # Errors
+    /// Returns error if this block has no inputs or if the connection doesn't exist.
+    ///
+    /// Default implementation returns error (block has no inputs).
+    /// Blocks with BlockInput should override this.
+    fn remove_input_connection(&self, _source: crate::network::BlockId) -> Result<()> {
+        Err(crate::GnomicsError::Other(
+            "Block does not have input connections".to_string(),
+        ))
+    }
+
+    /// Remove a connection from this block's context input.
+    ///
+    /// # Arguments
+    /// * `source` - The BlockId of the source block to disconnect
+    ///
+    /// # Errors
+    /// Returns error if this block has no context or if the connection doesn't exist.
+    ///
+    /// Default implementation returns error (block has no context).
+    /// Blocks with context should override this.
+    fn remove_context_connection(&self, _source: crate::network::BlockId) -> Result<()> {
+        Err(crate::GnomicsError::Other(
+            "Block does not have context connections".to_string(),
+        ))
+    }
+
     /// Execute the block's computation pipeline.
     ///
     /// Executes the full forward computation pipeline:

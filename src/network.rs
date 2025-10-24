@@ -696,6 +696,143 @@ impl Network {
         ConnectionBuilder::new(self, source)
     }
 
+    // ===== PHASE 2: Block and Connection Removal =====
+
+    /// Remove a block from the network.
+    ///
+    /// Note: All connections to/from this block should be removed first.
+    /// Remaining dependencies will be cleaned up automatically.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if block does not exist.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// network.remove(block_id)?;
+    /// network.build()?;  // Rebuild after removal
+    /// ```
+    pub fn remove(&mut self, block_id: BlockId) -> Result<()> {
+        if !self.blocks.contains_key(&block_id) {
+            return Err(crate::GnomicsError::Other(format!(
+                "Block {:?} does not exist",
+                block_id
+            )));
+        }
+
+        // Remove block
+        self.blocks.remove(&block_id);
+
+        // Remove from dependencies
+        self.dependencies.remove(&block_id);
+
+        // Remove from other blocks' dependencies
+        for deps in self.dependencies.values_mut() {
+            deps.retain(|&id| id != block_id);
+        }
+
+        // Clear execution order (will be recomputed on next build)
+        self.execution_order.clear();
+
+        Ok(())
+    }
+
+    /// Disconnect source block output from target block input.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if either block does not exist or if the connection doesn't exist.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// network.disconnect_from_input(encoder_id, pooler_id)?;
+    /// ```
+    pub fn disconnect_from_input(
+        &mut self,
+        source: BlockId,
+        target: BlockId,
+    ) -> Result<()> {
+        // Verify blocks exist
+        if !self.blocks.contains_key(&source) {
+            return Err(crate::GnomicsError::Other(format!(
+                "Source block {:?} does not exist",
+                source
+            )));
+        }
+        if !self.blocks.contains_key(&target) {
+            return Err(crate::GnomicsError::Other(format!(
+                "Target block {:?} does not exist",
+                target
+            )));
+        }
+
+        // Get target block and remove the connection
+        let wrapper = self.blocks.get(&target).ok_or_else(|| {
+            crate::GnomicsError::Other(format!("Target block {:?} not found", target))
+        })?;
+
+        // Remove the connection by finding and removing the output reference
+        wrapper
+            .block()
+            .remove_input_connection(source)
+            .map_err(|e| crate::GnomicsError::Other(format!("{:?}", e)))?;
+
+        // Update dependencies
+        if let Some(deps) = self.dependencies.get_mut(&target) {
+            deps.retain(|&id| id != source);
+        }
+
+        Ok(())
+    }
+
+    /// Disconnect source block output from target block context input.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if either block does not exist or if the connection doesn't exist.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// network.disconnect_from_context(context_encoder_id, learner_id)?;
+    /// ```
+    pub fn disconnect_from_context(
+        &mut self,
+        source: BlockId,
+        target: BlockId,
+    ) -> Result<()> {
+        // Verify blocks exist
+        if !self.blocks.contains_key(&source) {
+            return Err(crate::GnomicsError::Other(format!(
+                "Source block {:?} does not exist",
+                source
+            )));
+        }
+        if !self.blocks.contains_key(&target) {
+            return Err(crate::GnomicsError::Other(format!(
+                "Target block {:?} does not exist",
+                target
+            )));
+        }
+
+        // Get target block and remove the connection
+        let wrapper = self.blocks.get(&target).ok_or_else(|| {
+            crate::GnomicsError::Other(format!("Target block {:?} not found", target))
+        })?;
+
+        // Remove the connection from context
+        wrapper
+            .block()
+            .remove_context_connection(source)
+            .map_err(|e| crate::GnomicsError::Other(format!("{:?}", e)))?;
+
+        // Update dependencies
+        if let Some(deps) = self.dependencies.get_mut(&target) {
+            deps.retain(|&id| id != source);
+        }
+
+        Ok(())
+    }
+
     /// Auto-discover dependencies from block inputs.
     ///
     /// Calls get_dependencies() on each block to find which other blocks
