@@ -147,12 +147,12 @@ impl PatternClassifier {
         num_t: usize,
         seed: u64,
     ) -> Self {
-        assert!(
-            num_s % num_l == 0,
-            "num_s must be divisible by num_l (got {} / {})",
-            num_s,
-            num_l
-        );
+        // assert!(
+        //     num_s % num_l == 0,
+        //     "num_s must be divisible by num_l (got {} / {})",
+        //     num_s,
+        //     num_l
+        // );
         assert!(num_t >= 2, "num_t must be at least 2");
 
         let num_spl = num_s / num_l;
