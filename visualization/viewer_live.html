@@ -405,6 +405,296 @@
             50% { box-shadow: 0 0 25px 8px rgba(74, 158, 255, 0.6); }
             100% { box-shadow: 0 0 10px 2px rgba(74, 158, 255, 0.3); }
         }
+
+        /* Block Palette Sidebar */
+        #block-palette {
+            width: 200px;
+            background: #2a2a2a;
+            border-right: 2px solid #3a3a3a;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        #block-palette h3 {
+            font-size: 14px;
+            color: #4a9eff;
+            padding: 15px;
+            margin: 0;
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .palette-category {
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .palette-category-header {
+            padding: 10px 15px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #252525;
+        }
+
+        .palette-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            cursor: grab;
+            transition: background 0.2s;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        .palette-item:hover {
+            background: #333;
+        }
+
+        .palette-item:active {
+            cursor: grabbing;
+        }
+
+        .palette-item.dragging {
+            opacity: 0.5;
+        }
+
+        .palette-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .palette-icon.triangle {
+            width: 0;
+            height: 0;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-bottom: 20px solid;
+            font-size: 0;
+        }
+
+        .palette-icon.horizontal-rect {
+            width: 32px;
+            height: 16px;
+        }
+
+        .palette-icon.square {
+            width: 24px;
+            height: 24px;
+        }
+
+        .palette-label {
+            font-size: 12px;
+            color: #e0e0e0;
+            flex: 1;
+        }
+
+        /* Editor Toolbar */
+        #editor-toolbar {
+            background: #252525;
+            border-bottom: 1px solid #3a3a3a;
+            padding: 8px 12px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .editor-tool {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: #3a3a3a;
+            border: 1px solid #4a4a4a;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 16px;
+        }
+
+        .editor-tool:hover {
+            background: #4a4a4a;
+            border-color: #5a5a5a;
+        }
+
+        .editor-tool.active {
+            background: #4a9eff;
+            border-color: #4a9eff;
+            color: #fff;
+        }
+
+        .editor-tool:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .toolbar-separator {
+            width: 1px;
+            height: 24px;
+            background: #3a3a3a;
+            margin: 0 4px;
+        }
+
+        /* Parameter Editor Modal */
+        #param-editor-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #param-editor-modal.visible {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #2a2a2a;
+            border: 2px solid #4a9eff;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 18px;
+            font-weight: 600;
+            color: #4a9eff;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            background: #1e1e1e;
+            border: 1px solid #4a4a4a;
+            border-radius: 4px;
+            color: #e0e0e0;
+            font-size: 13px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #4a9eff;
+        }
+
+        .form-group .input-hint {
+            font-size: 11px;
+            color: #666;
+            margin-top: 3px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #3a3a3a;
+        }
+
+        /* Visual Feedback */
+        .node.selected {
+            filter: drop-shadow(0 0 8px #4a9eff);
+        }
+
+        .node.selected .block-shape {
+            stroke: #4a9eff;
+            stroke-width: 3px;
+        }
+
+        .port.valid-target {
+            stroke: #4aff4a;
+            stroke-width: 2px;
+            filter: drop-shadow(0 0 4px #4aff4a);
+        }
+
+        .port.invalid-target {
+            stroke: #ff4a4a;
+            stroke-width: 2px;
+        }
+
+        .connection-preview {
+            stroke: #4a9eff;
+            stroke-width: 2px;
+            stroke-dasharray: 5, 5;
+            fill: none;
+            pointer-events: none;
+        }
+
+        .drag-ghost {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* Context Menu Enhancement */
+        .context-menu {
+            position: absolute;
+            background: #2a2a2a;
+            border: 1px solid #4a4a4a;
+            border-radius: 4px;
+            padding: 4px 0;
+            min-width: 150px;
+            z-index: 1500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .context-menu-item {
+            padding: 8px 15px;
+            font-size: 12px;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .context-menu-item:hover {
+            background: #3a3a3a;
+        }
+
+        .context-menu-item.danger {
+            color: #ff4a4a;
+        }
+
+        .context-menu-item.danger:hover {
+            background: rgba(255, 74, 74, 0.1);
+        }
+
+        .context-menu-separator {
+            height: 1px;
+            background: #3a3a3a;
+            margin: 4px 0;
+        }
     </style>
 </head>
 <body>
@@ -457,11 +747,70 @@
         </div>
 
         <div id="main-content">
+            <!-- Block Palette Sidebar -->
+            <div id="block-palette">
+                <h3>Block Palette</h3>
+
+                <div class="palette-category">
+                    <div class="palette-category-header">Transformers</div>
+                    <div class="palette-item" data-block-type="ScalarTransformer" draggable="true">
+                        <div class="palette-icon triangle" style="border-bottom-color: #8DB4E2;"></div>
+                        <div class="palette-label">Scalar</div>
+                    </div>
+                    <div class="palette-item" data-block-type="DiscreteTransformer" draggable="true">
+                        <div class="palette-icon triangle" style="border-bottom-color: #E2A98D;"></div>
+                        <div class="palette-label">Discrete</div>
+                    </div>
+                    <div class="palette-item" data-block-type="PersistenceTransformer" draggable="true">
+                        <div class="palette-icon triangle" style="border-bottom-color: #C48DE2;"></div>
+                        <div class="palette-label">Persistence</div>
+                    </div>
+                </div>
+
+                <div class="palette-category">
+                    <div class="palette-category-header">Learning</div>
+                    <div class="palette-item" data-block-type="PatternPooler" draggable="true">
+                        <div class="palette-icon horizontal-rect" style="background: #A8D8A8;"></div>
+                        <div class="palette-label">Pooler</div>
+                    </div>
+                    <div class="palette-item" data-block-type="PatternClassifier" draggable="true">
+                        <div class="palette-icon horizontal-rect" style="background: #E2A8E2;"></div>
+                        <div class="palette-label">Classifier</div>
+                    </div>
+                </div>
+
+                <div class="palette-category">
+                    <div class="palette-category-header">Temporal</div>
+                    <div class="palette-item" data-block-type="SequenceLearner" draggable="true">
+                        <div class="palette-icon square" style="background: #E2E28D;"></div>
+                        <div class="palette-label">Sequence</div>
+                    </div>
+                    <div class="palette-item" data-block-type="ContextLearner" draggable="true">
+                        <div class="palette-icon square" style="background: #8DE2E2;"></div>
+                        <div class="palette-label">Context</div>
+                    </div>
+                </div>
+            </div>
+
             <div id="network-panel">
+                <!-- Editor Toolbar -->
+                <div id="editor-toolbar">
+                    <div class="editor-tool active" id="tool-select" title="Select Mode (V)">🖱️</div>
+                    <div class="editor-tool" id="tool-connect" title="Add Connection (C)">🔗</div>
+                    <div class="editor-tool" id="tool-delete" title="Delete Mode (D)">🗑️</div>
+                    <div class="toolbar-separator"></div>
+                    <div class="editor-tool" id="tool-undo" title="Undo (Ctrl+Z)" disabled>↩️</div>
+                    <div class="editor-tool" id="tool-redo" title="Redo (Ctrl+Shift+Z)" disabled>↪️</div>
+                    <div class="toolbar-separator"></div>
+                    <div class="editor-tool" id="tool-save" title="Save Network">💾</div>
+                    <div class="editor-tool" id="tool-load" title="Load Network">📂</div>
+                </div>
+
                 <svg id="network-svg"></svg>
                 <div id="empty-state">
                     <h2>Real-Time WASM Visualization</h2>
                     <p>Select a demo network and click "Initialize Network"</p>
+                    <p style="margin-top: 10px; font-size: 12px;">Or drag blocks from the palette to build your own network</p>
                     <div class="demo-description">
                         <strong>Sequence Learning:</strong> Learns temporal patterns [0→1→2→3]<br>
                         <strong>Classification:</strong> 3-class supervised learning<br>
@@ -509,6 +858,18 @@
     <div id="loading-indicator">Initializing WASM module...</div>
     <div class="block-tooltip"></div>
 
+    <!-- Parameter Editor Modal -->
+    <div id="param-editor-modal">
+        <div class="modal-content">
+            <div class="modal-header">Edit Block Parameters</div>
+            <div id="param-form-container"></div>
+            <div class="modal-actions">
+                <button id="param-cancel-btn">Cancel</button>
+                <button id="param-apply-btn" class="primary">Apply</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import init, { WasmNetwork } from './pkg/gnomics.js';
 
@@ -524,6 +885,22 @@
         let lastFrameTime = 0;
         let fps = 0;
         let selectedBlockId = null;
+
+        // Editor state
+        const editorState = {
+            mode: 'select',  // 'select', 'connect', 'delete'
+            selectedBlocks: new Set(),
+            selectedConnections: new Set(),
+            connectionDragStart: null,  // { blockId, port }
+            clipboard: null,
+            history: {
+                undoStack: [],
+                redoStack: [],
+                maxSize: 50
+            },
+            isDirty: false,
+            nextBlockId: 1000  // Start custom blocks at ID 1000
+        };
 
         // Time series data for plotting
         const timeSeriesData = {
@@ -629,6 +1006,19 @@
         const learningToggle = document.getElementById('learning-toggle');
         const emptyState = document.getElementById('empty-state');
         const loadingIndicator = document.getElementById('loading-indicator');
+
+        // Editor UI elements
+        const toolSelect = document.getElementById('tool-select');
+        const toolConnect = document.getElementById('tool-connect');
+        const toolDelete = document.getElementById('tool-delete');
+        const toolUndo = document.getElementById('tool-undo');
+        const toolRedo = document.getElementById('tool-redo');
+        const toolSave = document.getElementById('tool-save');
+        const toolLoad = document.getElementById('tool-load');
+        const paramModal = document.getElementById('param-editor-modal');
+        const paramFormContainer = document.getElementById('param-form-container');
+        const paramCancelBtn = document.getElementById('param-cancel-btn');
+        const paramApplyBtn = document.getElementById('param-apply-btn');
 
         // Initialize WASM on page load
         window.addEventListener('load', async () => {
@@ -1180,6 +1570,352 @@
             }
         });
 
+        // ===== EDITOR FUNCTIONALITY =====
+
+        // Editor mode switching
+        function setEditorMode(mode) {
+            editorState.mode = mode;
+            [toolSelect, toolConnect, toolDelete].forEach(tool => tool.classList.remove('active'));
+
+            if (mode === 'select') toolSelect.classList.add('active');
+            else if (mode === 'connect') toolConnect.classList.add('active');
+            else if (mode === 'delete') toolDelete.classList.add('active');
+        }
+
+        toolSelect.addEventListener('click', () => setEditorMode('select'));
+        toolConnect.addEventListener('click', () => setEditorMode('connect'));
+        toolDelete.addEventListener('click', () => setEditorMode('delete'));
+
+        // Block palette drag-and-drop
+        document.querySelectorAll('.palette-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                const blockType = e.target.closest('.palette-item').dataset.blockType;
+                e.dataTransfer.setData('blockType', blockType);
+                e.target.classList.add('dragging');
+            });
+
+            item.addEventListener('dragend', (e) => {
+                e.target.classList.remove('dragging');
+            });
+        });
+
+        // Network panel drop target
+        const networkPanel = document.getElementById('network-panel');
+        networkPanel.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        });
+
+        networkPanel.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const blockType = e.dataTransfer.getData('blockType');
+            if (blockType) {
+                // Get drop position relative to SVG
+                const svg = document.getElementById('network-svg');
+                const rect = svg.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                // Show parameter editor for new block
+                showBlockParameterEditor(blockType, null, x, y);
+            }
+        });
+
+        // Parameter editor modal functions
+        function showBlockParameterEditor(blockType, blockId = null, x = 0, y = 0) {
+            const isNew = blockId === null;
+            paramModal.querySelector('.modal-header').textContent =
+                isNew ? `Add ${blockType}` : `Edit ${blockType}`;
+
+            // Generate form based on block type
+            paramFormContainer.innerHTML = generateParameterForm(blockType, blockId);
+
+            // Store context for apply button
+            paramApplyBtn.onclick = () => {
+                const params = collectFormParameters();
+                if (isNew) {
+                    addNewBlock(blockType, params, x, y);
+                } else {
+                    updateBlockParameters(blockId, params);
+                }
+                paramModal.classList.remove('visible');
+            };
+
+            paramModal.classList.add('visible');
+        }
+
+        function generateParameterForm(blockType, blockId) {
+            const defaults = getBlockDefaults(blockType);
+            let html = '';
+
+            html += `<div class="form-group">
+                <label>Block Name</label>
+                <input type="text" id="param-name" value="${blockId || defaults.name}" />
+            </div>`;
+
+            // Type-specific parameters
+            if (blockType === 'ScalarTransformer') {
+                html += `
+                    <div class="form-group">
+                        <label>Min Value</label>
+                        <input type="number" id="param-min" value="${defaults.min_val}" step="0.1" />
+                    </div>
+                    <div class="form-group">
+                        <label>Max Value</label>
+                        <input type="number" id="param-max" value="${defaults.max_val}" step="0.1" />
+                    </div>
+                    <div class="form-group">
+                        <label>Statelets</label>
+                        <input type="number" id="param-statelets" value="${defaults.num_s}" />
+                    </div>
+                    <div class="form-group">
+                        <label>Active Statelets</label>
+                        <input type="number" id="param-active" value="${defaults.num_as}" />
+                    </div>
+                `;
+            } else if (blockType === 'DiscreteTransformer') {
+                html += `
+                    <div class="form-group">
+                        <label>Number of Categories</label>
+                        <input type="number" id="param-categories" value="${defaults.num_v}" />
+                    </div>
+                    <div class="form-group">
+                        <label>Statelets</label>
+                        <input type="number" id="param-statelets" value="${defaults.num_s}" />
+                    </div>
+                `;
+            } else if (blockType === 'PatternPooler') {
+                html += `
+                    <div class="form-group">
+                        <label>Dendrites</label>
+                        <input type="number" id="param-dendrites" value="${defaults.num_s}" />
+                    </div>
+                    <div class="form-group">
+                        <label>Active Dendrites</label>
+                        <input type="number" id="param-active" value="${defaults.num_as}" />
+                    </div>
+                    <div class="form-group">
+                        <label>Permanence Threshold</label>
+                        <input type="number" id="param-perm-thr" value="${defaults.perm_thr}" />
+                    </div>
+                `;
+            }
+
+            return html;
+        }
+
+        function getBlockDefaults(blockType) {
+            const defaults = {
+                'ScalarTransformer': { name: 'scalar_encoder', min_val: 0, max_val: 100, num_s: 2048, num_as: 256 },
+                'DiscreteTransformer': { name: 'discrete_encoder', num_v: 10, num_s: 2048 },
+                'PersistenceTransformer': { name: 'persistence_encoder', min_val: 0, max_val: 100, num_s: 2048, num_as: 256 },
+                'PatternPooler': { name: 'pooler', num_s: 1024, num_as: 40, perm_thr: 20 },
+                'PatternClassifier': { name: 'classifier', num_l: 3, num_s: 1024, num_as: 20, perm_thr: 20 },
+                'SequenceLearner': { name: 'sequence_learner', num_c: 512, num_spc: 4, num_dps: 8, num_rpd: 32 },
+                'ContextLearner': { name: 'context_learner', num_c: 512, num_spc: 4, num_dps: 8, num_rpd: 32 }
+            };
+            return defaults[blockType] || {};
+        }
+
+        function collectFormParameters() {
+            const params = {
+                name: document.getElementById('param-name')?.value || 'block'
+            };
+
+            // Collect all parameter inputs
+            ['min', 'max', 'statelets', 'active', 'categories', 'dendrites', 'perm-thr'].forEach(field => {
+                const elem = document.getElementById(`param-${field}`);
+                if (elem) params[field] = parseFloat(elem.value) || parseInt(elem.value);
+            });
+
+            return params;
+        }
+
+        function addNewBlock(blockType, params, x, y) {
+            console.log(`Adding new ${blockType} at (${x}, ${y}) with params:`, params);
+            // TODO: Call WASM API to add block (Phase 2)
+            // For now, just show a notification
+            alert(`Block creation will be implemented in Phase 2!\n\nType: ${blockType}\nParams: ${JSON.stringify(params, null, 2)}`);
+        }
+
+        function updateBlockParameters(blockId, params) {
+            console.log(`Updating block ${blockId} with params:`, params);
+            // TODO: Call WASM API to update parameters (Phase 2)
+            alert(`Parameter update will be implemented in Phase 2!\n\nBlock: ${blockId}\nParams: ${JSON.stringify(params, null, 2)}`);
+        }
+
+        // Modal close handlers
+        paramCancelBtn.addEventListener('click', () => {
+            paramModal.classList.remove('visible');
+        });
+
+        paramModal.addEventListener('click', (e) => {
+            if (e.target === paramModal) {
+                paramModal.classList.remove('visible');
+            }
+        });
+
+        // Save/Load network configuration
+        toolSave.addEventListener('click', () => {
+            if (!wasmNetwork) {
+                alert('No network to save');
+                return;
+            }
+            // TODO: Implement save (Phase 4)
+            alert('Save functionality will be implemented in Phase 4');
+        });
+
+        toolLoad.addEventListener('click', () => {
+            // TODO: Implement load (Phase 4)
+            alert('Load functionality will be implemented in Phase 4');
+        });
+
+        // Undo/Redo (placeholders for Phase 4)
+        toolUndo.addEventListener('click', () => {
+            alert('Undo functionality will be implemented in Phase 4');
+        });
+
+        toolRedo.addEventListener('click', () => {
+            alert('Redo functionality will be implemented in Phase 4');
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Mode switching
+            if (e.key === 'v' || e.key === 'V') setEditorMode('select');
+            else if (e.key === 'c' || e.key === 'C') setEditorMode('connect');
+            else if (e.key === 'd' || e.key === 'D') setEditorMode('delete');
+
+            // Undo/Redo
+            else if (e.ctrlKey && e.shiftKey && e.key === 'Z') {
+                // Redo
+                e.preventDefault();
+            } else if (e.ctrlKey && e.key === 'z') {
+                // Undo
+                e.preventDefault();
+            }
+
+            // Delete selected
+            else if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (editorState.selectedBlocks.size > 0) {
+                    e.preventDefault();
+                    // TODO: Delete selected blocks (Phase 2)
+                    alert('Block deletion will be implemented in Phase 2');
+                }
+            }
+        });
+
+        // Connection creation tool (port-to-port dragging)
+        let connectionPreview = null;
+        let connectionDragData = null;
+
+        function startConnectionDrag(sourceBlockId, sourcePort, event) {
+            if (editorState.mode !== 'connect') return;
+
+            connectionDragData = {
+                sourceBlockId,
+                sourcePort,  // 'output'
+                startX: event.clientX,
+                startY: event.clientY
+            };
+
+            // Create preview line
+            const svg = d3.select('#network-svg');
+            connectionPreview = svg.append('path')
+                .attr('class', 'connection-preview')
+                .attr('d', `M${event.clientX},${event.clientY}L${event.clientX},${event.clientY}`);
+
+            // Highlight valid target ports
+            highlightValidConnectionTargets(sourceBlockId);
+
+            event.stopPropagation();
+        }
+
+        function updateConnectionDrag(event) {
+            if (!connectionDragData || !connectionPreview) return;
+
+            const svg = document.getElementById('network-svg');
+            const rect = svg.getBoundingClientRect();
+            const currentX = event.clientX - rect.left;
+            const currentY = event.clientY - rect.top;
+            const startX = connectionDragData.startX - rect.left;
+            const startY = connectionDragData.startY - rect.top;
+
+            // Update preview line
+            connectionPreview.attr('d', `M${startX},${startY}L${currentX},${currentY}`);
+        }
+
+        function endConnectionDrag(event, targetBlockId = null, targetPort = null) {
+            if (!connectionDragData) return;
+
+            // Remove preview
+            if (connectionPreview) {
+                connectionPreview.remove();
+                connectionPreview = null;
+            }
+
+            // Clear port highlighting
+            d3.selectAll('.port').classed('valid-target', false).classed('invalid-target', false);
+
+            // Create connection if we have a valid target
+            if (targetBlockId && targetPort) {
+                const sourceId = connectionDragData.sourceBlockId;
+                const connType = targetPort === 'context' ? 'context' : 'input';
+
+                console.log(`Create connection: ${sourceId} → ${targetBlockId} (${connType})`);
+
+                // TODO: Call WASM API to add connection (Phase 2)
+                alert(`Connection creation will be implemented in Phase 2!\n\nFrom: Block ${sourceId}\nTo: Block ${targetBlockId}\nType: ${connType}`);
+            }
+
+            connectionDragData = null;
+        }
+
+        function highlightValidConnectionTargets(sourceBlockId) {
+            // All ports except the source block's ports are valid targets
+            d3.selectAll('.port').each(function(d) {
+                const port = d3.select(this);
+                const portType = port.attr('data-port-type');
+                const blockId = port.attr('data-block-id');
+
+                if (blockId !== String(sourceBlockId)) {
+                    port.classed('valid-target', true);
+                } else {
+                    port.classed('invalid-target', true);
+                }
+            });
+        }
+
+        // Add global mouse handlers for connection dragging
+        const networkSvg = document.getElementById('network-svg');
+        networkSvg.addEventListener('mousemove', updateConnectionDrag);
+        networkSvg.addEventListener('mouseup', (e) => endConnectionDrag(e));
+
+        // Port interaction will be set up in drawNetworkGraph when ports are created
+        // We'll add a global handler to detect port mousedown events
+        document.addEventListener('mousedown', (e) => {
+            const port = e.target.closest('.port-output');
+            if (port && editorState.mode === 'connect') {
+                const blockId = port.parentElement.parentElement.__data__.id;
+                startConnectionDrag(blockId, 'output', e);
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (!connectionDragData) return;
+
+            const targetPort = e.target.closest('.port-input, .port-context');
+            if (targetPort) {
+                const targetBlockId = targetPort.parentElement.parentElement.__data__.id;
+                const portType = targetPort.classList.contains('port-context') ? 'context' : 'input';
+                endConnectionDrag(e, targetBlockId, portType);
+            } else {
+                endConnectionDrag(e);
+            }
+        });
+
+        // ===== END EDITOR FUNCTIONALITY =====
+
         // Execute one step
         function executeStep() {
             try {
@@ -1661,7 +2397,7 @@
                 })
                 .on('contextmenu', function(event, d) {
                     // Right-click: show context menu for adding plots
-                    showPlotMenu(event, d.id, d.name);
+                    showPlotMenu(event, d.id, d.name, d.type);
                 });
 
             // Draw different shapes based on block type
@@ -2030,7 +2766,7 @@
             });
         }
 
-        function showPlotMenu(event, blockId, blockName) {
+        function showPlotMenu(event, blockId, blockName, blockType) {
             event.preventDefault();
             event.stopPropagation();
 
@@ -2043,27 +2779,30 @@
 
             // Add menu items
             const menuItems = [
-                { label: 'Add Input/Output Plot', value: 'plot' },
-                { label: 'View BitField State', value: 'bitfield' },
+                { label: 'Add Input/Output Plot', value: 'plot', isDanger: false },
+                { label: 'View BitField State', value: 'bitfield', isDanger: false },
+                { label: 'separator', value: 'separator' },
+                { label: 'Edit Parameters', value: 'edit', isDanger: false },
+                { label: 'Duplicate Block', value: 'duplicate', isDanger: false },
+                { label: 'separator', value: 'separator' },
+                { label: 'Delete Block', value: 'delete', isDanger: true },
             ];
 
             menuItems.forEach(item => {
+                if (item.value === 'separator') {
+                    const separator = document.createElement('div');
+                    separator.className = 'context-menu-separator';
+                    contextMenu.appendChild(separator);
+                    return;
+                }
+
                 const menuItem = document.createElement('div');
-                menuItem.style.cssText = `
-                    padding: 8px 16px;
-                    cursor: pointer;
-                    color: #fff;
-                    font-size: 13px;
-                `;
+                menuItem.className = item.isDanger ? 'context-menu-item danger' : 'context-menu-item';
                 menuItem.textContent = item.label;
-                menuItem.addEventListener('mouseover', () => {
-                    menuItem.style.background = '#4a9eff';
-                });
-                menuItem.addEventListener('mouseout', () => {
-                    menuItem.style.background = 'transparent';
-                });
+
                 menuItem.addEventListener('click', (e) => {
                     e.stopPropagation();
+
                     if (item.value === 'plot') {
                         // Add plot for this block if it doesn't exist
                         const plotKey = `block_${blockId}`;
@@ -2077,7 +2816,20 @@
                                 };
                             }
                         }
+                    } else if (item.value === 'edit') {
+                        // Open parameter editor for this block
+                        showBlockParameterEditor(blockType, blockId);
+                    } else if (item.value === 'duplicate') {
+                        // Duplicate block (Phase 2)
+                        alert('Block duplication will be implemented in Phase 2');
+                    } else if (item.value === 'delete') {
+                        // Delete block (Phase 2)
+                        if (confirm(`Are you sure you want to delete "${blockName}"?`)) {
+                            console.log(`Delete block ${blockId}`);
+                            alert('Block deletion will be implemented in Phase 2');
+                        }
                     }
+
                     contextMenu.style.display = 'none';
                 });
                 contextMenu.appendChild(menuItem);
