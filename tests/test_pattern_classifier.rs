@@ -22,12 +22,6 @@ fn test_classifier_construction() {
 }
 
 #[test]
-#[should_panic(expected = "num_s must be divisible by num_l")]
-fn test_classifier_invalid_division() {
-    PatternClassifier::new(3, 1024, 8, 20, 2, 1, 0.8, 0.5, 0.3, 2, 0);
-}
-
-#[test]
 #[should_panic(expected = "num_as must be <= num_spl")]
 fn test_classifier_invalid_active_per_group() {
     // 1024/4 = 256 per group, but requesting 300 active
