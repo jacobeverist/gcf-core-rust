@@ -45,7 +45,7 @@ This directory contains tools for visualizing the execution of Gnomics neural ne
 
 2. **Start local server**:
    ```bash
-   cd visualization
+   cd web
    python3 -m http.server 8000
    ```
 
@@ -119,7 +119,7 @@ if let Some(trace) = net.stop_recording() {
 
 ### 2. Visualize in Browser
 
-1. Open `visualization/viewer.html` in a web browser
+1. Open `web/viewer.html` in a web browser (or `viewer_live.html` for live demos)
 2. Click "Load Trace" and select your `my_trace.json` file
 3. Use the timeline to explore execution
 
@@ -190,7 +190,7 @@ let trace = ExecutionTrace::from_json_file("trace.json")?;
 cargo run --example network_visualization
 ```
 
-Creates a simple encoder → learner network, trains it on a sequence, introduces an anomaly, and exports the trace. Opens with `visualization/viewer.html`.
+Creates a simple encoder → learner network, trains it on a sequence, introduces an anomaly, and exports the trace. Opens with `web/viewer.html`.
 
 ### Complex Multi-Block Network
 
@@ -358,7 +358,7 @@ Potential improvements for the visualization system:
 To extend the visualizer:
 
 1. **Backend (Rust)**: Modify `src/execution_recorder.rs` to capture additional data
-2. **Frontend (JS)**: Edit `visualization/viewer.html` to display new features
+2. **Frontend (JS)**: Edit `web/viewer.html` to display new features
 3. **Examples**: Add new examples in `examples/` directory
 
 ## License

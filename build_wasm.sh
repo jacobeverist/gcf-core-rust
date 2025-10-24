@@ -31,19 +31,19 @@ echo
 echo "🔨 Building WASM module..."
 wasm-pack build \
     --target web \
-    --out-dir visualization/pkg \
+    --out-dir web/pkg \
     --features wasm
 
 echo
 echo "✅ Build complete!"
 echo
-echo "📦 Output directory: visualization/pkg/"
+echo "📦 Output directory: web/pkg/"
 echo "   - gnomics_bg.wasm (compiled binary)"
 echo "   - gnomics.js (JavaScript bindings)"
 echo "   - gnomics.d.ts (TypeScript definitions)"
 echo
 echo "🌐 To test in browser:"
-echo "   cd visualization"
+echo "   cd web"
 echo "   python3 -m http.server 8000"
 echo "   # Then open: http://localhost:8000/viewer_live.html"
 echo
