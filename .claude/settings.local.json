@@ -39,7 +39,14 @@
       "mcp__chrome-devtools__list_console_messages",
       "mcp__chrome-devtools__navigate_page",
       "mcp__chrome-devtools__handle_dialog",
-      "mcp__chrome-devtools__close_page"
+      "mcp__chrome-devtools__close_page",
+      "Bash(npm --version:*)",
+      "Bash(node --version)",
+      "Bash(npm install)",
+      "Bash(npx playwright install:*)",
+      "Bash(./node_modules/.bin/playwright install:*)",
+      "Bash(npm test:*)",
+      "Bash(xargs cat:*)"
     ],
     "deny": [],
     "ask": []
