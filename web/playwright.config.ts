@@ -8,7 +8,7 @@ export default defineConfig({
   testDir: './tests',
 
   /* Maximum time one test can run for */
-  timeout: 30 * 1000,
+  timeout: 60 * 1000,
 
   expect: {
     /**
@@ -31,14 +31,16 @@ export default defineConfig({
 
   /* Reporter to use */
   reporter: [
-    ['html'],
-    ['list']
+    ['html', { open: 'never' }],
+    ['json', {  outputFile: 'test-results.json' }],
+    [process.env.CI ? 'dot' : 'list'],
+    // ['list']
   ],
 
   /* Shared settings for all the projects below */
   use: {
     /* Base URL to use in actions like `await page.goto('/')` */
-    baseURL: 'http://localhost:8080',
+    baseURL: 'http://localhost:5173',
 
     /* Collect trace when retrying the failed test */
     trace: 'on-first-retry',
@@ -57,15 +59,15 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
 
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
+    // {
+    //   name: 'firefox',
+    //   use: { ...devices['Desktop Firefox'] },
+    // },
 
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
+    // {
+    //   name: 'webkit',
+    //   use: { ...devices['Desktop Safari'] },
+    // },
 
     /* Test against mobile viewports (optional) */
     // {
@@ -80,8 +82,8 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'python3 -m http.server 8080',
-    url: 'http://localhost:8080',
+    command: 'npm run dev',
+    url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },

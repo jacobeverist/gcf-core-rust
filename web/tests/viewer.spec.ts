@@ -7,7 +7,7 @@
 
 import { test, expect, Page } from '@playwright/test';
 
-const BASE_URL = 'http://localhost:8080/viewer_live.html';
+const BASE_URL = '/';
 
 // Helper to wait for WASM to be ready
 async function waitForWasmReady(page: Page) {
@@ -175,8 +175,7 @@ test.describe('Editor Toolbar Interactions', () => {
   });
 });
 
-// SKIPPING: Parameter modal not yet implemented in Phase 3
-test.describe.skip('Parameter Editor Modal', () => {
+test.describe('Parameter Editor Modal', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto(BASE_URL);
@@ -190,11 +189,11 @@ test.describe.skip('Parameter Editor Modal', () => {
     await scalarItem.click();
 
     // Verify modal is visible
-    const modal = page.locator('#param-modal');
-    await expect(modal).toHaveClass(/visible/);
+    const modal = page.locator('#param-editor-modal');
+    await expect(modal).toHaveClass(/visible/, { timeout: 5000 });
 
     // Verify modal title
-    await expect(page.locator('.modal-header:has-text("Add ScalarTransformer")')).toBeVisible();
+    await expect(page.locator('.modal-header')).toContainText('Add ScalarTransformer');
   });
 
   test('should display correct form fields for ScalarTransformer', async ({ page }) => {
@@ -218,7 +217,7 @@ test.describe.skip('Parameter Editor Modal', () => {
   test('should display correct form fields for DiscreteTransformer', async ({ page }) => {
     await page.locator('.palette-item[data-block-type="DiscreteTransformer"]').click();
 
-    await expect(page.locator('.modal-header:has-text("Add DiscreteTransformer")')).toBeVisible();
+    await expect(page.locator('.modal-header')).toContainText('Add DiscreteTransformer');
     await expect(page.locator('#param-name')).toBeVisible();
     await expect(page.locator('#param-categories')).toBeVisible();
     await expect(page.locator('#param-statelets')).toBeVisible();
@@ -227,11 +226,11 @@ test.describe.skip('Parameter Editor Modal', () => {
   test('should close modal when clicking Cancel', async ({ page }) => {
     await page.locator('.palette-item[data-block-type="ScalarTransformer"]').click();
 
-    const modal = page.locator('#param-modal');
+    const modal = page.locator('#param-editor-modal');
     await expect(modal).toHaveClass(/visible/);
 
     // Click Cancel
-    await page.click('button:has-text("Cancel")');
+    await page.click('#param-cancel-btn');
 
     // Verify modal is hidden
     await expect(modal).not.toHaveClass(/visible/);
@@ -240,7 +239,7 @@ test.describe.skip('Parameter Editor Modal', () => {
   test('should close modal when clicking outside', async ({ page }) => {
     await page.locator('.palette-item[data-block-type="ScalarTransformer"]').click();
 
-    const modal = page.locator('#param-modal');
+    const modal = page.locator('#param-editor-modal');
     await expect(modal).toHaveClass(/visible/);
 
     // Click on the modal backdrop (outside the content)
@@ -251,8 +250,7 @@ test.describe.skip('Parameter Editor Modal', () => {
   });
 });
 
-// SKIPPING: Block creation requires parameter modal (not yet implemented)
-test.describe.skip('Block Creation', () => {
+test.describe('Block Creation', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto(BASE_URL);
@@ -267,18 +265,20 @@ test.describe.skip('Block Creation', () => {
     // Open parameter editor
     await page.locator('.palette-item[data-block-type="ScalarTransformer"]').click();
 
+    // Wait for modal to be visible
+    await expect(page.locator('#param-editor-modal')).toHaveClass(/visible/);
+
     // Fill in parameters (use defaults)
     await page.fill('#param-name', 'test_scalar');
 
     // Click Apply
-    await page.click('button:has-text("Apply")');
+    await page.click('#param-apply-btn');
 
     // Wait for modal to close
-    await expect(page.locator('#param-modal')).not.toHaveClass(/visible/, { timeout: 5000 });
+    await expect(page.locator('#param-editor-modal')).not.toHaveClass(/visible/, { timeout: 5000 });
 
     // Verify block count increased
-    await expect(page.locator(`text=Blocks: ${initialBlockCount + 1}`))
-      .toBeVisible({ timeout: 5000 });
+    await expect(page.locator('#block-counter')).toHaveText(String(initialBlockCount + 1), { timeout: 5000 });
 
     // Verify new block appears in network graph
     await expect(page.locator('text=test_scalar')).toBeVisible({ timeout: 5000 });
@@ -292,9 +292,11 @@ test.describe.skip('Block Creation', () => {
 
     for (const block of blockTypes) {
       await page.locator(`.palette-item[data-block-type="${block.type}"]`).click();
+      await expect(page.locator('#param-editor-modal')).toHaveClass(/visible/);
       await page.fill('#param-name', block.name);
-      await page.click('button:has-text("Apply")');
-      await page.waitForTimeout(1000); // Wait for network rebuild
+      await page.click('#param-apply-btn');
+      await expect(page.locator('#param-editor-modal')).not.toHaveClass(/visible/);
+      await page.waitForTimeout(500); // Wait for network rebuild
     }
 
     // Verify both blocks were created

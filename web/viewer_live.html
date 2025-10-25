@@ -902,6 +902,352 @@
             nextBlockId: 1000  // Start custom blocks at ID 1000
         };
 
+        // ===== PHASE 4: STATE MANAGEMENT =====
+
+        // Operation History System
+        function recordOperation(operation) {
+            // Add to undo stack
+            editorState.history.undoStack.push(operation);
+
+            // Limit stack size
+            if (editorState.history.undoStack.length > editorState.history.maxSize) {
+                editorState.history.undoStack.shift();
+            }
+
+            // Clear redo stack (can't redo after new operation)
+            editorState.history.redoStack = [];
+
+            // Mark as dirty
+            editorState.isDirty = true;
+
+            // Update button states
+            updateHistoryButtons();
+
+            // Trigger auto-save
+            autoSaveNetwork();
+        }
+
+        function undo() {
+            if (editorState.history.undoStack.length === 0) return;
+
+            const operation = editorState.history.undoStack.pop();
+
+            try {
+                // Execute inverse operation
+                executeInverseOperation(operation);
+
+                // Add to redo stack
+                editorState.history.redoStack.push(operation);
+
+                // Update buttons
+                updateHistoryButtons();
+
+                console.log('Undo:', operation.type);
+            } catch (err) {
+                console.error('Undo failed:', err);
+                alert(`Undo failed: ${err.message}`);
+                // Put it back if failed
+                editorState.history.undoStack.push(operation);
+            }
+        }
+
+        function redo() {
+            if (editorState.history.redoStack.length === 0) return;
+
+            const operation = editorState.history.redoStack.pop();
+
+            try {
+                // Execute original operation
+                executeOperation(operation);
+
+                // Add back to undo stack
+                editorState.history.undoStack.push(operation);
+
+                // Update buttons
+                updateHistoryButtons();
+
+                console.log('Redo:', operation.type);
+            } catch (err) {
+                console.error('Redo failed:', err);
+                alert(`Redo failed: ${err.message}`);
+                // Put it back if failed
+                editorState.history.redoStack.push(operation);
+            }
+        }
+
+        function executeOperation(op) {
+            switch (op.type) {
+                case 'ADD_BLOCK':
+                    // Re-add the block with same handle
+                    recreateBlock(op.blockType, op.name, op.params);
+                    wasmNetwork.rebuild();
+                    drawNetworkGraph();
+                    break;
+
+                case 'REMOVE_BLOCK':
+                    wasmNetwork.remove_block(op.blockHandle);
+                    wasmNetwork.rebuild();
+                    drawNetworkGraph();
+                    break;
+
+                case 'ADD_CONNECTION':
+                    if (op.connType === 'context') {
+                        wasmNetwork.connect_to_context(op.source, op.target);
+                    } else {
+                        wasmNetwork.connect_to_input(op.source, op.target);
+                    }
+                    wasmNetwork.rebuild();
+                    drawNetworkGraph();
+                    break;
+
+                case 'REMOVE_CONNECTION':
+                    wasmNetwork.remove_connection(op.source, op.target, op.connType);
+                    wasmNetwork.rebuild();
+                    drawNetworkGraph();
+                    break;
+            }
+
+            // Update block counter
+            const numBlocks = wasmNetwork.num_blocks();
+            document.getElementById('block-counter').textContent = numBlocks;
+            updateStatus('network', 'active', `Network: ${numBlocks} blocks`);
+        }
+
+        function executeInverseOperation(op) {
+            switch (op.type) {
+                case 'ADD_BLOCK':
+                    // Inverse: remove the block
+                    wasmNetwork.remove_block(op.blockHandle);
+                    wasmNetwork.rebuild();
+                    drawNetworkGraph();
+                    break;
+
+                case 'REMOVE_BLOCK':
+                    // Inverse: re-create the block
+                    recreateBlock(op.blockType, op.name, op.params);
+                    // Restore connections
+                    if (op.connections) {
+                        op.connections.forEach(conn => {
+                            if (conn.type === 'context') {
+                                wasmNetwork.connect_to_context(conn.source, conn.target);
+                            } else {
+                                wasmNetwork.connect_to_input(conn.source, conn.target);
+                            }
+                        });
+                    }
+                    wasmNetwork.rebuild();
+                    drawNetworkGraph();
+                    break;
+
+                case 'ADD_CONNECTION':
+                    // Inverse: remove connection
+                    wasmNetwork.remove_connection(op.source, op.target, op.connType);
+                    wasmNetwork.rebuild();
+                    drawNetworkGraph();
+                    break;
+
+                case 'REMOVE_CONNECTION':
+                    // Inverse: add connection back
+                    if (op.connType === 'context') {
+                        wasmNetwork.connect_to_context(op.source, op.target);
+                    } else {
+                        wasmNetwork.connect_to_input(op.source, op.target);
+                    }
+                    wasmNetwork.rebuild();
+                    drawNetworkGraph();
+                    break;
+            }
+
+            // Update block counter
+            const numBlocks = wasmNetwork.num_blocks();
+            document.getElementById('block-counter').textContent = numBlocks;
+            updateStatus('network', 'active', `Network: ${numBlocks} blocks`);
+        }
+
+        function recreateBlock(blockType, name, params) {
+            // Helper to recreate a block with specific parameters
+            const seed = params.seed || 0;
+            let handle;
+
+            switch (blockType) {
+                case 'ScalarTransformer':
+                    handle = wasmNetwork.add_scalar_transformer(
+                        name, params.min, params.max, params.statelets,
+                        params.active, 2, seed
+                    );
+                    break;
+                case 'DiscreteTransformer':
+                    handle = wasmNetwork.add_discrete_transformer(
+                        name, params.categories, params.statelets, 2, seed
+                    );
+                    break;
+                case 'PersistenceTransformer':
+                    handle = wasmNetwork.add_persistence_transformer(
+                        name, params.min, params.max, params.statelets,
+                        params.active, 10, 2, seed
+                    );
+                    break;
+                case 'PatternPooler':
+                    handle = wasmNetwork.add_pattern_pooler(
+                        name, params.dendrites, params.active, params['perm-thr'],
+                        2, 1, 0.8, 0.5, 0.3, false, 2, seed
+                    );
+                    break;
+                case 'PatternClassifier':
+                    handle = wasmNetwork.add_pattern_classifier(
+                        name, 3, params.dendrites, params.active, params['perm-thr'],
+                        2, 1, 0.8, 0.5, 0.3, 2, seed
+                    );
+                    break;
+                case 'SequenceLearner':
+                    handle = wasmNetwork.add_sequence_learner(
+                        name, 512, 4, 8, 32, 20, 20, 2, 1, 2, false, seed
+                    );
+                    break;
+                case 'ContextLearner':
+                    handle = wasmNetwork.add_context_learner(
+                        name, 512, 4, 8, 32, 20, 20, 2, 1, 2, false, seed
+                    );
+                    break;
+            }
+
+            wasmNetwork.init_block(handle);
+            return handle;
+        }
+
+        function updateHistoryButtons() {
+            const canUndo = editorState.history.undoStack.length > 0;
+            const canRedo = editorState.history.redoStack.length > 0;
+
+            if (canUndo) {
+                toolUndo.removeAttribute('disabled');
+            } else {
+                toolUndo.setAttribute('disabled', '');
+            }
+
+            if (canRedo) {
+                toolRedo.removeAttribute('disabled');
+            } else {
+                toolRedo.setAttribute('disabled', '');
+            }
+        }
+
+        // Auto-save to localStorage
+        let autoSaveTimer = null;
+        function autoSaveNetwork() {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(() => {
+                try {
+                    const config = wasmNetwork.export_config();
+                    localStorage.setItem('gnomics_network_autosave', config);
+                    localStorage.setItem('gnomics_network_autosave_timestamp', Date.now().toString());
+                    console.log('Auto-saved to localStorage');
+                } catch (err) {
+                    console.error('Auto-save failed:', err);
+                }
+            }, 2000); // Save 2 seconds after last change
+        }
+
+        // Save network to file
+        function saveNetworkToFile() {
+            try {
+                const config = wasmNetwork.export_config();
+                const blob = new Blob([config], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `gnomics_network_${Date.now()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                editorState.isDirty = false;
+                console.log('Network saved to file');
+            } catch (err) {
+                console.error('Save failed:', err);
+                alert(`Failed to save network: ${err.message}`);
+            }
+        }
+
+        // Load network from file
+        function loadNetworkFromFile() {
+            if (editorState.isDirty) {
+                if (!confirm('You have unsaved changes. Load network anyway?')) {
+                    return;
+                }
+            }
+
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const config = event.target.result;
+                        wasmNetwork.import_config(config);
+
+                        // Clear history
+                        editorState.history.undoStack = [];
+                        editorState.history.redoStack = [];
+                        updateHistoryButtons();
+
+                        // Update UI
+                        drawNetworkGraph();
+                        const numBlocks = wasmNetwork.num_blocks();
+                        document.getElementById('block-counter').textContent = numBlocks;
+                        updateStatus('network', 'success', `Loaded network with ${numBlocks} blocks`);
+
+                        editorState.isDirty = false;
+                        console.log('Network loaded from file');
+                    } catch (err) {
+                        console.error('Load failed:', err);
+                        alert(`Failed to load network: ${err.message}`);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        // Restore from auto-save on page load
+        function restoreAutoSave() {
+            const savedConfig = localStorage.getItem('gnomics_network_autosave');
+            const timestamp = localStorage.getItem('gnomics_network_autosave_timestamp');
+
+            if (savedConfig && timestamp) {
+                const age = Date.now() - parseInt(timestamp);
+                const ageMinutes = Math.floor(age / 60000);
+
+                if (confirm(`Found auto-saved network from ${ageMinutes} minutes ago. Restore it?`)) {
+                    try {
+                        wasmNetwork.import_config(savedConfig);
+                        drawNetworkGraph();
+                        const numBlocks = wasmNetwork.num_blocks();
+                        document.getElementById('block-counter').textContent = numBlocks;
+                        updateStatus('network', 'success', `Restored network with ${numBlocks} blocks`);
+                        console.log('Restored from auto-save');
+                    } catch (err) {
+                        console.error('Restore failed:', err);
+                        alert(`Failed to restore auto-save: ${err.message}`);
+                    }
+                }
+            }
+        }
+
+        // Warn before leaving with unsaved changes
+        window.addEventListener('beforeunload', (e) => {
+            if (editorState.isDirty) {
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+                return e.returnValue;
+            }
+        });
+
         // Time series data for plotting
         const timeSeriesData = {
             blocks: {},  // blockId -> { values: [], timestamps: [] }
@@ -1028,6 +1374,10 @@
                 wasmInitialized = true;
                 updateStatus('wasm', 'active', 'WASM: Ready');
                 console.log('WASM initialized successfully');
+
+                // Try to restore from auto-save
+                wasmNetwork = new WasmNetwork();
+                restoreAutoSave();
             } catch (err) {
                 console.error('Failed to initialize WASM:', err);
                 updateStatus('wasm', 'inactive', 'WASM: Failed to load');
@@ -1588,6 +1938,19 @@
 
         // Block palette drag-and-drop
         document.querySelectorAll('.palette-item').forEach(item => {
+            // Click handler - show parameter modal
+            item.addEventListener('click', (e) => {
+                const blockType = e.target.closest('.palette-item').dataset.blockType;
+                console.log('[PALETTE CLICK]', blockType);
+                // Default position in center of network panel
+                const svg = document.getElementById('network-svg');
+                const rect = svg.getBoundingClientRect();
+                const x = rect.width / 2;
+                const y = rect.height / 2;
+                showBlockParameterEditor(blockType, null, x, y);
+            });
+
+            // Drag handlers
             item.addEventListener('dragstart', (e) => {
                 const blockType = e.target.closest('.palette-item').dataset.blockType;
                 e.dataTransfer.setData('blockType', blockType);
@@ -1623,6 +1986,7 @@
 
         // Parameter editor modal functions
         function showBlockParameterEditor(blockType, blockId = null, x = 0, y = 0) {
+            console.log('[SHOW EDITOR]', blockType, 'isNew:', blockId === null);
             const isNew = blockId === null;
             paramModal.querySelector('.modal-header').textContent =
                 isNew ? `Add ${blockType}` : `Edit ${blockType}`;
@@ -1632,7 +1996,9 @@
 
             // Store context for apply button
             paramApplyBtn.onclick = () => {
+                console.log('[APPLY CLICKED]', blockType);
                 const params = collectFormParameters();
+                console.log('[PARAMS COLLECTED]', params);
                 if (isNew) {
                     addNewBlock(blockType, params, x, y);
                 } else {
@@ -1732,9 +2098,11 @@
         }
 
         function addNewBlock(blockType, params, x, y) {
-            console.log(`Adding new ${blockType} at (${x}, ${y}) with params:`, params);
+            console.log('[ADD NEW BLOCK]', blockType, 'at', x, y, 'params:', params);
+            console.log('[WASM NETWORK EXISTS]', !!wasmNetwork);
 
             if (!wasmNetwork) {
+                console.error('[ERROR] wasmNetwork is null');
                 alert('Network not initialized. Please load a demo first.');
                 return;
             }
@@ -1743,6 +2111,7 @@
                 let handle;
                 const name = params.name || blockType.toLowerCase();
                 const seed = 0;
+                console.log('[CALLING WASM]', blockType, 'name:', name);
 
                 // Call appropriate WASM method based on block type
                 switch (blockType) {
@@ -1854,20 +2223,37 @@
                         return;
                 }
 
-                // Initialize and rebuild network
-                wasmNetwork.init_block(handle);
+                console.log('[WASM CALL COMPLETE] handle:', handle);
+
+                // Rebuild network first
                 wasmNetwork.rebuild();
+                console.log('[REBUILD COMPLETE]');
 
-                console.log(`Created block "${name}" with handle ${handle}`);
-
-                // Redraw network graph to show the new block
-                const traceJson = wasmNetwork.get_trace_json();
-                if (traceJson) {
-                    const trace = JSON.parse(traceJson);
-                    drawNetworkGraph(trace);
+                // Try to initialize the block (may fail if it needs connections)
+                try {
+                    wasmNetwork.init_block(handle);
+                    console.log(`[INIT SUCCESS] Created and initialized block "${name}" with handle ${handle}`);
+                } catch (initError) {
+                    console.log(`[INIT DEFERRED] Created block "${name}" with handle ${handle} (initialization deferred until connected)`);
                 }
 
-                editorState.isDirty = true;
+                // Update block counter
+                const numBlocks = wasmNetwork.num_blocks();
+                console.log('[BLOCK COUNT]', numBlocks);
+                document.getElementById('block-counter').textContent = numBlocks;
+
+                // Redraw network graph to show the new block
+                console.log('[REDRAWING GRAPH]');
+                drawNetworkGraph();
+
+                // Record operation for undo/redo
+                recordOperation({
+                    type: 'ADD_BLOCK',
+                    blockHandle: handle,
+                    blockType: blockType,
+                    name: name,
+                    params: params
+                });
 
             } catch (error) {
                 console.error('Error adding block:', error);
@@ -1941,86 +2327,24 @@
                 alert('No network to save');
                 return;
             }
-
-            try {
-                // Export network configuration as JSON
-                const configJson = wasmNetwork.export_config();
-
-                // Create a blob and download it
-                const blob = new Blob([configJson], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `gnomics_network_${Date.now()}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-
-                console.log('Network configuration saved');
-                editorState.isDirty = false;
-
-            } catch (error) {
-                console.error('Error saving network:', error);
-                alert(`Error saving network: ${error.message || error}`);
-            }
+            saveNetworkToFile();
         });
 
         toolLoad.addEventListener('click', () => {
-            // Create a file input element
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
-
-            input.onchange = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    try {
-                        const configJson = event.target.result;
-
-                        // Stop simulation if running
-                        if (isRunning) {
-                            toggleSimulation();
-                        }
-
-                        // Create a new network and import the configuration
-                        wasmNetwork = WasmNetwork.new();
-                        wasmNetwork.import_config(configJson);
-                        wasmNetwork.build();
-
-                        console.log('Network configuration loaded');
-
-                        // Update visualization
-                        const traceJson = wasmNetwork.get_trace_json();
-                        if (traceJson) {
-                            const trace = JSON.parse(traceJson);
-                            drawNetworkGraph(trace);
-                        }
-
-                        editorState.isDirty = false;
-                        currentDemo = 'custom';
-
-                    } catch (error) {
-                        console.error('Error loading network:', error);
-                        alert(`Error loading network: ${error.message || error}`);
-                    }
-                };
-                reader.readAsText(file);
-            };
-
-            input.click();
+            if (isRunning) {
+                alert('Stop simulation before loading a network');
+                return;
+            }
+            loadNetworkFromFile();
         });
 
-        // Undo/Redo (placeholders for Phase 4)
+        // Undo/Redo
         toolUndo.addEventListener('click', () => {
-            alert('Undo functionality will be implemented in Phase 4');
+            undo();
         });
 
         toolRedo.addEventListener('click', () => {
-            alert('Redo functionality will be implemented in Phase 4');
+            redo();
         });
 
         // Keyboard shortcuts
@@ -2032,11 +2356,11 @@
 
             // Undo/Redo
             else if (e.ctrlKey && e.shiftKey && e.key === 'Z') {
-                // Redo
                 e.preventDefault();
+                redo();
             } else if (e.ctrlKey && e.key === 'z') {
-                // Undo
                 e.preventDefault();
+                undo();
             }
 
             // Delete selected
@@ -2117,23 +2441,9 @@
                 }
 
                 try {
-                    // Get block info to map names to handles
-                    const blocksInfoJson = wasmNetwork.get_blocks_info();
-                    const blocksInfo = JSON.parse(blocksInfoJson);
-
-                    // Build name-to-handle mapping
-                    const nameToHandle = {};
-                    blocksInfo.forEach(block => {
-                        nameToHandle[block.name] = block.handle;
-                    });
-
-                    // Get handles for source and target blocks
-                    const sourceHandle = nameToHandle[sourceId];
-                    const targetHandle = nameToHandle[targetBlockId];
-
-                    if (sourceHandle === undefined || targetHandle === undefined) {
-                        throw new Error(`Could not find handles for blocks: ${sourceId} -> ${targetBlockId}`);
-                    }
+                    // Source and target IDs are already the block handles (indices)
+                    const sourceHandle = sourceId;
+                    const targetHandle = targetBlockId;
 
                     // Create connection using WASM API
                     if (connType === 'context') {
@@ -2148,13 +2458,15 @@
                     console.log(`Connected ${sourceId} → ${targetBlockId} (${connType})`);
 
                     // Redraw network graph to show the new connection
-                    const traceJson = wasmNetwork.get_trace_json();
-                    if (traceJson) {
-                        const trace = JSON.parse(traceJson);
-                        drawNetworkGraph(trace);
-                    }
+                    drawNetworkGraph();
 
-                    editorState.isDirty = true;
+                    // Record operation for undo/redo
+                    recordOperation({
+                        type: 'ADD_CONNECTION',
+                        source: sourceHandle,
+                        target: targetHandle,
+                        connType: connType
+                    });
 
                 } catch (error) {
                     console.error('Error creating connection:', error);
@@ -2678,6 +2990,59 @@
                 .on('mouseout', hideTooltip)
                 .on('click', function(event, d) {
                     event.stopPropagation();
+
+                    // Handle delete mode
+                    if (editorState.mode === 'delete') {
+                        const blockName = wasmNetwork.get_block_name(d.id);
+                        const blockType = wasmNetwork.get_block_type(d.id);
+
+                        if (confirm(`Delete block "${blockName}" (${blockType})?`)) {
+                            try {
+                                // Capture block info BEFORE deletion for undo
+                                // Note: We can't easily capture connections, so undo won't restore them
+                                // This is a known limitation - full implementation would require
+                                // WASM API to query block connections
+                                const blockInfo = {
+                                    handle: d.id,
+                                    type: blockType,
+                                    name: blockName,
+                                    params: {}  // TODO: Capture actual parameters
+                                };
+
+                                // Remove the block
+                                wasmNetwork.remove_block(d.id);
+
+                                // Rebuild network
+                                wasmNetwork.rebuild();
+
+                                // Update block counter
+                                const numBlocks = wasmNetwork.num_blocks();
+                                document.getElementById('block-counter').textContent = numBlocks;
+
+                                // Update status
+                                updateStatus('network', 'active', `Network: ${numBlocks} blocks`);
+
+                                // Refresh visualization
+                                drawNetworkGraph();
+
+                                // Record operation for undo/redo
+                                recordOperation({
+                                    type: 'REMOVE_BLOCK',
+                                    blockHandle: blockInfo.handle,
+                                    blockType: blockInfo.type,
+                                    name: blockInfo.name,
+                                    params: blockInfo.params,
+                                    connections: null  // TODO: Would need WASM API to query connections
+                                });
+
+                                console.log(`Deleted block ${d.id}: ${blockName}`);
+                            } catch (err) {
+                                console.error('Failed to delete block:', err);
+                                alert(`Failed to delete block: ${err.message}`);
+                            }
+                        }
+                        return;
+                    }
 
                     // Toggle selection
                     if (selectedBlockId === d.id) {

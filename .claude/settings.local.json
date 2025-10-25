@@ -46,7 +46,11 @@
       "Bash(npx playwright install:*)",
       "Bash(./node_modules/.bin/playwright install:*)",
       "Bash(npm test:*)",
-      "Bash(xargs cat:*)"
+      "Bash(xargs cat:*)",
+      "mcp__chrome-devtools__list_pages",
+      "Bash(pkill:*)",
+      "Read(//private/tmp/**)",
+      "Bash(npx playwright test:*)"
     ],
     "deny": [],
     "ask": []
